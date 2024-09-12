@@ -1,0 +1,94 @@
+name: CI/CD
+on:
+  push:
+    branches-ignore:
+      - 'dependabot/**'
+    paths-ignore:
+      - '.gitignore'
+      - '.mergify.yml'
+      - 'CHANGELOG.md'
+      - 'LICENSE'
+      - 'README.md'
+      - 'renovate.json'
+  pull_request:
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    name: Preliminary Checks
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # all history
+
+      - name: Install Poetry
+        run: pip install -r requirements.txt
+
+      - name: Restore Development Environment
+        run: poetry install
+
+      - name: Check code is syntactically correct
+        shell: bash
+        run: poetry run poe compile
+
+      - name: Static Checks
+        shell: bash
+        run: poetry run poe mypy
+
+      - name: Test with Coverage
+        shell: bash
+        run: |
+          poetry run poe coverage
+          poetry run poe coverage-report
+          poetry run poe coverage-html
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-${{ github.sha }}
+          path: htmlcov
+          if-no-files-found: ignore
+          overwrite: true
+
+  test:
+    needs: check
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
+        python-version:
+          - '3.9'
+          - '3.10'
+          - '3.11'
+          - '3.12'
+    runs-on: ${{ matrix.os }}
+    name: Test on Python ${{ matrix.python-version }}, on ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Poetry
+        run: pip install -r requirements.txt
+
+      - name: Restore Development Environment
+        run: poetry install
+
+      - name: Test
+        shell: bash
+        run: poetry run poe test
+
+  deploy:
+    name: Deploy
+    needs:
+      - test
+    uses: ./.github/workflows/deploy.yml
+    secrets: inherit
