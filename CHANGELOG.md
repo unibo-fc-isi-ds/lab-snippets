@@ -43,7 +43,7 @@
 
 ### Bug Fixes
 
-* move my_project folder upon renaming ([dcba4ab](https://github.com/aequitas-aod/template-python-project-poetry/commit/dcba4ab25a0a0c619ee8afacad9ff01a6f5bcfd6))
+* move lab-snippets folder upon renaming ([dcba4ab](https://github.com/aequitas-aod/template-python-project-poetry/commit/dcba4ab25a0a0c619ee8afacad9ff01a6f5bcfd6))
 
 ## [2.1.6](https://github.com/aequitas-aod/template-python-project-poetry/compare/2.1.5...2.1.6) (2024-07-03)
 
