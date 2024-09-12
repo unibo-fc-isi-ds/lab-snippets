@@ -15,13 +15,14 @@ black = pygame.color.Color(0, 0, 0)  # Black color RGB
 # Circle settings
 circle_radius = min(screen_size) / 10  # Circle radius is 1/10th of the screen size's smallest dimension
 circle_posistion = screen_size / 2  # Start at the center
-circle_speed = min(screen_size) / 100  # Absolute speed of the circle is 1/100th of the screen size's smallest dimension
+circle_speed = min(screen_size) / 10  # Absolute speed of the circle is 1/10th of the screen size's smallest dimension
 circle_velocity = pygame.Vector2(0, 0)  # Initial velocity of the circle
 
 clock = pygame.time.Clock()
 
 # Main game loop
-running = True
+dt = 0 # time elapsed since last loop iteration
+running = True # game should stop when set to False
 while running:
     # Event handling
     for event in pygame.event.get([pygame.KEYDOWN, pygame.KEYUP]):
@@ -40,8 +41,8 @@ while running:
     screen.fill(black)  # Black background
 
     # Update and logs the circle's position
-    old_circle_posistion = circle_posistion
-    circle_posistion += circle_velocity
+    old_circle_posistion = circle_posistion.copy()
+    circle_posistion += dt * circle_velocity
     if old_circle_posistion != circle_posistion:
         print("Circle moves from", old_circle_posistion, "to", circle_posistion)
 
@@ -52,7 +53,7 @@ while running:
     pygame.display.flip()
 
     # Ensure the game runs at 60 FPS
-    clock.tick(60)
+    dt = clock.tick(60) / 1000  # Time elapsed since last loop iteration in seconds
 
 # Quit Pygame
 pygame.quit()
