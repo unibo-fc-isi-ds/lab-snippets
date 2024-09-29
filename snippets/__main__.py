@@ -16,6 +16,6 @@ elif len(examples) > 1:
     for i, example in enumerate(examples):
         print(f'#    {i+1})', example.name)
     choice = int(input('# > '))
-    examples[choice - 1].run()
+    examples[choice - 1].run(args.arguments)
 else:
-    examples[0].run()
+    examples[0].run(args.arguments)

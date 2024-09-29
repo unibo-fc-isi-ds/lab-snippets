@@ -4,6 +4,7 @@ import importlib
 from pathlib import Path
 import runpy
 from typing import Iterable
+import sys
 
 
 SNIPPETS_ROOT = Path(__file__).parent
@@ -33,6 +34,11 @@ def create_arg_parser() -> ArgumentParser:
         '--example', '-e',
         help='Select the index of the example to run',
     )
+    parser.add_argument(
+        "arguments",
+        nargs="*",
+        help="Arguments to pass to the example",
+    )
     return parser
 
 
@@ -50,9 +56,12 @@ class Example:
         print('# Loading module', self.name, 'from', self.path)
         return importlib.import_module(self.name)
     
-    def run(self):
+    def run(self, args: list[str] = None):
         print('# Running module', self.name, 'from', self.path)
-        runpy.run_module(self.name)
+        argv_backup = list(sys.argv)
+        sys.argv = ['PATH', *args] if args else ['PATH']
+        runpy.run_module(self.name, alter_sys=True)
+        sys.argv = argv_backup
 
 
 def find_examples(lab: int, example: int) -> Iterable[Example]:
