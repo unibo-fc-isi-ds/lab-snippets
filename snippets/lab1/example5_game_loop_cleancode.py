@@ -21,14 +21,14 @@ view = View(game_object=circle, screen=screen)
 clock = pygame.time.Clock()
 
 # Main game loop
-dt = 0 # time elapsed since last loop iteration
+dt = 0.0 # time elapsed since last loop iteration
 running = True # game should stop when set to False
 while running:
     controller.handle_inputs()
     controller.update(dt)
     view.render()
     # Ensure the game runs at 60 FPS
-    dt = clock.tick(60) / 1000  # Time elapsed since last loop iteration in seconds
+    dt = clock.tick(60) / 1000.0  # Time elapsed since last loop iteration in seconds
 
 # Quit Pygame
 pygame.quit()

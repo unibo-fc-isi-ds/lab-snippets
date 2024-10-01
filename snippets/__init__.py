@@ -52,7 +52,7 @@ class Example:
     path: Path
 
     @property
-    def module(self) -> str:
+    def module(self):
         print('# Loading module', self.name, 'from', self.path)
         return importlib.import_module(self.name)
     
@@ -66,6 +66,6 @@ class Example:
 
 def find_examples(lab: int, example: int) -> Iterable[Example]:
     for name, path in EXAMPLES.items():
-        if name.startswith('snippets.lab' + (lab or "")):
+        if name.startswith('snippets.lab' + str(lab or "")):
             if f'.example{example or ""}' in name:
                 yield Example(name, path)
