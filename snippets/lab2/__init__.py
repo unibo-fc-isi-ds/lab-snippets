@@ -1,4 +1,5 @@
 from datetime import datetime
+import psutil
 import socket
 
 
@@ -21,11 +22,18 @@ def message(text: str, sender: str, timestamp: datetime=None):
     return f"[{timestamp.isoformat()}] {sender}:\n\t{text}"
 
 
+def local_ips():
+    for interface in psutil.net_if_addrs().values():
+        for addr in interface:
+            if addr.family == socket.AF_INET:
+                    yield addr.address
+
+
 class Peer:
     def __init__(self, port, peers=None):
         if peers is None:
             peers = set()
-        self.__peers = {address(*peer) for peer in peers}
+        self.peers = {address(*peer) for peer in peers}
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.__socket.bind(address(port=port))
 
@@ -36,16 +44,19 @@ class Peer:
     def send_all(self, message):
         if not isinstance(message, bytes):
             message = message.encode()
-        for peer in self.__peers:
+        for peer in self.peers:
             self.__socket.sendto(message, peer)
 
     def receive(self):
         message, address = self.__socket.recvfrom(1024)
-        self.add_peer(address)
+        self.peers.add(address)
         return message.decode(), address
-    
-    def add_peer(self, peer):
-        self.__peers.add(address(*peer))
 
     def close(self):
         self.__socket.close()
+
+
+if __name__ == '__main__':
+    assert address('localhost:8080') == ('localhost', 8080)
+    assert address('127.0.0.1', 8080) == ('127.0.0.1', 8080)
+    assert message("Hello, World!", "Alice", datetime(2024, 2, 3, 12, 15)) == "[2024-02-03T12:15:00] Alice:\n\tHello, World!"

@@ -2,11 +2,13 @@ from snippets.lab2 import *
 import sys
 
 
-port = int(sys.argv[1])
-peers = [address(peer) for peer in sys.argv[2:]]
-peer = Peer(port, peers)
+peer = Peer(
+    port = int(sys.argv[1]),
+    peers = [address(peer) for peer in sys.argv[2:]]
+)
 
-print(f'Local address: {peer.local_address}')
+print(f'Bound to: {peer.local_address}')
+print(f'Local IP addresses: {list(local_ips())}')
 username = input('Enter your username to start the chat:\n')
 while True:
     content = input('> ')
