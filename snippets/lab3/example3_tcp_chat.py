@@ -1,4 +1,3 @@
-from snippets.lab2 import address, message, local_ips
 from snippets.lab3 import *
 import sys
 
