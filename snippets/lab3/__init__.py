@@ -1,6 +1,5 @@
 from snippets.lab2 import *
 import threading
-import sys
 
 
 class Connection:
@@ -41,12 +40,17 @@ class Connection:
         self.__socket.close()
 
     def __handle_incoming_messages(self):
-        while True:
-            message = self.receive()
-            self.on_message_received(message)
+        try:
+            while True:
+                message = self.receive()
+                self.on_message_received(message)
+        except Exception as e:
+            self.on_message_received(None, error=e)
 
-    def on_message_received(self, payload):
-        self.callback(payload)
+    def on_message_received(self, payload, sender=None, error=None):
+        if sender is not None:
+            sender = self.remote_address
+        self.callback(payload, sender, error)
 
 
 class Client(Connection):
@@ -68,10 +72,15 @@ class Server:
     def __handle_incoming_connections(self):
         self.__socket.listen()
         while True:
-            connection, address = self.__socket.accept()
-            connection = Connection(connection, self.on_connection_received)
-            self.on_connection_received(connection, address)
+            try:
+                connection, address = self.__socket.accept()
+                connection = Connection(connection, self.on_connection_received)
+                self.on_connection_received(connection, address)
+            except ConnectionAbortedError:
+                break # server is closed, silently ignore error and terminate thread
 
     def on_connection_received(self, connection, address):
         self.__callback(connection, address)
-    
+
+    def close(self):
+        self.__socket.close()
