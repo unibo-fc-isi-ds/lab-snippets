@@ -5,26 +5,12 @@ import threading
 class Connection:
     def __init__(self, socket: socket.socket, callback=None):
         self.__socket = socket
-        self.__receiver_thread = threading.Thread(target=self.__handle_incoming_messages, daemon=True)
+        self.local_address = self.__socket.getsockname()
+        self.remote_address = self.__socket.getpeername()
+        self.__closed = False
         self.callback = callback or (lambda *_: None)
+        self.__receiver_thread = threading.Thread(target=self.__handle_incoming_messages, daemon=True)
         self.__receiver_thread.start()
-    
-    @property
-    def local_address(self):
-        return self.__socket.getsockname()
-    
-    @property
-    def remote_address(self):
-        return self.__socket.getpeername()
-    
-    @property
-    def callback(self):
-        return self.__callback
-
-    @callback.setter
-    def callback(self, value):
-        assert callable(value), "Callback must be a callable object"
-        self.__callback = value
     
     def send(self, message):
         if not isinstance(message, bytes):
@@ -34,23 +20,38 @@ class Connection:
 
     def receive(self):
         length = int.from_bytes(self.__socket.recv(2), 'big')
+        if length == 0:
+            return None
         return self.__socket.recv(length).decode()
     
     def close(self):
+        should_emit_event = False
+        if not self.__closed:
+            self.__closed = True
+            should_emit_event = True
         self.__socket.close()
+        if should_emit_event:
+            self.on_event('close')
 
     def __handle_incoming_messages(self):
         try:
             while True:
                 message = self.receive()
-                self.on_message_received(message)
+                if message is None:
+                    break
+                self.on_event('message', message)
         except Exception as e:
-            self.on_message_received(None, error=e)
+            if self.__closed and isinstance(e, OSError):
+                return # silently ignore error, because this is simply the socket being closed locally
+            self.on_event('error', error=e)
+        finally:
+            self.__closed = True
+            self.on_event('close')
 
-    def on_message_received(self, payload, sender=None, error=None):
-        if sender is not None:
+    def on_event(self, event: str, payload: str=None, sender: tuple=None, error: Exception=None):
+        if sender is None:
             sender = self.remote_address
-        self.callback(payload, sender, error)
+        self.callback(event, payload, sender, error)
 
 
 class Client(Connection):
@@ -71,16 +72,21 @@ class Server:
     
     def __handle_incoming_connections(self):
         self.__socket.listen()
-        while True:
-            try:
-                connection, address = self.__socket.accept()
-                connection = Connection(connection, self.on_connection_received)
-                self.on_connection_received(connection, address)
-            except ConnectionAbortedError:
-                break # server is closed, silently ignore error and terminate thread
+        self.on_event('listen', address=self.__socket.getsockname())
+        try:
+            while True:
+                socket, address = self.__socket.accept()
+                connection = Connection(socket)
+                self.on_event('connect', connection, address)
+        except ConnectionAbortedError as e:
+            pass # silently ignore error, because this is simply the socket being closed locally
+        except Exception as e:
+            self.on_event('error', error=e)
+        finally:
+            self.on_event('stop')
 
-    def on_connection_received(self, connection, address):
-        self.__callback(connection, address)
+    def on_event(self, event: str, connection: Connection=None, address: tuple=None, error: Exception=None):
+        self.__callback(event, connection, address, error)
 
     def close(self):
         self.__socket.close()

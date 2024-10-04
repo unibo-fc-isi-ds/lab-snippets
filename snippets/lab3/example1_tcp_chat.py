@@ -4,7 +4,7 @@ import sys
 
 
 mode = sys.argv[1].lower().strip()
-remote_peer: Client = None
+remote_peer: Client | None = None
 
 
 def send_message(msg, sender):
@@ -16,25 +16,33 @@ def send_message(msg, sender):
         print("Empty message, not sent")
 
 
-def on_message_received(payload, sender, error):
-    if error is not None and not isinstance(error, OSError):
-        print(f"An {type(error).__name__} occurred: {error}")
-    if payload is None and sender is not None:
-        print(f"Peer {sender} has disconnected")
-    if payload is not None:
-        print(payload)
+def on_message_received(event, payload, sender, error):
+    match event:
+        case 'message':
+            print(payload)
+        case 'close':
+            print(f"Connection with peer {sender} closed")
+        case 'error':
+            print(error)
 
 
 if mode == 'server':
     port = int(sys.argv[2])
 
-    def on_new_connection(connection, address):
-        print(f"Start conversation with peer {address}")
-        connection.callback = on_message_received
-        global remote_peer; remote_peer = connection
+    def on_new_connection(event, connection, address, error):
+        match event:
+            case 'listen':
+                print(f"Server listening on port {address[0]} at {", ".join(local_ips())}")
+            case 'connect':
+                print(f"Open ingoing connection from: {address}")
+                connection.callback = on_message_received
+                global remote_peer; remote_peer = connection
+            case 'stop':
+                print(f"Stop listening for new connections")
+            case 'error':
+                print(error)
 
     server = Server(port, on_new_connection)
-    print(f"Server listening on port {port} at {", ".join(local_ips())}")
 elif mode == 'client':
     remote_endpoint = sys.argv[2]
 
@@ -49,7 +57,8 @@ while True:
         content = input()
         send_message(content, username)
     except (EOFError, KeyboardInterrupt):
-        remote_peer.close()
+        if remote_peer:
+            remote_peer.close()
         break
 if mode == 'server':
     server.close()
