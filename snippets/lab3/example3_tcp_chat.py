@@ -10,17 +10,18 @@ def send_message(msg, sender):
     if remote_peer is None:
         print("No peer connected, message is lost")
     elif msg:
-        remote_peer.sendall(message(msg.strip(), sender))
+        remote_peer.send(message(msg.strip(), sender))
     else:
         print("Empty message, not sent")
 
 
-def on_message_received(event, payload, sender, error):
+def on_message_received(event, payload, connection, error):
     match event:
         case 'message':
             print(payload)
         case 'close':
-            print(f"Connection with peer {sender} closed")
+            print(f"Connection with peer {connection.remote_address} closed")
+            global remote_peer; remote_peer = None
         case 'error':
             print(error)
 
