@@ -1,4 +1,4 @@
-from dataclasses import dataclass, replace as defensive_copy
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from enum import Enum
 import hashlib
@@ -11,30 +11,39 @@ def compute_sha256_hash(input: str) -> str:
 
 
 class Role(Enum):
-    ADMIN = 'admin'
-    USER = 'user
+    ADMIN = 1
+    USER = 2
+
+
+class Datum:
+    def copy(self, **kwargs):
+        return replace(self, **kwargs)
 
 
 @dataclass
-class User:
+class User(Datum):
     username: str
-    email: str
+    emails: set[str]
     full_name: str | None = None
     role: str = Role.USER
     password: str | None = None
 
+    def __post_init__(self):
+        self.emails = set(self.emails)
+
     @property
     def ids(self):
-        return {self.username, self.email}
+        return {self.username} | self.emails
+
 
 @dataclass
-class Credentials:
+class Credentials(Datum):
     id: str
     password: str
 
 
 @dataclass
-class Token:
+class Token(Datum):
     signature: str
     user: User
     expiration: datetime
@@ -49,10 +58,10 @@ class UserDatabase:
             if id in self.__users:
                 raise ValueError(f"User with {id} already exists")
         if user.password is None:
-            raise ValueError("Password is required")
-        user = defensive_copy(user, password=compute_sha256_hash(user.password))
-        self.__users[user.username] = user
-        self.__users[user.email] = user
+            raise ValueError("Password digest is required")
+        user = user.copy(password=compute_sha256_hash(user.password))
+        for id in user.ids:
+            self.__users[id] = user
 
     def __get_user(self, id: str) -> User:
         if id not in self.__users:
@@ -60,7 +69,7 @@ class UserDatabase:
         return self.__users[id]
     
     def get_user(self, id: str) -> User:
-        return defensive_copy(self.__get_user(id), password=None)
+        return self.__get_user(id).copy(password=None)
 
     def check_password(self, credentials: Credentials) -> bool:
         user = self.__get_user(credentials.id)
