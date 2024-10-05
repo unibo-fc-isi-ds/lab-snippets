@@ -60,7 +60,7 @@ class Example:
         print('# Running module', self.name, 'from', self.path)
         argv_backup = list(sys.argv)
         sys.argv = ['PATH', *args] if args else ['PATH']
-        runpy.run_module(self.name, alter_sys=True)
+        runpy.run_module(self.name, run_name='__main__', alter_sys=True)
         sys.argv = argv_backup
 
 
