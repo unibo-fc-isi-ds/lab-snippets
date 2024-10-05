@@ -10,7 +10,7 @@ def send_message(msg, sender):
     if remote_peer is None:
         print("No peer connected, message is lost")
     elif msg:
-        remote_peer.send(message(msg.strip(), sender))
+        remote_peer.sendall(message(msg.strip(), sender))
     else:
         print("Empty message, not sent")
 
@@ -31,7 +31,7 @@ if mode == 'server':
     def on_new_connection(event, connection, address, error):
         match event:
             case 'listen':
-                print(f"Server listening on port {address[0]} at {", ".join(local_ips())}")
+                print(f"Server listening on port {address[0]} at {', '.join(local_ips())}")
             case 'connect':
                 print(f"Open ingoing connection from: {address}")
                 connection.callback = on_message_received

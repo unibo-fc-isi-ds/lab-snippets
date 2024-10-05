@@ -4,8 +4,6 @@ import sys
 
 
 mode = sys.argv[1].lower().strip()
-stdin = sys.stdin.buffer
-stdout = sys.stdout.buffer
 BUFFER_SIZE = 1024
 
 
@@ -16,17 +14,17 @@ if mode == 'client':
     sock.connect(remote_endpoint)
     print(f"# connected to {remote_endpoint}")
     while True:
-        buffer = stdin.read(BUFFER_SIZE)
+        buffer = sys.stdin.buffer.read(BUFFER_SIZE)
         if not buffer:
             break
-        sock.send(buffer)
+        sock.sendall(buffer)
     sock.shutdown(socket.SHUT_WR) # tells the server the client is done sending
     while True:
         buffer = sock.recv(BUFFER_SIZE)
         if not buffer:
             break
-        stdout.write(buffer)
-        stdout.flush()
+        sys.stdout.buffer.write(buffer)
+        sys.stdout.buffer.flush()
     sock.close()
     print("# connection closed")
 elif mode == 'server':
@@ -41,7 +39,7 @@ elif mode == 'server':
             buffer = sock.recv(BUFFER_SIZE)
             if not buffer:
                 break
-            sock.send(buffer)
-            print(f"# echoed {len(buffer)} bytes: {buffer}", flush=True)
+            sock.sendall(buffer)
+            print(f"# echoed {len(buffer)} bytes: {buffer!r}", flush=True)
         sock.close()
     print("# connection closed")

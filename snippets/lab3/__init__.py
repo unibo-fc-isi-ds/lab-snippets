@@ -2,6 +2,11 @@ from snippets.lab2 import *
 import threading
 
 
+# Uncomment this line to observe timeout errors more often.
+# Beware: short timeouts can make demonstrations more difficult to follow.
+# socket.setdefaulttimeout(5) # set default timeout for blocking operations to 5 seconds
+
+
 class Connection:
     def __init__(self, socket: socket.socket, callback=None):
         self.__socket = socket
@@ -16,7 +21,7 @@ class Connection:
         if not isinstance(message, bytes):
             message = message.encode()
             message = int.to_bytes(len(message), 2, 'big') + message
-        self.__socket.send(message)
+        self.__socket.sendall(message)
 
     def receive(self):
         length = int.from_bytes(self.__socket.recv(2), 'big')
