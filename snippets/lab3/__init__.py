@@ -12,10 +12,27 @@ class Connection:
         self.__socket = socket
         self.local_address = self.__socket.getsockname()
         self.remote_address = self.__socket.getpeername()
-        self.__closed = False
-        self.callback = callback or (lambda *_: None)
+        self.__notify_closed = False
+        self.__callback = callback
         self.__receiver_thread = threading.Thread(target=self.__handle_incoming_messages, daemon=True)
-        self.__receiver_thread.start()
+        if self.__callback:
+            self.__receiver_thread.start()
+
+    @property
+    def callback(self):
+        return self.__callback
+    
+    @callback.setter
+    def callback(self, value):
+        if self.__callback:
+            raise ValueError("Callback can only be set once")
+        self.__callback = value
+        if value:
+            self.__receiver_thread.start()
+
+    @property
+    def closed(self):
+        return self.__socket._closed
     
     def send(self, message):
         if not isinstance(message, bytes):
@@ -30,33 +47,29 @@ class Connection:
         return self.__socket.recv(length).decode()
     
     def close(self):
-        should_emit_event = False
-        if not self.__closed:
-            self.__closed = True
-            should_emit_event = True
         self.__socket.close()
-        if should_emit_event:
+        if not self.__notify_closed:
             self.on_event('close')
+            self.__notify_closed = True
 
     def __handle_incoming_messages(self):
         try:
-            while True:
+            while not self.closed:
                 message = self.receive()
                 if message is None:
                     break
                 self.on_event('message', message)
         except Exception as e:
-            if self.__closed and isinstance(e, OSError):
+            if self.closed and isinstance(e, OSError):
                 return # silently ignore error, because this is simply the socket being closed locally
             self.on_event('error', error=e)
         finally:
-            self.__closed = True
-            self.on_event('close')
+            self.close()
 
-    def on_event(self, event: str, payload: str=None, sender: tuple=None, error: Exception=None):
-        if sender is None:
-            sender = self.remote_address
-        self.callback(event, payload, sender, error)
+    def on_event(self, event: str, payload: str=None, connection: 'Connection'=None, error: Exception=None):
+        if connection is None:
+            connection = self
+        self.callback(event, payload, connection, error)
 
 
 class Client(Connection):
@@ -72,14 +85,28 @@ class Server:
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.__socket.bind(address(port=port))
         self.__listener_thread = threading.Thread(target=self.__handle_incoming_connections, daemon=True)
-        self.__callback = callback or (lambda *_: None)
-        self.__listener_thread.start()
+        self.__notify_stopped = False
+        self.__callback = callback
+        if self.__callback:
+            self.__listener_thread.start()
+
+    @property
+    def callback(self):
+        return self.__callback
+    
+    @callback.setter
+    def callback(self, value):
+        if self.__callback:
+            raise ValueError("Callback can only be set once")
+        self.__callback = value
+        if value:
+            self.__listener_thread.start()
     
     def __handle_incoming_connections(self):
         self.__socket.listen()
         self.on_event('listen', address=self.__socket.getsockname())
         try:
-            while True:
+            while not self.__socket._closed:
                 socket, address = self.__socket.accept()
                 connection = Connection(socket)
                 self.on_event('connect', connection, address)
