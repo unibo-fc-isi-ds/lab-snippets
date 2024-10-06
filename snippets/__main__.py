@@ -2,7 +2,7 @@ from snippets import *
 
 
 parser = create_arg_parser()
-args = parser.parse_args()
+args, other_args = parser.parse_known_args()
 
 
 examples = list(find_examples(args.lab, args.example))
@@ -16,6 +16,6 @@ elif len(examples) > 1:
     for i, example in enumerate(examples):
         print(f'#    {i+1})', example.name)
     choice = int(input('# > '))
-    examples[choice - 1].run(args.arguments)
+    examples[choice - 1].run(other_args)
 else:
-    examples[0].run(args.arguments)
+    examples[0].run(other_args)

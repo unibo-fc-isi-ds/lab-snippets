@@ -20,7 +20,7 @@ class Connection:
 
     @property
     def callback(self):
-        return self.__callback
+        return self.__callback or (lambda *_: None)
     
     @callback.setter
     def callback(self, value):
@@ -85,14 +85,13 @@ class Server:
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.__socket.bind(address(port=port))
         self.__listener_thread = threading.Thread(target=self.__handle_incoming_connections, daemon=True)
-        self.__notify_stopped = False
         self.__callback = callback
         if self.__callback:
             self.__listener_thread.start()
 
     @property
     def callback(self):
-        return self.__callback
+        return self.__callback or (lambda *_: None)
     
     @callback.setter
     def callback(self, value):

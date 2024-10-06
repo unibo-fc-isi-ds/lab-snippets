@@ -1,4 +1,4 @@
-from argparse import ArgumentParser
+from argparse import ArgumentParser, ArgumentError
 from dataclasses import dataclass
 import importlib
 from pathlib import Path
@@ -25,6 +25,7 @@ def create_arg_parser() -> ArgumentParser:
     parser = ArgumentParser(
         prog='poetry run python -m snippets',
         description='Runs a snippet',
+        exit_on_error=False,
     )
     parser.add_argument(
         '--lab', '-l', 
@@ -33,11 +34,6 @@ def create_arg_parser() -> ArgumentParser:
     parser.add_argument(
         '--example', '-e',
         help='Select the index of the example to run',
-    )
-    parser.add_argument(
-        "arguments",
-        nargs="*",
-        help="Arguments to pass to the example",
     )
     return parser
 
@@ -57,7 +53,7 @@ class Example:
         return importlib.import_module(self.name)
     
     def run(self, args: list[str] = None):
-        print('# Running module', self.name, 'from', self.path)
+        print('# Running module', self.name, 'from', self.path, 'with args:', *args)
         argv_backup = list(sys.argv)
         sys.argv = ['PATH', *args] if args else ['PATH']
         runpy.run_module(self.name, run_name='__main__', alter_sys=True)
