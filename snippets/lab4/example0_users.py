@@ -10,7 +10,7 @@ auth_service = InMemoryAuthenticationService(user_db, debug=_PRINT_LOGS)
 
 gc_user = User(
     username='gciatto',
-    emails=['giovanni.ciatto@unibo.it', 'giovanni.ciatto@gmail.com'],
+    emails={'giovanni.ciatto@unibo.it', 'giovanni.ciatto@gmail.com'},
     full_name='Giovanni Ciatto',
     role=Role.ADMIN,
     password='my secret password',
@@ -18,7 +18,7 @@ gc_user = User(
 
 gc_user_hidden_password = gc_user.copy(password=None)
 
-gc_credentials_ok = [Credentials(id, gc_user.password) for id in gc_user.ids]
+gc_credentials_ok = [Credentials(id, gc_user.password) for id in gc_user.ids] # type: ignore
 
 gc_credentials_wrong = Credentials(
     id='giovanni.ciatto@unibo.it',

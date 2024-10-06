@@ -20,7 +20,7 @@ class _Debuggable:
 class InMemoryUserDatabase(UserDatabase, _Debuggable):
     def __init__(self, debug: bool = True):
         _Debuggable.__init__(self, debug)
-        self.__users = {}
+        self.__users: dict[str, User] = {}
         self._log("User database initialized with empty users")
     
     def add_user(self, user: User):

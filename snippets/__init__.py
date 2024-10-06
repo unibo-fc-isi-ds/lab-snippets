@@ -52,10 +52,10 @@ class Example:
         print('# Loading module', self.name, 'from', self.path)
         return importlib.import_module(self.name)
     
-    def run(self, args: list[str] = None):
+    def run(self, *args: str):
         print('# Running module', self.name, 'from', self.path, 'with args:', *args)
         argv_backup = list(sys.argv)
-        sys.argv = ['PATH', *args] if args else ['PATH']
+        sys.argv = ['PATH', *args]
         runpy.run_module(self.name, run_name='__main__', alter_sys=True)
         sys.argv = argv_backup
 
