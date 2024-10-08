@@ -6,6 +6,10 @@ from dataclasses import dataclass
 
 @dataclass
 class Request:
+    """
+    A container for RPC requests: a name of the function to call and its arguments.
+    """
+
     name: str
     args: tuple
 
@@ -15,6 +19,12 @@ class Request:
 
 @dataclass
 class Response:
+    """
+    A container for RPC responses: a result of the function call or an error message.
+    When error is None, it means there was no error.
+    Result may be None, if the function returns None.
+    """
+
     result: object | None
     error: str | None
 
@@ -25,7 +35,7 @@ class Serializer:
 
     def serialize(self, obj):
         return self._ast_to_string(self._to_ast(obj))
-    
+
     def _ast_to_string(self, data):
         return json.dumps(data, indent=2)
 
@@ -36,61 +46,67 @@ class Serializer:
             return [self._to_ast(item) for item in obj]
         if isinstance(obj, dict):
             return {key: self._to_ast(value) for key, value in obj.items()}
+        # selects the appropriate method to convert the object to AST via reflection
         method_name = f'_{type(obj).__name__.lower()}_to_ast'
         if hasattr(self, method_name):
             data = getattr(self, method_name)(obj)
             data['$type'] = type(obj).__name__
             return data
         raise ValueError(f"Unsupported type {type(obj)}")
-    
+
     def _user_to_ast(self, user: User):
         return {
-            'username': user.username,
-            'emails': list(user.emails),
-            'full_name': user.full_name,
-            'role': self._role_to_ast(user.role),
-            'password': user.password,
+            'username': self._to_ast(user.username),
+            'emails': [self._to_ast(email) for email in user.emails],
+            'full_name': self._to_ast(user.full_name),
+            'role': self._to_ast(user.role),
+            'password': self._to_ast(user.password),
         }
-    
+
     def _credentials_to_ast(self, credentials: Credentials):
         return {
-            'id': credentials.id,
-            'password': credentials.password,
+            'id': self._to_ast(credentials.id),
+            'password': self._to_ast(credentials.password),
         }
-    
+
     def _token_to_ast(self, token: Token):
         return {
-            'signature': token.signature,
+            'signature': self._to_ast(token.signature),
             'user': self._to_ast(token.user),
-            'expiration': token.expiration.isoformat(),
+            'expiration': self._to_ast(token.expiration),
         }
-    
+
+    def _datetime_to_ast(self, dt: datetime):
+        return {"value": dt.isoformat()}
+
     def _role_to_ast(self, role: Role):
-        return {
-            'name': role.name,
-        }
-    
+        return {'name': role.name}
+
     def _request_to_ast(self, request: Request):
         return {
-            'name': request.name,
+            'name': self._to_ast(request.name),
             'args': [self._to_ast(arg) for arg in request.args],
         }
-    
+
     def _response_to_ast(self, response: Response):
         return {
             'result': self._to_ast(response.result) if response.result is not None else None,
-            'error': response.error,
+            'error': self._to_ast(response.error),
         }
 
 
 class Deserializer:
     def deserialize(self, string):
-        return self._ast_to_obj(json.loads(string))
-    
+        return self._ast_to_obj(self._ast_to_string(string))
+
+    def _ast_to_string(self, data):
+        return json.loads(data)
+
     def _ast_to_obj(self, data):
         if isinstance(data, dict):
             if '$type' not in data:
                 return {key: self._ast_to_obj(value) for key, value in data.items()}
+            # selects the appropriate method to convert the AST to object via reflection
             method_name = f'_ast_to_{data["$type"].lower()}'
             if hasattr(self, method_name):
                 return getattr(self, method_name)(data)
@@ -98,42 +114,45 @@ class Deserializer:
         if isinstance(data, list):
             return [self._ast_to_obj(item) for item in data]
         return data
-    
+
     def _ast_to_user(self, data):
         return User(
-            username=data['username'],
-            emails=set(data['emails']),
-            full_name=data['full_name'],
-            role=self._ast_to_role(data['role']),
-            password=data['password'],
+            username=self._ast_to_obj(data['username']),
+            emails=set(self._ast_to_obj(data['emails'])),
+            full_name=self._ast_to_obj(data['full_name']),
+            role=self._ast_to_obj(data['role']),
+            password=self._ast_to_obj(data['password']),
         )
-    
+
     def _ast_to_credentials(self, data):
         return Credentials(
-            id=data['id'],
-            password=data['password'],
+            id=self._ast_to_obj(data['id']),
+            password=self._ast_to_obj(data['password']),
         )
-    
+
     def _ast_to_token(self, data):
         return Token(
-            signature=data['signature'],
+            signature=self._ast_to_obj(data['signature']),
             user=self._ast_to_obj(data['user']),
-            expiration=datetime.fromisoformat(data['expiration']),
+            expiration=self._ast_to_obj(data['expiration']),
         )
-    
+
+    def _ast_to_datetime(self, data):
+        return datetime.fromisoformat(self._ast_to_obj(data['value']))
+
     def _ast_to_role(self, data):
-        return Role[data['name']]
-    
+        return Role[self._ast_to_obj(data['name'])]
+
     def _ast_to_request(self, data):
         return Request(
-            name=data['name'],
+            name=self._ast_to_obj(data['name']),
             args=tuple(self._ast_to_obj(arg) for arg in data['args']),
         )
-    
+
     def _ast_to_response(self, data):
         return Response(
             result=self._ast_to_obj(data['result']) if data['result'] is not None else None,
-            error=data['error'],
+            error=self._ast_to_obj(data['error']),
         )
 
 
