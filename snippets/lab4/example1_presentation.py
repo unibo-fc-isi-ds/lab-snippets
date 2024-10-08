@@ -77,7 +77,7 @@ class Serializer:
         }
 
     def _datetime_to_ast(self, dt: datetime):
-        return {"value": dt.isoformat()}
+        raise NotImplementedError("Missing implementation for datetime serialization")
 
     def _role_to_ast(self, role: Role):
         return {'name': role.name}
@@ -138,7 +138,7 @@ class Deserializer:
         )
 
     def _ast_to_datetime(self, data):
-        return datetime.fromisoformat(self._ast_to_obj(data['value']))
+        raise NotImplementedError("Missing implementation for datetime deserialization")
 
     def _ast_to_role(self, data):
         return Role[self._ast_to_obj(data['name'])]
@@ -169,13 +169,13 @@ def deserialize(string):
 
 
 if __name__ == '__main__':
-    from snippets.lab4.example0_users import gc_token, gc_credentials_wrong
+    from snippets.lab4.example0_users import gc_user, gc_credentials_wrong
 
     request = Request(
         name='my_function',
         args=(
             gc_credentials_wrong, # an instance of Credentials
-            gc_token, # an instance of Token, which contains an instnace of User
+            gc_user, # an instance of User
             ["a string", 42, 3.14, True, False], # a list, containing various primitive types
             {'key': 'value'}, # a dictionary
             Response(None, 'an error'), # a Response, which contains a None field
