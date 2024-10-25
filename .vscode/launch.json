@@ -1,0 +1,181 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "L1E1: Game Loop",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab1.example1_game_loop",
+            "args": [],
+        },{
+            "name": "L1E2: Game Object",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab1.example2_game_object",
+            "args": [],
+        },{
+            "name": "L1E3: Controller",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab1.example3_controller",
+            "args": [],
+        },{
+            "name": "L1E4: View",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab1.example4_view",
+            "args": [],
+        },{
+            "name": "L1E4: Game Loop (clean code)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab1.example5_game_loop_cleancode",
+            "args": [],
+        },{
+            "name": "L2E1: UDP Chat 8080 (wrong)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab2.example1_udp_chat_wrong",
+            "args": [
+                "8080"
+            ],
+        },{
+            "name": "L2E1: UDP Chat 8081 (wrong)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab2.example1_udp_chat_wrong",
+            "args": [
+                "8081",
+                "localhost:8080"
+            ],
+        },{
+            "name": "L2E2: UDP Chat 8080",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab2.example2_udp_chat",
+            "args": [
+                "8080"
+            ],
+        },{
+            "name": "L2E2: UDP Chat 8081",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab2.example2_udp_chat",
+            "args": [
+                "8081",
+                "localhost:8080"
+            ],
+        },{
+            "name": "L2E3: UDP Streamer",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab2.example3_udp_streamer",
+            "args": [
+                "1000",
+                "localhost:8080"
+            ],
+        },{
+            "name": "L2E4: UDP Chat 8080 (graceful)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab2.example4_udp_chat_graceful",
+            "args": [
+                "8080"
+            ],
+        },{
+            "name": "L2E4: UDP Chat 8081 (graceful)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab2.example4_udp_chat_graceful",
+            "args": [
+                "8081",
+                "localhost:8080"
+            ],
+        },{
+            "name": "L3E1: TCP Echo Server (wrong)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab3.example1_tcp_echo_wrong",
+            "args": [
+                "server",
+                "8080"
+            ],
+        },{
+            "name": "L3E1: TCP Echo Client (wrong)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab3.example1_tcp_echo_wrong",
+            "args": [
+                "client",
+                "8080"
+            ],
+        },{
+            "name": "L3E1: TCP Echo Server",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab3.example2_tcp_echo",
+            "args": [
+                "server",
+                "8080"
+            ],
+        },{
+            "name": "L3E1: TCP Echo Client",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab3.example2_tcp_echo",
+            "args": [
+                "client",
+                "8080"
+            ],
+        },{
+            "name": "L3E3: TCP Chat Server",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab3.example3_tcp_chat",
+            "args": [
+                "server",
+                "8080"
+            ],
+        },{
+            "name": "L3E3: TCP Chat Client",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab3.example3_tcp_chat",
+            "args": [
+                "client",
+                "localhost:8080"
+            ],
+        },{
+            "name": "L4E0: Users",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab4.example0_users",
+            "args": [],
+        },{
+            "name": "L4E1: Presentation",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab4.example1_presentation",
+            "args": [],
+        },{
+            "name": "L4E2: RPC Server",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab4.example2_rpc_server",
+            "args": [
+                "8080"
+            ],
+        },{
+            "name": "L4E3: RPC Client",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab4.example3_rpc_client",
+            "args": [
+                "localhost:8080"
+            ],
+        },
+    ]
+}
