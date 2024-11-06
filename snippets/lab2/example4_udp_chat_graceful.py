@@ -38,7 +38,7 @@ while True:
     try:
         content = input()
         peer.send_all(message(content, username))
-    except (EOFError, KeyboardInterrupt):
+    except (EOFError, KeyboardInterrupt): #fondamentale usare catturare solo il tipo necessario che ci interessa di errori
         peer.send_all(message(EXIT_MESSAGE, username))
         break
 peer.close()
