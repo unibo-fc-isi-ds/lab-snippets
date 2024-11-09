@@ -1,37 +1,8 @@
+import sys
 import threading    
 from datetime import datetime
 import psutil
 import socket
-
-# import snipets.lab2.*
-
-# Creando il Server ed il Client, partono subito i loro thread con le callbacks
-
-### Issue 1 : catch refused connection expection and print a message
-### Issue 2 : cambiare nomi dei campi clients e peer_writing
-
-### ! Issue:
-# The server accepts a connection, the tries to connect as a client, but it's refused, 
-# because it doesn't know ther other peer's server port, it uses the same client random port he has received the connection on
-
-# A: connect_to_peer --> A: new Client --> B: Server accepts connection
-# --> B: new Client --> B: Connection Refused (B_Client created with A_Client port instead of A_Server port)
-
-# Forse basterebbe non connettersi in automatico, aspettare la specifica da input
-# Mi connetto per scrivere, poi dall'altra parte mi connetto di nuovo per scrivere
-# Però ho bisogno di leggere usando il server
-
-### * Alternativa Dinamica:
-# Specificando tutti i peer da linea di comando, si risolve il problema?
-# Si connette a tutti subito, non si connette quando riceve una connessione
-# In questo modo conosce già la porta del server del peer da cui ha ricevuto la connessione
-# ma non posso connettermi a tutti subito se non sono ancora attivi, devo aspettare la connessione?
-# oppure devo poter fare un lookup, tipo username-porta
-# se un peer si scollega, dopo non può più rientrare?
-
-# Per farlo dinamicamente servirebbe comunicare la porta del server, magari in un messaggio automatico dopo che ha accettato la connessione
-# ma dovrei gestire anche quel dato, leggere subito un messaggio in automatico ed usarlo per connettermi al peer, senza generare eventi
-# le callback potrebbero attivarsi solo se una flag è attiva, dopo aver letto quel messaggio
 
 def address(ip='0.0.0.0:0', port=None):
     ip = ip.strip()
@@ -44,7 +15,6 @@ def address(ip='0.0.0.0:0', port=None):
     assert port in range(0, 65536), "Port number must be in the range 0-65535"
     assert isinstance(ip, str), "IP address must be a string"
     return ip, port
-
 
 def message(text: str, sender: str, timestamp: datetime=None):
     if timestamp is None:
@@ -245,4 +215,12 @@ if __name__ == "__main__":
             peer.connect_to_peer((host, peer_port))
         else:
             peer.send_messages()
+
+
+
+port = int(sys.argv[1])
+remote_endpoints = [address(endp) for endp in sys.argv[2:]]
+
+print("port ", port)
+print("endpoints ", remote_endpoints)
 
