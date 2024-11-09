@@ -3,6 +3,7 @@ import threading
 from datetime import datetime
 import psutil
 import socket
+import time
 
 def address(ip='0.0.0.0:0', port=None):
     ip = ip.strip()
@@ -160,9 +161,9 @@ class ChatPeer:
     # deamon for keyboard input
     def send_messages(self):
         while True:
-            msg = input("You: ")
+            msg = input()
             for clients in self.clients:
-                print("sending to client: ", clients.remote_address)
+                print(f"{username}: Sending: '{msg}',  to client: ", clients.remote_address)
                 clients.send(message(msg.strip(), self.username))
 
     # def start_chat(self):
@@ -174,10 +175,10 @@ class ChatPeer:
                 print(payload)
             case 'close':
                 # remove remote peer from the list
-                print(f"Connection with peer {connection.remote_address} closed")
+                print(f"{username}: Connection with peer {connection.remote_address} closed")
                 peer_to_remove = [peer for peer in self.peer_writing if peer.remote_address == connection.remote_address]
                 for peer in peer_to_remove:
-                    print("Si e' disconnesso: ", peer.remote_address)
+                    print(f"{username}: A peer jus disconnected: ", peer.remote_address)
                     self.peer_writing.remove(peer)
             case 'error':
                 print(error)
@@ -198,29 +199,16 @@ class ChatPeer:
                 case 'error':
                     print(error)
 
-
-
 if __name__ == "__main__":
     # Initialize the peer as a server on the specified port
-    username = input('Enter your username to start the chat: ')
-    port = int(input("Enter the port to listen on: "))
+    
+    username = sys.argv[1]
+    port = int(sys.argv[2])
+    remote_endpoints = [address(endp) for endp in sys.argv[3:]]
+
     peer = ChatPeer(port, username)
-
-    # The connect to other peers
-    while True:
-        connect = input("Do you want to connect to another peer? (y/n): ")
-        if connect.lower() == 'y':
-            host = input("Enter peer host address: ")
-            peer_port = int(input("Enter peer port: "))
-            peer.connect_to_peer((host, peer_port))
-        else:
-            peer.send_messages()
-
-
-
-port = int(sys.argv[1])
-remote_endpoints = [address(endp) for endp in sys.argv[2:]]
-
-print("port ", port)
-print("endpoints ", remote_endpoints)
-
+    time.sleep(2) # wait for the serves to start
+    
+    for endpoint in remote_endpoints:
+        peer.connect_to_peer(endpoint)
+    peer.send_messages()
