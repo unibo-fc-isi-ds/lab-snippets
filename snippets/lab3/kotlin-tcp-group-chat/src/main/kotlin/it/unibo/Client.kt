@@ -37,15 +37,9 @@ class Client(
 
         scope.launch(Dispatchers.IO) {
             while (true) {
-                if (receiveChannel.isClosedForRead || sendChannel.isClosedForWrite) {
-                    stop()
-                }
-
-                val message = receiveChannel.readUTF8Line()
-                if (message != null) {
-                    onReceiveFromServer(ReceivedMessage(message, sendChannel))
-                } else {
-                    stop()
+                when (val message = receiveChannel.readUTF8Line()) {
+                    null -> stop()
+                    else -> onReceiveFromServer(ReceivedMessage(message, sendChannel))
                 }
             }
         }
