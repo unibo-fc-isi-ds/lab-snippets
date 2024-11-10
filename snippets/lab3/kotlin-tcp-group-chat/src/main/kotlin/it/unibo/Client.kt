@@ -35,6 +35,7 @@ class Client(
         val receiveChannel = socket.openReadChannel()
         val sendChannel = socket.openWriteChannel(autoFlush = true)
 
+        // Messages received from the server.
         scope.launch(Dispatchers.IO) {
             while (true) {
                 when (val message = receiveChannel.readUTF8Line()) {
@@ -44,13 +45,12 @@ class Client(
             }
         }
 
+        // Messages received from stdin.
         while (true) {
-            val message = readlnOrNull()
-            if (message == null) {
-                stop()
-                break
+            when (val message = readlnOrNull()) {
+                null -> stop()
+                else -> onReceiveFromInput(ReceivedMessage(message, sendChannel))
             }
-            onReceiveFromInput(ReceivedMessage(message, sendChannel))
         }
     }
 
