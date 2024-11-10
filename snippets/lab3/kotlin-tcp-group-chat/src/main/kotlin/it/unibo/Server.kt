@@ -5,6 +5,7 @@ import io.ktor.network.sockets.TcpSocketBuilder
 import io.ktor.network.sockets.openReadChannel
 import io.ktor.network.sockets.openWriteChannel
 import io.ktor.utils.io.readUTF8Line
+import it.unibo.protocol.ProtocolMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -35,7 +36,10 @@ class Server(
 
             try {
                 while (true) {
-                    val message = receiveChannel.readUTF8Line() ?: continue
+                    val message =
+                        receiveChannel.readUTF8Line()
+                            ?.let(ProtocolMessage::decode)
+                            ?: continue
                     onReceive(ReceivedMessage(message, sendChannel))
                 }
             } catch (e: Throwable) {

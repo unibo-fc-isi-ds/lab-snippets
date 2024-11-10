@@ -6,6 +6,8 @@ import io.ktor.network.sockets.TcpSocketBuilder
 import io.ktor.network.sockets.openReadChannel
 import io.ktor.network.sockets.openWriteChannel
 import io.ktor.utils.io.readUTF8Line
+import it.unibo.protocol.EventType
+import it.unibo.protocol.ProtocolMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -39,17 +41,34 @@ class Client(
         val sendChannel = socket.openWriteChannel(autoFlush = true)
 
         println("Connected to ${socket.remoteAddress}")
-        onConnect(ReceivedMessage("", sendChannel))
+        onConnect(
+            ReceivedMessage(
+                ProtocolMessage(uuid, EventType.CONNECT),
+                sendChannel,
+            ),
+        )
 
         // Messages received from the server.
         scope.launch(Dispatchers.IO) {
             while (true) {
                 when (val message = receiveChannel.readUTF8Line()) {
                     null -> {
-                        onDisconnect(ReceivedMessage("", sendChannel))
+                        onDisconnect(
+                            ReceivedMessage(
+                                ProtocolMessage(uuid, EventType.DISCONNECT),
+                                sendChannel,
+                            ),
+                        )
                         stop()
                     }
-                    else -> onReceiveFromServer(ReceivedMessage(message, sendChannel))
+
+                    else ->
+                        onReceiveFromServer(
+                            ReceivedMessage(
+                                ProtocolMessage.decode(message),
+                                sendChannel,
+                            ),
+                        )
                 }
             }
         }
@@ -58,7 +77,13 @@ class Client(
         while (true) {
             when (val message = readlnOrNull()) {
                 null -> stop()
-                else -> onReceiveFromInput(ReceivedMessage(message, sendChannel))
+                else ->
+                    onReceiveFromInput(
+                        ReceivedMessage(
+                            ProtocolMessage(uuid, EventType.TEXT, message),
+                            sendChannel,
+                        ),
+                    )
             }
         }
     }
