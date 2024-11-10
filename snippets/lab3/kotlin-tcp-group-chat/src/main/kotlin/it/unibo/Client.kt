@@ -9,6 +9,7 @@ import io.ktor.utils.io.readUTF8Line
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.system.exitProcess
 
 /**
@@ -36,6 +37,10 @@ class Client(
 
         scope.launch(Dispatchers.IO) {
             while (true) {
+                if (receiveChannel.isClosedForRead || sendChannel.isClosedForWrite) {
+                    stop()
+                }
+
                 val message = receiveChannel.readUTF8Line()
                 if (message != null) {
                     onReceiveFromServer(ReceivedMessage(message, sendChannel))
@@ -46,13 +51,17 @@ class Client(
         }
 
         while (true) {
-            val message = readlnOrNull() ?: continue
+            val message = readlnOrNull()
+            if (message == null) {
+                stop()
+                break
+            }
             onReceiveFromInput(ReceivedMessage(message, sendChannel))
         }
     }
 
     override suspend fun stop() {
-        scope.launch {
+        withContext(Dispatchers.IO) {
             println("Server closed a connection")
             socket.close()
             selectorManager.close()
