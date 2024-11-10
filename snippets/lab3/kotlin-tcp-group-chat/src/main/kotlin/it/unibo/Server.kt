@@ -16,7 +16,7 @@ class Server(
     override val host: String,
     override val port: Int,
     private val socketBuilder: TcpSocketBuilder,
-    private val onReceive: suspend (ReceivedMessage) -> Unit,
+    private val onReceive: Callback,
 ) : Addressable, Process {
     private lateinit var serverSocket: ServerSocket
 
@@ -35,10 +35,8 @@ class Server(
 
             try {
                 while (true) {
-                    val message = receiveChannel.readUTF8Line()
-                    if (message != null) {
-                        onReceive(ReceivedMessage(message, sendChannel))
-                    }
+                    val message = receiveChannel.readUTF8Line() ?: continue
+                    onReceive(ReceivedMessage(message, sendChannel))
                 }
             } catch (e: Throwable) {
                 e.printStackTrace()

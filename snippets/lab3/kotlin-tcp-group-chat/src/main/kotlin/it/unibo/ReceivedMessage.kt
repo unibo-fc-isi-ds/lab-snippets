@@ -4,9 +4,9 @@ import io.ktor.utils.io.ByteWriteChannel
 import io.ktor.utils.io.writeStringUtf8
 
 /**
- * A message received by the server.
+ * A message received by a [Process].
  * @property text the text of the message
- * @property sendChannel the channel to send a reply to the client
+ * @property sendChannel the writable channel to send a reply to
  */
 data class ReceivedMessage(val text: String, val sendChannel: ByteWriteChannel) {
     suspend fun reply(message: String) {

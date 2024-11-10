@@ -6,7 +6,6 @@ import io.ktor.network.sockets.TcpSocketBuilder
 import io.ktor.network.sockets.openReadChannel
 import io.ktor.network.sockets.openWriteChannel
 import io.ktor.utils.io.readUTF8Line
-import io.ktor.utils.io.writeStringUtf8
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -21,6 +20,8 @@ class Client(
     override val port: Int,
     private val socketBuilder: TcpSocketBuilder,
     private val selectorManager: SelectorManager,
+    private val onReceiveFromServer: Callback,
+    private val onReceiveFromInput: Callback,
 ) : Addressable, Process {
     private lateinit var socket: Socket
 
@@ -35,9 +36,9 @@ class Client(
 
         scope.launch(Dispatchers.IO) {
             while (true) {
-                val greeting = receiveChannel.readUTF8Line()
-                if (greeting != null) {
-                    println(greeting)
+                val message = receiveChannel.readUTF8Line()
+                if (message != null) {
+                    onReceiveFromServer(ReceivedMessage(message, sendChannel))
                 } else {
                     stop()
                 }
@@ -46,8 +47,7 @@ class Client(
 
         while (true) {
             val message = readlnOrNull() ?: continue
-            println("Sending $message")
-            sendChannel.writeStringUtf8("$message\n")
+            onReceiveFromInput(ReceivedMessage(message, sendChannel))
         }
     }
 
