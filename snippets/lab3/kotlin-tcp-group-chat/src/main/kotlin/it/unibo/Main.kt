@@ -5,6 +5,23 @@ import io.ktor.network.sockets.aSocket
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 
+fun createServer(factory: ProcessFactory) =
+    factory.createServer { message ->
+        println("Received ${message.text}")
+        message.reply("Echo: ${message.text}")
+    }
+
+fun createClient(factory: ProcessFactory) =
+    factory.createClient(
+        onReceiveFromServer = { message ->
+            println("Received from server: ${message.text}")
+        },
+        onReceiveFromInput = { message ->
+            println("Received from stdin: ${message.text}")
+            message.reply("Sending.")
+        },
+    )
+
 /**
  *
  */
@@ -19,23 +36,8 @@ fun main(vararg args: String) {
 
         val process =
             when (type) {
-                "server" ->
-                    factory.createServer { message ->
-                        println("Received ${message.text}")
-                        message.reply("Echo: ${message.text}")
-                    }
-
-                "client" ->
-                    factory.createClient(
-                        onReceiveFromServer = { message ->
-                            println("Received from server: ${message.text}")
-                        },
-                        onReceiveFromInput = { message ->
-                            println("Received from stdin: ${message.text}")
-                            message.reply("Sending.")
-                        },
-                    )
-
+                "server" -> createServer(factory)
+                "client" -> createClient(factory)
                 else -> throw IllegalArgumentException("Invalid type $type")
             }
 
