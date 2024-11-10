@@ -39,7 +39,7 @@ class Server(
                     sendChannel.writeStringUtf8("Hello, $name!\n")
                 }
             } catch (e: Throwable) {
-                socket.close()
+                stop()
             }
         }
     }

@@ -8,12 +8,24 @@ import kotlinx.coroutines.runBlocking
 /**
  *
  */
-fun main() =
+fun main(vararg args: String) {
+    val (type, host, port) = args
+
     runBlocking {
         val selectorManager = SelectorManager(Dispatchers.IO)
         val socketBuilder = aSocket(selectorManager).tcp()
-        val server = Server(this, "127.0.0.1", 9002, socketBuilder)
+
+        val process =
+            when (type) {
+                "server" -> Server(this, host, port.toInt(), socketBuilder)
+                "client" -> Client(this, host, port.toInt(), socketBuilder, selectorManager)
+                else -> throw IllegalArgumentException("Invalid type $type")
+            }
+
+        process.start()
+
         while (true) {
-            server.update()
+            process.update()
         }
     }
+}

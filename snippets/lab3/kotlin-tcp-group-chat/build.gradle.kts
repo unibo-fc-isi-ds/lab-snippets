@@ -22,6 +22,10 @@ application {
     mainClass.set("it.unibo.MainKt")
 }
 
+tasks.named<JavaExec>("run") {
+    standardInput = System.`in`
+}
+
 tasks.test {
     useJUnitPlatform()
 }
