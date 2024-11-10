@@ -5,7 +5,6 @@ import io.ktor.network.sockets.TcpSocketBuilder
 import io.ktor.network.sockets.openReadChannel
 import io.ktor.network.sockets.openWriteChannel
 import io.ktor.utils.io.readUTF8Line
-import io.ktor.utils.io.writeStringUtf8
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -17,6 +16,7 @@ class Server(
     override val host: String,
     override val port: Int,
     private val socketBuilder: TcpSocketBuilder,
+    private val onReceive: suspend (ReceivedMessage) -> Unit,
 ) : Addressable, Process {
     private lateinit var serverSocket: ServerSocket
 
@@ -32,13 +32,16 @@ class Server(
         scope.launch {
             val receiveChannel = socket.openReadChannel()
             val sendChannel = socket.openWriteChannel(autoFlush = true)
-            sendChannel.writeStringUtf8("Please enter your name\n")
+
             try {
                 while (true) {
-                    val name = receiveChannel.readUTF8Line()
-                    sendChannel.writeStringUtf8("Hello, $name!\n")
+                    val message = receiveChannel.readUTF8Line()
+                    if (message != null) {
+                        onReceive(ReceivedMessage(message, sendChannel))
+                    }
                 }
             } catch (e: Throwable) {
+                e.printStackTrace()
                 stop()
             }
         }

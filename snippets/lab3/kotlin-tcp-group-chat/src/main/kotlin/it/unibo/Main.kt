@@ -17,7 +17,12 @@ fun main(vararg args: String) {
 
         val process =
             when (type) {
-                "server" -> Server(this, host, port.toInt(), socketBuilder)
+                "server" ->
+                    Server(this, host, port.toInt(), socketBuilder) { message ->
+                        println("Received ${message.text}")
+                        message.reply("Echo: ${message.text}")
+                    }
+
                 "client" -> Client(this, host, port.toInt(), socketBuilder, selectorManager)
                 else -> throw IllegalArgumentException("Invalid type $type")
             }
