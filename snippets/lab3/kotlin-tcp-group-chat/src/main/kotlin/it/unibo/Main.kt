@@ -58,11 +58,11 @@ fun createClient(factory: ProcessFactory): Process {
         },
         onReceiveFromServer = { message ->
             if (message.uuid != uuid) {
-                println(message.message.text)
+                println(message.text)
             }
         },
         onReceiveFromInput = { message ->
-            message.replyBroadcast(ProtocolMessage(uuid, EventType.TEXT, message.message.text))
+            message.replyBroadcast(ProtocolMessage(uuid, EventType.TEXT, message.text))
         },
         onDisconnect = {
             println("=== Goodbye $name ===")
