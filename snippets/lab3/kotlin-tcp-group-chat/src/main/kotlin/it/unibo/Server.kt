@@ -30,7 +30,6 @@ class Server(
 
     override suspend fun update() {
         val socket = serverSocket.accept()
-        println("Accepted $socket")
 
         scope.launch {
             val receiveChannel = socket.openReadChannel()

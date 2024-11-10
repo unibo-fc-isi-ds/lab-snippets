@@ -53,12 +53,7 @@ class Client(
             while (true) {
                 when (val message = receiveChannel.readUTF8Line()) {
                     null -> {
-                        onDisconnect(
-                            ReceivedMessage(
-                                ProtocolMessage(uuid, EventType.DISCONNECT),
-                                sendChannel,
-                            ),
-                        )
+                        println("Server closed the connection.")
                         stop()
                     }
 
@@ -76,7 +71,15 @@ class Client(
         // Messages received from stdin.
         while (true) {
             when (val message = readlnOrNull()) {
-                null -> stop()
+                null -> {
+                    onDisconnect(
+                        ReceivedMessage(
+                            ProtocolMessage(uuid, EventType.DISCONNECT),
+                            sendChannel,
+                        ),
+                    )
+                    stop()
+                }
                 else ->
                     onReceiveFromInput(
                         ReceivedMessage(
@@ -90,7 +93,6 @@ class Client(
 
     override suspend fun stop() {
         withContext(Dispatchers.IO) {
-            println("Server closed the connection.")
             socket.close()
             selectorManager.close()
             exitProcess(0)

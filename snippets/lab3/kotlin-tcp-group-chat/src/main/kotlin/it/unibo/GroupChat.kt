@@ -21,7 +21,6 @@ class GroupChat {
     }
 
     fun leave(uuid: UUID) {
-        names.remove(uuid)
         online.remove(uuid)
     }
 

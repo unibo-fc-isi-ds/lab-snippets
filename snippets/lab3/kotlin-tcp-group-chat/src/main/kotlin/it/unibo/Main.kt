@@ -33,17 +33,15 @@ fun createServer(factory: ProcessFactory): Process {
             EventType.CONNECT -> {
                 chat.join(message.uuid, message.text)
             }
-
             EventType.DISCONNECT -> {
                 chat.leave(message.uuid)
             }
-
-            EventType.TEXT -> {
-                message.replyBroadcast(message.message)
-            }
+            else -> {}
         }
 
-        println(formatMessage(message.message, chat))
+        val formatted = formatMessage(message.message, chat)
+        println(formatted)
+        message.replyBroadcast(ProtocolMessage(message.uuid, EventType.TEXT, formatted))
     }
 }
 
@@ -60,15 +58,15 @@ fun createClient(factory: ProcessFactory): Process {
         },
         onReceiveFromServer = { message ->
             if (message.uuid != uuid) {
-                println("Received from server: ${message.message.text}")
+                println(message.message.text)
             }
         },
         onReceiveFromInput = { message ->
-            println("Received from stdin: ${message.message.text}")
             message.replyBroadcast(ProtocolMessage(uuid, EventType.TEXT, message.message.text))
         },
         onDisconnect = {
             println("=== Goodbye $name ===")
+            it.replyBroadcast(ProtocolMessage(uuid, EventType.DISCONNECT))
         },
     )
 }
