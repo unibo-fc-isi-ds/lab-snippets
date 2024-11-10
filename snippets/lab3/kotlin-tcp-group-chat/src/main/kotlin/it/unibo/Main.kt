@@ -39,7 +39,7 @@ fun createServer(factory: ProcessFactory): Process {
             }
 
             EventType.TEXT -> {
-                message.reply(message.message)
+                message.replyBroadcast(message.message)
             }
         }
 
@@ -56,7 +56,7 @@ fun createClient(factory: ProcessFactory): Process {
             println("=== Welcome $name ===")
             println("ID: $uuid")
             println()
-            message.reply(ProtocolMessage(uuid, EventType.CONNECT, name))
+            message.replyBroadcast(ProtocolMessage(uuid, EventType.CONNECT, name))
         },
         onReceiveFromServer = { message ->
             if (message.uuid != uuid) {
@@ -65,7 +65,7 @@ fun createClient(factory: ProcessFactory): Process {
         },
         onReceiveFromInput = { message ->
             println("Received from stdin: ${message.message.text}")
-            message.reply(ProtocolMessage(uuid, EventType.TEXT, message.message.text))
+            message.replyBroadcast(ProtocolMessage(uuid, EventType.TEXT, message.message.text))
         },
         onDisconnect = {
             println("=== Goodbye $name ===")
