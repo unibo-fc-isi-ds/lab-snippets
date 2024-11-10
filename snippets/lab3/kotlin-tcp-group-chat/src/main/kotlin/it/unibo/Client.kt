@@ -10,6 +10,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.*
 import kotlin.system.exitProcess
 
 /**
@@ -21,25 +22,33 @@ class Client(
     override val port: Int,
     private val socketBuilder: TcpSocketBuilder,
     private val selectorManager: SelectorManager,
-    private val onReceiveFromServer: Callback,
-    private val onReceiveFromInput: Callback,
+    private val onConnect: ClientCallback,
+    private val onReceiveFromServer: ClientCallback,
+    private val onReceiveFromInput: ClientCallback,
+    private val onDisconnect: ClientCallback,
+    val uuid: UUID = UUID.randomUUID(),
 ) : Addressable, Process {
     private lateinit var socket: Socket
 
     override suspend fun start() {
         socket = socketBuilder.connect(host, port)
-        println("Connected to ${socket.remoteAddress}")
     }
 
     override suspend fun update() {
         val receiveChannel = socket.openReadChannel()
         val sendChannel = socket.openWriteChannel(autoFlush = true)
 
+        println("Connected to ${socket.remoteAddress}")
+        onConnect(ReceivedMessage("", sendChannel))
+
         // Messages received from the server.
         scope.launch(Dispatchers.IO) {
             while (true) {
                 when (val message = receiveChannel.readUTF8Line()) {
-                    null -> stop()
+                    null -> {
+                        onDisconnect(ReceivedMessage("", sendChannel))
+                        stop()
+                    }
                     else -> onReceiveFromServer(ReceivedMessage(message, sendChannel))
                 }
             }
@@ -56,7 +65,7 @@ class Client(
 
     override suspend fun stop() {
         withContext(Dispatchers.IO) {
-            println("Server closed a connection")
+            println("Server closed the connection.")
             socket.close()
             selectorManager.close()
             exitProcess(0)

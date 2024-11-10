@@ -4,15 +4,27 @@ import io.ktor.network.selector.SelectorManager
 import io.ktor.network.sockets.aSocket
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
+import kotlin.system.exitProcess
 
-fun createServer(factory: ProcessFactory) =
-    factory.createServer { message ->
+fun createServer(factory: ProcessFactory): Process {
+    val chat = GroupChat()
+
+    return factory.createServer { message ->
         println("Received ${message.text}")
         message.reply("Echo: ${message.text}")
     }
+}
 
-fun createClient(factory: ProcessFactory) =
-    factory.createClient(
+fun createClient(factory: ProcessFactory): Process {
+    println("Welcome to the group chat! Please enter your name:")
+    val name = readlnOrNull() ?: exitProcess(1)
+
+    return factory.createClient(
+        onConnect = {
+            println("=== Welcome $name ===")
+            println("ID: $uuid")
+            println()
+        },
         onReceiveFromServer = { message ->
             println("Received from server: ${message.text}")
         },
@@ -20,7 +32,11 @@ fun createClient(factory: ProcessFactory) =
             println("Received from stdin: ${message.text}")
             message.reply("Sending.")
         },
+        onDisconnect = {
+            println("=== Goodbye $name ===")
+        },
     )
+}
 
 /**
  *

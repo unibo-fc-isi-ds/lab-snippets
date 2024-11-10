@@ -1,3 +1,4 @@
 package it.unibo
 
-typealias Callback = suspend (ReceivedMessage) -> Unit
+typealias ClientCallback = suspend Client.(ReceivedMessage) -> Unit
+typealias ServerCallback = suspend Server.(ReceivedMessage) -> Unit

@@ -16,7 +16,7 @@ class Server(
     override val host: String,
     override val port: Int,
     private val socketBuilder: TcpSocketBuilder,
-    private val onReceive: Callback,
+    private val onReceive: ServerCallback,
 ) : Addressable, Process {
     private lateinit var serverSocket: ServerSocket
 

@@ -14,7 +14,7 @@ class ProcessFactory(
     private val socketBuilder: TcpSocketBuilder,
     private val selectorManager: SelectorManager,
 ) : Addressable {
-    fun createServer(onReceive: Callback) =
+    fun createServer(onReceive: ServerCallback) =
         Server(
             scope,
             host,
@@ -24,15 +24,19 @@ class ProcessFactory(
         )
 
     fun createClient(
-        onReceiveFromServer: Callback,
-        onReceiveFromInput: Callback,
+        onConnect: ClientCallback,
+        onReceiveFromServer: ClientCallback,
+        onReceiveFromInput: ClientCallback,
+        onDisconnect: ClientCallback,
     ) = Client(
         scope,
         host,
         port,
         socketBuilder,
         selectorManager,
+        onConnect,
         onReceiveFromServer,
         onReceiveFromInput,
+        onDisconnect,
     )
 }
