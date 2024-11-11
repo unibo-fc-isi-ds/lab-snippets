@@ -67,7 +67,7 @@ fun createClient(
             if (message.uuid != uuid) {
                 println(message.text)
             }
-        }, // fix server being unresponsive after client disconnection
+        },
         onReceiveFromInput = { message ->
             message.replyBroadcast(ProtocolMessage(uuid, EventType.TEXT, message.text))
         },
@@ -78,7 +78,7 @@ fun createClient(
     )
 }
 
-/**
+/**q
  *
  */
 fun main(vararg args: String) {

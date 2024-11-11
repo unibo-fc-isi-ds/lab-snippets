@@ -5,6 +5,7 @@ import io.ktor.utils.io.ByteWriteChannel
 import io.ktor.utils.io.readUTF8Line
 import it.unibo.protocol.ProtocolMessage
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 /**
@@ -31,7 +32,7 @@ class Server(
     override suspend fun update() {
         val socket = serverSocket.accept()
 
-        scope.launch {
+        scope.launch(Dispatchers.IO) {
             val receiveChannel = socket.openReadChannel()
             val sendChannel = socket.openWriteChannel(autoFlush = true)
             sendChannels.add(sendChannel)
