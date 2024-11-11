@@ -5,9 +5,7 @@ import io.ktor.network.sockets.aSocket
 import it.unibo.protocol.EventType
 import it.unibo.protocol.ProtocolMessage
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import java.net.ConnectException
 import kotlin.system.exitProcess
 
 private fun formatMessage(
@@ -95,29 +93,13 @@ fun main(vararg args: String) {
 
         val factory = ProcessFactory(this, host, port.toInt(), socketBuilder, selectorManager)
 
-        val client = createClient(factory, name)
-        var server: Process? = null
+        val peer =
+            Peer(
+                this,
+                { createClient(factory, name) },
+                { createServer(factory, log = false) },
+            )
 
-        try {
-            client.start()
-        } catch (e: ConnectException) {
-            server = createServer(factory, log = false)
-            server.start()
-            client.start()
-        }
-
-        launch(Dispatchers.IO) {
-            while (true) {
-                client.update()
-            }
-        }
-
-        if (server != null) {
-            launch {
-                while (true) {
-                    server.update()
-                }
-            }
-        }
+        peer.start()
     }
 }

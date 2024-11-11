@@ -1,10 +1,7 @@
 package it.unibo
 
 import io.ktor.network.selector.SelectorManager
-import io.ktor.network.sockets.Socket
-import io.ktor.network.sockets.TcpSocketBuilder
-import io.ktor.network.sockets.openReadChannel
-import io.ktor.network.sockets.openWriteChannel
+import io.ktor.network.sockets.*
 import io.ktor.utils.io.readUTF8Line
 import it.unibo.protocol.EventType
 import it.unibo.protocol.ProtocolMessage
@@ -31,6 +28,9 @@ class Client(
     val uuid: UUID = UUID.randomUUID(),
 ) : Addressable, Process {
     private lateinit var socket: Socket
+
+    override val isRunning: Boolean
+        get() = !socket.isClosed
 
     override suspend fun start() {
         socket = socketBuilder.connect(host, port)
@@ -92,6 +92,7 @@ class Client(
     }
 
     override suspend fun stop() {
+        if (!isRunning) return
         withContext(Dispatchers.IO) {
             socket.close()
             selectorManager.close()

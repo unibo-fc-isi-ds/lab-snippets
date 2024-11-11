@@ -1,9 +1,6 @@
 package it.unibo
 
-import io.ktor.network.sockets.ServerSocket
-import io.ktor.network.sockets.TcpSocketBuilder
-import io.ktor.network.sockets.openReadChannel
-import io.ktor.network.sockets.openWriteChannel
+import io.ktor.network.sockets.*
 import io.ktor.utils.io.ByteWriteChannel
 import io.ktor.utils.io.readUTF8Line
 import it.unibo.protocol.ProtocolMessage
@@ -22,6 +19,9 @@ class Server(
 ) : Addressable, Process {
     private lateinit var serverSocket: ServerSocket
     private var sendChannels = mutableSetOf<ByteWriteChannel>()
+
+    override val isRunning: Boolean
+        get() = !serverSocket.isClosed
 
     override suspend fun start() {
         serverSocket = socketBuilder.bind(host, port)
@@ -52,6 +52,7 @@ class Server(
     }
 
     override suspend fun stop() {
+        if (!isRunning) return
         scope.launch {
             serverSocket.close()
         }
