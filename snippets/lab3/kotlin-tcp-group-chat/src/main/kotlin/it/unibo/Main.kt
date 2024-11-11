@@ -82,7 +82,10 @@ fun createClient(
  *
  */
 fun main(vararg args: String) {
-    val (host, port) = args
+    val (host, port) =
+        args.first()
+            .split(":")
+            .let { (host, port) -> host to port.toInt() }
 
     println("Welcome to the group chat! Please enter your name:")
     val name = readlnOrNull() ?: exitProcess(1)
@@ -91,7 +94,7 @@ fun main(vararg args: String) {
         val selectorManager = SelectorManager(Dispatchers.IO)
         val socketBuilder = aSocket(selectorManager).tcp()
 
-        val factory = ProcessFactory(this, host, port.toInt(), socketBuilder, selectorManager)
+        val factory = ProcessFactory(this, host, port, socketBuilder, selectorManager)
 
         val peer =
             Peer(
