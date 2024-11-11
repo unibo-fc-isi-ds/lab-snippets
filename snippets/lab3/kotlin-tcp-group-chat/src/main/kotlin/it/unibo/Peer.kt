@@ -6,7 +6,8 @@ import kotlinx.coroutines.launch
 import java.net.ConnectException
 
 /**
- *
+ * A peer contains a [Client]. If, at connection time, the server is not available,
+ * the peer also acts as a [Server], thus becoming the 'leader' of the connection.
  */
 class Peer(
     override val scope: CoroutineScope,
@@ -43,6 +44,9 @@ class Peer(
         }
     }
 
+    /**
+     * @throws UnsupportedOperationException the peer is updated automatically in a loop within [start].
+     */
     override suspend fun update() = throw UnsupportedOperationException()
 
     override suspend fun stop() {

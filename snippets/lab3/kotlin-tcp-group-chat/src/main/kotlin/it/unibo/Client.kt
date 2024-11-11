@@ -15,7 +15,14 @@ import java.util.*
 import kotlin.system.exitProcess
 
 /**
- *
+ * A TCP client that connects to a [Server] and sends messages according to a [ProtocolMessage] schema.
+ * @property socketBuilder the builder to create the client socket from
+ * @property selectorManager the selector manager to handle the client socket
+ * @property onConnect callback to handle the connection event
+ * @property onReceiveFromServer callback to handle incoming messages from the server
+ * @property onReceiveFromInput callback to handle incoming messages from stdin
+ * @property onDisconnect callback to handle the disconnection event
+ * @property uuid the unique identifier of the client
  */
 class Client(
     override val scope: CoroutineScope,
@@ -74,6 +81,7 @@ class Client(
         while (true) {
             when (val message = readlnOrNull()) {
                 null -> {
+                    // End of input (Ctrl+D).
                     onDisconnect(
                         ReceivedMessage(
                             ProtocolMessage(uuid, EventType.DISCONNECT),
@@ -84,6 +92,7 @@ class Client(
                 }
 
                 else ->
+                    // Message callback.
                     onReceiveFromInput(
                         ReceivedMessage(
                             ProtocolMessage(uuid, EventType.TEXT, message),

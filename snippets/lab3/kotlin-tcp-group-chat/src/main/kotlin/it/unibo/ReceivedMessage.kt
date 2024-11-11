@@ -16,6 +16,10 @@ data class ReceivedMessage(val message: ProtocolMessage, val sendChannels: Set<B
 
     constructor(message: ProtocolMessage, sendChannel: ByteWriteChannel) : this(message, setOf(sendChannel))
 
+    /**
+     * Sends a message to the sender.
+     * @param message the message to send
+     */
     suspend fun replyBroadcast(message: ProtocolMessage) {
         sendChannels.forEach { sendChannel ->
             if (!sendChannel.isClosedForWrite) {

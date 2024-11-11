@@ -3,9 +3,15 @@ package it.unibo.protocol
 import it.unibo.GroupChat
 
 /**
- *
+ * A mapper of [ProtocolMessage]s to print-ready formatted strings for the terminal.
  */
 object ProtocolMessageFormatter {
+    /**
+     * Formats a [ProtocolMessage] for printing.
+     * @param message the message to format
+     * @param chat the chat to get usernames from
+     * @return the formatted message
+     */
     fun format(
         message: ProtocolMessage,
         chat: GroupChat,
@@ -26,4 +32,8 @@ object ProtocolMessageFormatter {
     }
 }
 
+/**
+ * @see ProtocolMessageFormatter.format
+
+ */
 fun ProtocolMessage.format(chat: GroupChat) = ProtocolMessageFormatter.format(this, chat)

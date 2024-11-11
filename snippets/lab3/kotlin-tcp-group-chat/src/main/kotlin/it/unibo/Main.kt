@@ -9,6 +9,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlin.system.exitProcess
 
+/**
+ * Creates a server task.
+ * @param factory the factory to create the server from
+ * @param log whether to log the messages to stdout or not
+ * @return the new server
+ */
 fun createServer(
     factory: ProcessFactory,
     log: Boolean,
@@ -35,6 +41,12 @@ fun createServer(
     }
 }
 
+/**
+ * Creates a client task.
+ * @param factory the factory to create the client from
+ * @param name the name of the client, chosen by the user itself during the setup
+ * @return the new client
+ */
 fun createClient(
     factory: ProcessFactory,
     name: String,
@@ -61,8 +73,9 @@ fun createClient(
     )
 }
 
-/**q
- *
+/**
+ * Main entry point.
+ * The first argument is expected to be in the form of `host:port`.
  */
 fun main(vararg args: String) {
     val (host, port) =
@@ -79,6 +92,7 @@ fun main(vararg args: String) {
 
         val factory = ProcessFactory(this, host, port, socketBuilder, selectorManager)
 
+        // A peer is mainly a client, but it can also act as a server if needed.
         val peer =
             Peer(
                 this,

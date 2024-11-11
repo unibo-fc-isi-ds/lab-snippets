@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:no-wildcard-imports")
+
 package it.unibo
 
 import io.ktor.network.sockets.*
@@ -9,7 +11,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 /**
- *
+ * A TCP server that listens for incoming connections
+ * and handles messages from [Client]s according to a [ProtocolMessage] schema.
+ * @property socketBuilder the builder to create the server socket from
+ * @property onReceive callback to handle incoming messages
  */
 class Server(
     override val scope: CoroutineScope,
@@ -19,6 +24,8 @@ class Server(
     private val onReceive: ServerCallback,
 ) : Addressable, Process {
     private lateinit var serverSocket: ServerSocket
+
+    // Client channels to send messages to.
     private var sendChannels = mutableSetOf<ByteWriteChannel>()
 
     override val isRunning: Boolean

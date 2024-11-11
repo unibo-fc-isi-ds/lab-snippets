@@ -5,7 +5,8 @@ import io.ktor.network.sockets.TcpSocketBuilder
 import kotlinx.coroutines.CoroutineScope
 
 /**
- *
+ * Utility factory to create [Process] instances.
+ * @see Process
  */
 class ProcessFactory(
     private val scope: CoroutineScope,
