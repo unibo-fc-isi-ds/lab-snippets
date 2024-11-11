@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:no-wildcard-imports")
+
 package it.unibo
 
 import io.ktor.network.selector.SelectorManager
@@ -80,6 +82,7 @@ class Client(
                     )
                     stop()
                 }
+
                 else ->
                     onReceiveFromInput(
                         ReceivedMessage(

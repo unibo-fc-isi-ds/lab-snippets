@@ -4,28 +4,10 @@ import io.ktor.network.selector.SelectorManager
 import io.ktor.network.sockets.aSocket
 import it.unibo.protocol.EventType
 import it.unibo.protocol.ProtocolMessage
+import it.unibo.protocol.format
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlin.system.exitProcess
-
-private fun formatMessage(
-    message: ProtocolMessage,
-    chat: GroupChat,
-): String {
-    return when (message.type) {
-        EventType.CONNECT -> {
-            "[${message.uuid}] ${message.text} has joined the chat. Now online: ${chat.onlineNames}"
-        }
-
-        EventType.DISCONNECT -> {
-            "[${message.uuid}] ${chat.getName(message.uuid)} has left the chat. Now online: ${chat.onlineNames}"
-        }
-
-        EventType.TEXT -> {
-            "[${message.uuid}] ${chat.getName(message.uuid)}: ${message.text}"
-        }
-    }
-}
 
 fun createServer(
     factory: ProcessFactory,
@@ -46,8 +28,9 @@ fun createServer(
             else -> {}
         }
 
-        val formatted = formatMessage(message.message, chat)
+        val formatted = message.message.format(chat)
         if (log) println(formatted)
+
         message.replyBroadcast(ProtocolMessage(message.uuid, EventType.TEXT, formatted))
     }
 }
