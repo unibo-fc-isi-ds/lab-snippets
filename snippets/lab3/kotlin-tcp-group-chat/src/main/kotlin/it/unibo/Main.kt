@@ -5,7 +5,9 @@ import io.ktor.network.sockets.aSocket
 import it.unibo.protocol.EventType
 import it.unibo.protocol.ProtocolMessage
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import java.net.ConnectException
 import kotlin.system.exitProcess
 
 private fun formatMessage(
@@ -16,16 +18,21 @@ private fun formatMessage(
         EventType.CONNECT -> {
             "[${message.uuid}] ${message.text} has joined the chat. Now online: ${chat.onlineNames}"
         }
+
         EventType.DISCONNECT -> {
             "[${message.uuid}] ${chat.getName(message.uuid)} has left the chat. Now online: ${chat.onlineNames}"
         }
+
         EventType.TEXT -> {
             "[${message.uuid}] ${chat.getName(message.uuid)}: ${message.text}"
         }
     }
 }
 
-fun createServer(factory: ProcessFactory): Process {
+fun createServer(
+    factory: ProcessFactory,
+    log: Boolean,
+): Process {
     val chat = GroupChat()
 
     return factory.createServer { message ->
@@ -33,22 +40,24 @@ fun createServer(factory: ProcessFactory): Process {
             EventType.CONNECT -> {
                 chat.join(message.uuid, message.text)
             }
+
             EventType.DISCONNECT -> {
                 chat.leave(message.uuid)
             }
+
             else -> {}
         }
 
         val formatted = formatMessage(message.message, chat)
-        println(formatted)
+        if (log) println(formatted)
         message.replyBroadcast(ProtocolMessage(message.uuid, EventType.TEXT, formatted))
     }
 }
 
-fun createClient(factory: ProcessFactory): Process {
-    println("Welcome to the group chat! Please enter your name:")
-    val name = readlnOrNull() ?: exitProcess(1)
-
+fun createClient(
+    factory: ProcessFactory,
+    name: String,
+): Process {
     return factory.createClient(
         onConnect = { message ->
             println("=== Welcome $name ===")
@@ -60,7 +69,7 @@ fun createClient(factory: ProcessFactory): Process {
             if (message.uuid != uuid) {
                 println(message.text)
             }
-        },
+        }, // fix server being unresponsive after client disconnection
         onReceiveFromInput = { message ->
             message.replyBroadcast(ProtocolMessage(uuid, EventType.TEXT, message.text))
         },
@@ -75,7 +84,10 @@ fun createClient(factory: ProcessFactory): Process {
  *
  */
 fun main(vararg args: String) {
-    val (type, host, port) = args
+    val (host, port) = args
+
+    println("Welcome to the group chat! Please enter your name:")
+    val name = readlnOrNull() ?: exitProcess(1)
 
     runBlocking {
         val selectorManager = SelectorManager(Dispatchers.IO)
@@ -83,17 +95,29 @@ fun main(vararg args: String) {
 
         val factory = ProcessFactory(this, host, port.toInt(), socketBuilder, selectorManager)
 
-        val process =
-            when (type) {
-                "server" -> createServer(factory)
-                "client" -> createClient(factory)
-                else -> throw IllegalArgumentException("Invalid type $type")
+        val client = createClient(factory, name)
+        var server: Process? = null
+
+        try {
+            client.start()
+        } catch (e: ConnectException) {
+            server = createServer(factory, log = false)
+            server.start()
+            client.start()
+        }
+
+        launch(Dispatchers.IO) {
+            while (true) {
+                client.update()
             }
+        }
 
-        process.start()
-
-        while (true) {
-            process.update()
+        if (server != null) {
+            launch {
+                while (true) {
+                    server.update()
+                }
+            }
         }
     }
 }
