@@ -1,4 +1,4 @@
-package it.unibo
+package it.unibo.tcpgroupchat
 
 /**
  * An action to be performed by a [Client] when a message is received.

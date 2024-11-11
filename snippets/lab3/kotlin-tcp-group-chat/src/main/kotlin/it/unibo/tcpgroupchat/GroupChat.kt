@@ -1,6 +1,6 @@
-package it.unibo
+package it.unibo.tcpgroupchat
 
-import java.util.*
+import java.util.UUID
 
 /**
  * A data structure for group chat information.

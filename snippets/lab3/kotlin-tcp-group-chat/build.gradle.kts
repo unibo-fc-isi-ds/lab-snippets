@@ -19,7 +19,7 @@ dependencies {
 }
 
 application {
-    mainClass.set("it.unibo.MainKt")
+    mainClass.set("it.unibo.tcpgroupchat.MainKt")
 }
 
 tasks.named<JavaExec>("run") {

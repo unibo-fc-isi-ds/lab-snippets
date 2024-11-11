@@ -1,6 +1,6 @@
-package it.unibo.protocol
+package it.unibo.tcpgroupchat.protocol
 
-import java.util.*
+import java.util.UUID
 
 /**
  * The protocol used by clients and servers to communicate.

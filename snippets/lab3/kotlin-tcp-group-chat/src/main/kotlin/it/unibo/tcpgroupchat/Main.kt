@@ -1,10 +1,10 @@
-package it.unibo
+package it.unibo.tcpgroupchat
 
 import io.ktor.network.selector.SelectorManager
 import io.ktor.network.sockets.aSocket
-import it.unibo.protocol.EventType
-import it.unibo.protocol.ProtocolMessage
-import it.unibo.protocol.format
+import it.unibo.tcpgroupchat.protocol.EventType
+import it.unibo.tcpgroupchat.protocol.ProtocolMessage
+import it.unibo.tcpgroupchat.protocol.format
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlin.system.exitProcess

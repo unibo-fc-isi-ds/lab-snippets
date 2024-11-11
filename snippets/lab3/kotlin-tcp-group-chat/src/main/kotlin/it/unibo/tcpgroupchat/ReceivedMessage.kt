@@ -1,8 +1,8 @@
-package it.unibo
+package it.unibo.tcpgroupchat
 
 import io.ktor.utils.io.ByteWriteChannel
 import io.ktor.utils.io.writeStringUtf8
-import it.unibo.protocol.ProtocolMessage
+import it.unibo.tcpgroupchat.protocol.ProtocolMessage
 
 /**
  * A message received by a [Process].

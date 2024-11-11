@@ -1,6 +1,6 @@
-package it.unibo.protocol
+package it.unibo.tcpgroupchat.protocol
 
-import it.unibo.GroupChat
+import it.unibo.tcpgroupchat.GroupChat
 
 /**
  * A mapper of [ProtocolMessage]s to print-ready formatted strings for the terminal.

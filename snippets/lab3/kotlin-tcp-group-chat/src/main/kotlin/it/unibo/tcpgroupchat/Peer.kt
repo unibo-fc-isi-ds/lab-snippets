@@ -1,4 +1,4 @@
-package it.unibo
+package it.unibo.tcpgroupchat
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -11,7 +11,7 @@ import java.net.ConnectException
  */
 class Peer(
     override val scope: CoroutineScope,
-    private val createClient: () -> Process,
+    createClient: () -> Process,
     private val createServer: () -> Process,
 ) : Process {
     private val client: Process = createClient()

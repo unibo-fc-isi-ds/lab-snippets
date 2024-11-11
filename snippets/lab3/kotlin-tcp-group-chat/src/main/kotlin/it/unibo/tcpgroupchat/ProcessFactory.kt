@@ -1,4 +1,4 @@
-package it.unibo
+package it.unibo.tcpgroupchat
 
 import io.ktor.network.selector.SelectorManager
 import io.ktor.network.sockets.TcpSocketBuilder

@@ -1,17 +1,19 @@
-@file:Suppress("ktlint:standard:no-wildcard-imports")
-
-package it.unibo
+package it.unibo.tcpgroupchat
 
 import io.ktor.network.selector.SelectorManager
-import io.ktor.network.sockets.*
+import io.ktor.network.sockets.Socket
+import io.ktor.network.sockets.TcpSocketBuilder
+import io.ktor.network.sockets.isClosed
+import io.ktor.network.sockets.openReadChannel
+import io.ktor.network.sockets.openWriteChannel
 import io.ktor.utils.io.readUTF8Line
-import it.unibo.protocol.EventType
-import it.unibo.protocol.ProtocolMessage
+import it.unibo.tcpgroupchat.protocol.EventType
+import it.unibo.tcpgroupchat.protocol.ProtocolMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.*
+import java.util.UUID
 import kotlin.system.exitProcess
 
 /**

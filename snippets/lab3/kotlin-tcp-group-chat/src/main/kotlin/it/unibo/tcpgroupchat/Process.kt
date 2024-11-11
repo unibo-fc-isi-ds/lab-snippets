@@ -1,4 +1,4 @@
-package it.unibo
+package it.unibo.tcpgroupchat
 
 import kotlinx.coroutines.CoroutineScope
 
