@@ -1,6 +1,8 @@
 from snippets.lab2 import *
 import threading
 
+from snippets.lab3.common import *
+
 
 # Uncomment this line to observe timeout errors more often.
 # Beware: short timeouts can make demonstrations more difficult to follow.
@@ -46,25 +48,30 @@ class Connection:
             return None
         return self.__socket.recv(length).decode()
     
-    def close(self):
+    def close(self,message):
         self.__socket.close()
         if not self.__notify_closed:
-            self.on_event('close')
+            self.on_event('close',message,self)
             self.__notify_closed = True
 
     def __handle_incoming_messages(self):
         try:
-            while not self.closed:
+            while not self.closed:  
                 message = self.receive()
                 if message is None:
                     break
-                self.on_event('message', message)
+                if message.endswith(MSG_ENCODE):
+                    self.on_event('message', message.removesuffix(MSG_ENCODE))
+                if message.endswith(JSON_ENCODE):
+                    self.on_event('update-list',message.removesuffix(JSON_ENCODE))
+                if message.endswith(EXIT_MESSAGE):
+                    self.close(message)
         except Exception as e:
             if self.closed and isinstance(e, OSError):
                 return # silently ignore error, because this is simply the socket being closed locally
             self.on_event('error', error=e)
         finally:
-            self.close()
+            self.close("")
 
     def on_event(self, event: str, payload: str=None, connection: 'Connection'=None, error: Exception=None):
         if connection is None:
@@ -84,6 +91,8 @@ class Server:
     def __init__(self, port, callback=None):
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.__socket.bind(address(port=port))
+        self.port = port
+        self.local_address = self.__socket.getsockname()
         self.__listener_thread = threading.Thread(target=self.__handle_incoming_connections, daemon=True)
         self.__callback = callback
         if self.__callback:
@@ -107,6 +116,7 @@ class Server:
         try:
             while not self.__socket._closed:
                 socket, address = self.__socket.accept()
+                #server_address = socket.getsockname()
                 connection = Connection(socket)
                 self.on_event('connect', connection, address)
         except ConnectionAbortedError as e:

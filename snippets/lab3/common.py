@@ -1,0 +1,5 @@
+EXIT_MESSAGE = " has left the chat..."
+EXIT_SEPARATOR = "|"
+MSG_ENCODE = "<MSGENCD>"
+JSON_ENCODE = "<JSONENCD>"
+PORT_ENCODE = "<PORTENCD>"
