@@ -2,6 +2,7 @@ package it.unibo.tcpgroupchat
 
 import io.ktor.network.selector.SelectorManager
 import io.ktor.network.sockets.TcpSocketBuilder
+import it.unibo.tcpgroupchat.GlobalOptions.exitOnStop
 import kotlinx.coroutines.CoroutineScope
 
 /**
@@ -39,5 +40,6 @@ class ProcessFactory(
         onReceiveFromServer,
         onReceiveFromInput,
         onDisconnect,
+        exitOnStop = exitOnStop,
     )
 }

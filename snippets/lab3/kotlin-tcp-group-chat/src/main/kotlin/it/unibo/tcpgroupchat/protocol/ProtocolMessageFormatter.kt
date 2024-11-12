@@ -1,5 +1,6 @@
 package it.unibo.tcpgroupchat.protocol
 
+import it.unibo.tcpgroupchat.GlobalOptions
 import it.unibo.tcpgroupchat.GroupChat
 
 /**
@@ -16,17 +17,19 @@ object ProtocolMessageFormatter {
         message: ProtocolMessage,
         chat: GroupChat,
     ): String {
+        val uuid = if (GlobalOptions.logUUIDs) "[${message.uuid}] " else ""
+
         return when (message.type) {
             EventType.CONNECT -> {
-                "[${message.uuid}] ${message.text} has joined the chat. Now online: ${chat.onlineNames}"
+                "$uuid${message.text} has joined the chat. Now online: ${chat.onlineNames}"
             }
 
             EventType.DISCONNECT -> {
-                "[${message.uuid}] ${chat.getName(message.uuid)} has left the chat. Now online: ${chat.onlineNames}"
+                "$uuid${chat.getName(message.uuid)} has left the chat. Now online: ${chat.onlineNames}"
             }
 
             EventType.TEXT -> {
-                "[${message.uuid}] ${chat.getName(message.uuid)}: ${message.text}"
+                "$uuid${chat.getName(message.uuid)}: ${message.text}"
             }
         }
     }

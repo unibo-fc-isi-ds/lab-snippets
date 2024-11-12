@@ -17,7 +17,7 @@ import kotlin.system.exitProcess
  */
 fun createServer(
     factory: ProcessFactory,
-    log: Boolean,
+    log: (String) -> Unit = { if (GlobalOptions.logOnlyFromServer) println(it) },
 ): Process {
     val chat = GroupChat()
 
@@ -35,7 +35,7 @@ fun createServer(
         }
 
         val formatted = message.message.format(chat)
-        if (log) println(formatted)
+        log(formatted)
 
         message.replyBroadcast(ProtocolMessage(message.uuid, EventType.TEXT, formatted))
     }
@@ -51,23 +51,29 @@ fun createClient(
     factory: ProcessFactory,
     name: String,
 ): Process {
+    fun log(text: String = "") {
+        if (GlobalOptions.clientCanLog) {
+            println(text)
+        }
+    }
+
     return factory.createClient(
         onConnect = { message ->
-            println("=== Welcome $name ===")
-            println("ID: $uuid")
-            println()
+            log("=== Welcome $name ===")
+            log("ID: $uuid")
+            log()
             message.replyBroadcast(ProtocolMessage(uuid, EventType.CONNECT, name))
         },
         onReceiveFromServer = { message ->
             if (message.uuid != uuid) {
-                println(message.text)
+                log(message.text)
             }
         },
         onReceiveFromInput = { message ->
             message.replyBroadcast(ProtocolMessage(uuid, EventType.TEXT, message.text))
         },
         onDisconnect = {
-            println("=== Goodbye $name ===")
+            log("=== Goodbye $name ===")
             it.replyBroadcast(ProtocolMessage(uuid, EventType.DISCONNECT))
         },
     )
@@ -83,7 +89,9 @@ fun main(vararg args: String) {
             .split(":")
             .let { (host, port) -> host to port.toInt() }
 
-    println("Welcome to the group chat! Please enter your name:")
+    if (GlobalOptions.clientCanLog) {
+        println("Welcome to the group chat! Please enter your name:")
+    }
     val name = readlnOrNull() ?: exitProcess(1)
 
     runBlocking {
@@ -97,7 +105,7 @@ fun main(vararg args: String) {
             Peer(
                 this,
                 { createClient(factory, name) },
-                { createServer(factory, log = false) },
+                { createServer(factory) },
             )
 
         peer.start()

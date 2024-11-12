@@ -1,0 +1,20 @@
+client0 has joined the chat. Now online: [client0]
+client1 has joined the chat. Now online: [client0, client1]
+client0: I'm client0
+client2 has joined the chat. Now online: [client0, client1, client2]
+client1: I'm client1
+client0: I'm client0 again
+client3 has joined the chat. Now online: [client0, client1, client2, client3]
+client2: I'm client2
+client1: I'm client1 again
+client3: I'm client3
+client2: I'm client2 again
+client3: I'm client3 again
+client3: Leaving!
+client3 has left the chat. Now online: [client0, client1, client2]
+client2: Leaving!
+client2 has left the chat. Now online: [client0, client1]
+client1: Leaving!
+client1 has left the chat. Now online: [client0]
+client0: Leaving!
+client0 has left the chat. Now online: []

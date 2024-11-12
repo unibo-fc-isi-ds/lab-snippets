@@ -31,14 +31,14 @@ class Peer(
 
         if (server != null) {
             scope.launch {
-                while (true) {
+                while (server!!.isRunning) {
                     server!!.update()
                 }
             }
         }
 
         scope.launch(Dispatchers.IO) {
-            while (true) {
+            while (client.isRunning) {
                 client.update()
             }
         }

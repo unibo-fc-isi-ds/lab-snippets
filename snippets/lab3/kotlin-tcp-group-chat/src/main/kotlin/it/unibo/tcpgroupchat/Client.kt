@@ -6,6 +6,9 @@ import io.ktor.network.sockets.TcpSocketBuilder
 import io.ktor.network.sockets.isClosed
 import io.ktor.network.sockets.openReadChannel
 import io.ktor.network.sockets.openWriteChannel
+import io.ktor.server.engine.internal.ClosedChannelException
+import io.ktor.utils.io.ByteReadChannel
+import io.ktor.utils.io.ByteWriteChannel
 import io.ktor.utils.io.readUTF8Line
 import it.unibo.tcpgroupchat.protocol.EventType
 import it.unibo.tcpgroupchat.protocol.ProtocolMessage
@@ -24,6 +27,7 @@ import kotlin.system.exitProcess
  * @property onReceiveFromServer callback to handle incoming messages from the server
  * @property onReceiveFromInput callback to handle incoming messages from stdin
  * @property onDisconnect callback to handle the disconnection event
+ * @property exitOnStop whether to exit the process when the client stops
  * @property uuid the unique identifier of the client
  */
 class Client(
@@ -36,9 +40,11 @@ class Client(
     private val onReceiveFromServer: ClientCallback,
     private val onReceiveFromInput: ClientCallback,
     private val onDisconnect: ClientCallback,
+    private val exitOnStop: Boolean = true,
     val uuid: UUID = UUID.randomUUID(),
 ) : Addressable, Process {
     private lateinit var socket: Socket
+    private lateinit var sendChannel: ByteWriteChannel
 
     override val isRunning: Boolean
         get() = !socket.isClosed
@@ -48,8 +54,17 @@ class Client(
     }
 
     override suspend fun update() {
-        val receiveChannel = socket.openReadChannel()
-        val sendChannel = socket.openWriteChannel(autoFlush = true)
+        if (!isRunning) return
+
+        val receiveChannel: ByteReadChannel
+
+        try {
+            receiveChannel = socket.openReadChannel()
+            sendChannel = socket.openWriteChannel(autoFlush = true)
+        } catch (e: ClosedChannelException) {
+            stop()
+            return
+        }
 
         println("Connected to ${socket.remoteAddress}")
         onConnect(
@@ -66,6 +81,7 @@ class Client(
                     null -> {
                         println("Server closed the connection.")
                         stop()
+                        return@launch
                     }
 
                     else ->
@@ -84,13 +100,8 @@ class Client(
             when (val message = readlnOrNull()) {
                 null -> {
                     // End of input (Ctrl+D).
-                    onDisconnect(
-                        ReceivedMessage(
-                            ProtocolMessage(uuid, EventType.DISCONNECT),
-                            sendChannel,
-                        ),
-                    )
                     stop()
+                    return
                 }
 
                 else ->
@@ -108,9 +119,21 @@ class Client(
     override suspend fun stop() {
         if (!isRunning) return
         withContext(Dispatchers.IO) {
+            if (::sendChannel.isInitialized) {
+                onDisconnect(
+                    ReceivedMessage(
+                        ProtocolMessage(uuid, EventType.DISCONNECT),
+                        sendChannel,
+                    ),
+                )
+            }
+
             socket.close()
-            selectorManager.close()
-            exitProcess(0)
+
+            if (exitOnStop) {
+                selectorManager.close()
+                exitProcess(0)
+            }
         }
     }
 }
