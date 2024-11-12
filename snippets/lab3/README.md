@@ -11,8 +11,9 @@ The main idea is integrating the server into one of the clients, which acts as a
 
 Clients and server exchange events through a simple protocol. The server also keeps track of online clients.
 
-**Pro:** more flexible than standard client-server architecture, and does not require storing each peer's address.  
-**Con:** the server stops if the leader leaves the server. It could however be possible to move all the data to another client and transfer leadership on the fly (not implemented).
+- **Pros:** more flexible than standard client-server architecture, and does not require storing each peer's address.  
+
+- **Cons:** the server stops if the leader leaves the server. It could however be possible to move all the data to another client and transfer leadership on the fly (not implemented).
 
 ### Protocol
 
@@ -23,13 +24,16 @@ Every message exchanged between clients and server is text-based and consists of
 2. The next 36 bytes store the client's UUID.
 3. The remaining string is the content of the message.
 
+---
+
 1. When a client connects, it sends a join event and shares its name (set by the user) as the message content.
-2. When the server receives this event, it associates the client's UUID (contained in the header) to its name into a lookup table.
+2. When the server receives this event, it associates the client's UUID (contained in the header) to its name into a lookup table, and also saves the client's socket channel (for broadcasts).
 3. When any event is notified by the client to the server, the server bounces it back to all the clients (broadcast), also attaching the name of the responsible client (stored in the table).
 
 ### Implementation
 
 In my implementation, `Client` and `Server` classes have distinct roles and responsibilities. They are however brought together by a `Peer`, which always wraps a `Client` and, optionally if it's the leader, a `Server` instance.  
+
 Plain client and server instances can be created via a `ProcessFactory` which decorates both thanks to the observer pattern in order to react to events via a callback.
 
 ![UML](uml.svg)
