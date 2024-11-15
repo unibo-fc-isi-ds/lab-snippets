@@ -33,6 +33,15 @@ def send_message(msg, sender):
             remote_peer.send(f"{sender}: {msg}")
         else:
             print("Empty message, not sent")
+    elif mode == 'server':
+        if msg:
+            for client in clients:
+                try:
+                    client.send(f"{sender}: {msg}")
+                except Exception as e:
+                    print(f"Error sending message to {client.remote_address}: {e}")
+        else:
+            print("Empty message, not sent")
 
 if mode == 'server':
     port = int(sys.argv[2])
