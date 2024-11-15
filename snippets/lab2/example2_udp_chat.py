@@ -22,7 +22,9 @@ class AsyncPeer(Peer):
 peer = AsyncPeer(
     port = int(sys.argv[1]), 
     peers = [address(peer) for peer in sys.argv[2:]], 
-    callback = lambda message, _: print(message)
+    callback = lambda message, _: print(message)    # A callback is a function stored as data and designed to be called by another function.
+                                                    # For instance main calls library function and specifies the callback function that will be called from the library function.
+                                                    # This let us define a function without the var message that we do not have at the moment
 )
 
 print(f'Bound to: {peer.local_address}')

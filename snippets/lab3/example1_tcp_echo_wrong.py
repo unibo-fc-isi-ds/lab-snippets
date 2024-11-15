@@ -4,7 +4,7 @@ import sys
 
 
 mode = sys.argv[1].lower().strip()
-BUFFER_SIZE = 1024
+BUFFER_SIZE = 1024  # The dimension is fixed
 
 
 if mode == 'client':

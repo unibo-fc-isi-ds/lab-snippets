@@ -16,7 +16,7 @@ class AsyncPeer(Peer):
     def __handle_incoming_messages(self):
         while True:
             message, address = self.receive()
-            if message.endswith(EXIT_MESSAGE):
+            if message.endswith(EXIT_MESSAGE):  # If the messages corresponds to the message defined above, the peer is removed
                 self.peers.remove(address)
             self.on_message_received(message, address)
 
@@ -38,7 +38,8 @@ while True:
     try:
         content = input()
         peer.send_all(message(content, username))
-    except (EOFError, KeyboardInterrupt):
+    except (EOFError, KeyboardInterrupt):   # If we get EOF-error or else (= user trying to terminate) we inform every peer connected to us using.
+                                            # It's better to handle just the specific exception, blocking everyone could possibily cause problems
         peer.send_all(message(EXIT_MESSAGE, username))
         break
 peer.close()

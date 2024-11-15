@@ -2,7 +2,7 @@ from snippets.lab3 import *
 import sys
 
 
-mode = sys.argv[1].lower().strip()
+mode = sys.argv[1].lower().strip()  # Specify "server" for server, "client" for client
 remote_peer: Client | None = None
 
 
@@ -14,7 +14,7 @@ def send_message(msg, sender):
     else:
         print("Empty message, not sent")
 
-
+# Callback for handle incoming messages
 def on_message_received(event, payload, connection, error):
     match event:
         case 'message':
