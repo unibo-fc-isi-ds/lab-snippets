@@ -1,8 +1,11 @@
+import threading
 import pytest
 import hypothesis.strategies as st
 from hypothesis import given
 import ipaddress
 import string
+import socket
+import sys
 
 # Functions
 def validateIpAddress(ip: str):
@@ -42,7 +45,7 @@ class InvalidPortRange(Exception):
 
 class InvalidIpAddress(Exception):
     def __init__(self):
-        super().__init__("IP address must be a string and IPv4 type")
+        super().__init__("Invalid IP address, must be a string (x.x.x.x:p or x.x.x.x) and IPv4 type")
 
 
 
@@ -53,10 +56,36 @@ class Message():
     # Distinguere messaggi interni da messaggi esterni
     pass
 
+# Può essere utile avere uno strumento di log
 class Peer():
+    def __init__(self, port: int, peers=None):
+        if peers is None:
+            peers = set()
+        try:
+            self.peers = {obtainIpaddressFromString(*peer) for peer in peers}
+        except (InvalidPortRange, InvalidIpAddress) as e:
+            print(f"Error: {e}")
+            sys.exit(1)
+
+        self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+        try:
+            self.__socket.bind(obtainIpaddressFromString('127.0.0.1', port=port))
+        except (InvalidPortRange, InvalidIpAddress) as e:
+            print(f"Error: {e}")
+            sys.exit(1)
+
+        self.__socket.listen()
+        
+        while True:
+            conn, addr = self.__socket.accept()  # Accept a client connection
+            thread = threading.Thread(target=self.receive(), args=(conn, addr))
+            thread.start()  # Start a new thread for each client
+            print(f"Active connections: {threading.activeCount() - 1}")
+        
     def send(self, message: Message):
         pass
-    def receive(self) -> Message:
+    def receive(self):
         pass
     def connect(self, peers: list['Peer']):
         pass
