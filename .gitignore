@@ -140,3 +140,5 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+snippets/lab3/chat_log.log
