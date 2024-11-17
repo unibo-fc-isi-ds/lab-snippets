@@ -24,7 +24,7 @@ Everything can be tested manually using just the python command:
 python exercise_tcp_group_chat.py <username> <port> [peer1_ip:peer1_port] [peer2_ip:peer2_port]
 ```
 
-For example, three peer can be launched like this, in different terminals: 
+Example - Launch three peers in separate terminals:
 
 ``` 
 python exercise_tcp_group_chat.py user1 3000 127.0.0.1:3001 127.0.0.1:3002
