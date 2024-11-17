@@ -7,6 +7,7 @@ EXIT_MESSAGE = "<LEAVES THE CHAT>"
 
 
 class AsyncPeer(Peer):
+    # uguale a soluzione precedente
     def __init__(self, port, peers=None, callback=None):
         super().__init__(port, peers)
         self.__receiver_thread = threading.Thread(target=self.__handle_incoming_messages, daemon=True)
@@ -16,6 +17,7 @@ class AsyncPeer(Peer):
     def __handle_incoming_messages(self):
         while True:
             message, address = self.receive()
+            # in questo caso, rimuoviamo dalla lista di peers collegati quello che sta uscendo
             if message.endswith(EXIT_MESSAGE):
                 self.peers.remove(address)
             self.on_message_received(message, address)
@@ -38,8 +40,8 @@ while True:
     try:
         content = input()
         peer.send_all(message(content, username))
-    except (EOFError, KeyboardInterrupt): #fondamentale usare catturare solo il tipo necessario che ci interessa di errori
-        peer.send_all(message(EXIT_MESSAGE, username))
+    except (EOFError, KeyboardInterrupt): #fondamentale usare catturare solo il tipo necessario che ci interessa di errori (meglio così per capire che errori sto catturando)
+        peer.send_all(message(EXIT_MESSAGE, username)) # mandiamo a tutti un messaggio per indicare che stiamo uscendo
         break
-peer.close()
+peer.close() # quando esce, chiudiamo il socket dell'utente peer
 exit(0) # explicit termination of the program with success

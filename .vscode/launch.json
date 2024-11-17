@@ -4,6 +4,7 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+
         {
             "name": "L1E1: Game Loop",
             "type": "debugpy",
@@ -100,7 +101,7 @@
             "request": "launch",
             "module": "snippets.lab3.example1_tcp_echo_wrong",
             "args": [
-                "server",
+                "starter",
                 "8080"
             ],
         },{
@@ -147,6 +148,26 @@
             "args": [
                 "client",
                 "localhost:8080"
+            ],
+        },{
+            "name": "L3E4: Exercise TCP Chat",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab3.exercise_tcp_group_chat",
+            "args": [
+                "client",
+                "localhost:8080"
+            ],
+        },{
+            "name": "L3E5: Exercise TCP Chat Almost Complete",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab3.example5_tcp_group",
+            "args": [
+                "8082",
+                "Giovanni",
+                "localhost:8080",
+                "localhost:8081"
             ],
         },{
             "name": "L4E0: Users",
