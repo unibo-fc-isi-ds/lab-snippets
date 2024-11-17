@@ -1,9 +1,13 @@
 import sys
-import threading    
+import threading
 from datetime import datetime
 import psutil
 import socket
 import time
+
+#####################################
+###### CODE FROM PAST LECTURES ######
+#####################################
 
 def address(ip='0.0.0.0:0', port=None):
     ip = ip.strip()
@@ -146,40 +150,57 @@ class Server:
         self.__socket.close()
 #### Server Class ends here
 
-# Each peer acts as both a server and a client
+
+#################################
+###### MY CODE STARTS HERE ######
+#################################
+
 class ChatPeer:
     def __init__(self, port, username):
         self.server = Server(port, self.on_new_connection)
         self.username = username
-        self.clients = []
-        self.peer_writing = []
+        
+        self.peer_to_write_to = [] # connections established
+        self.peer_to_read_from = [] # connections accepted
 
-    def connect_to_peer(self, peer_address):
-        client = Client(peer_address, self.on_message_received)
-        self.clients.append(client)
+    def connect_to_peer(self, peer_address):  
+        try:      
+            client = Client(peer_address, self.on_message_received)
+            self.peer_to_write_to.append(client)
+        except ConnectionRefusedError as e:
+            print("\n Connection refused by: ", peer_address)
         
     # deamon for keyboard input
     def send_messages(self):
         while True:
-            msg = input()
-            for clients in self.clients:
-                print(f"{username}: Sending: '{msg}',  to client: ", clients.remote_address)
-                clients.send(message(msg.strip(), self.username))
-
-    # def start_chat(self):
-    #     threading.Thread(target=self.send_messages, daemon=True).start()
+            try: 
+                msg = input("You: \n")
+                for clients in self.peer_to_write_to:
+                    print(f"{username}: Sending: '{msg}',  to client: ", clients.remote_address)
+                    clients.send(message(msg.strip(), self.username))
+            except EOFError as e:
+                print(e)
+            except KeyboardInterrupt as e: 
+                print("You are leaving the chat...")
+                exit()
 
     def on_message_received(self, event, payload, connection, error):
         match event:
             case 'message':
                 print(payload)
             case 'close':
-                # remove remote peer from the list
-                print(f"{username}: Connection with peer {connection.remote_address} closed")
-                peer_to_remove = [peer for peer in self.peer_writing if peer.remote_address == connection.remote_address]
+                print(f"{username}: Peer {connection.remote_address} has closed the connection")
+                
+                # remove remote peer from "read_from" list
+                peer_to_remove = [peer for peer in self.peer_to_read_from if peer.remote_address == connection.remote_address]
                 for peer in peer_to_remove:
-                    print(f"{username}: A peer jus disconnected: ", peer.remote_address)
-                    self.peer_writing.remove(peer)
+                    self.peer_to_read_from.remove(peer)
+                
+                # remove remote peer from "write_to" list
+                peer_to_remove = [peer for peer in self.peer_to_write_to if peer.remote_address == connection.remote_address]
+                for peer in peer_to_remove:
+                    self.peer_to_write_to.remove(peer)    
+                    
             case 'error':
                 print(error)
 
@@ -192,8 +213,8 @@ class ChatPeer:
                     # add remote peer to the list
                     print(f"Open ingoing connection from: {address}")
                     connection.callback = self.on_message_received
-                    self.peer_writing.append(connection)
-                    # self.clients.append(Client (address, self.on_message_received))
+                    self.peer_to_read_from.append(connection)
+                    # self.peer_to_write_to.append(Client (address, self.on_message_received))                    
                 case 'stop':
                     print(f"Stop listening for new connections")
                 case 'error':
@@ -207,7 +228,7 @@ if __name__ == "__main__":
     remote_endpoints = [address(endp) for endp in sys.argv[3:]]
 
     peer = ChatPeer(port, username)
-    time.sleep(2) # wait for the serves to start
+    time.sleep(5) # wait for the serves to start
     
     for endpoint in remote_endpoints:
         peer.connect_to_peer(endpoint)
