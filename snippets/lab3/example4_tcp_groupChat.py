@@ -185,7 +185,7 @@ def run_chat_user(port, username, initial_peers=None):
     if initial_peers:
         for peer_ip, peer_port in initial_peers:
             try:
-                connection = user.start_connection(port, "0.0.0.0", destination=(peer_ip, peer_port))
+                connection = user.start_connection(0, "0.0.0.0", destination=(peer_ip, peer_port))
                 if connection:
                     print(f"Successfully connected to {peer_ip}:{peer_port}")
             except Exception as e:
@@ -198,10 +198,6 @@ def run_chat_user(port, username, initial_peers=None):
                 text = input()
                 if text.lower() == '/quit':
                     break
-                #elif text.lower().startswith('/connect '):
-                #    # Format: /connect ip:port
-                #    peer = address(text[9:])
-                #    user.start_connection(0, '0.0.0.0', peer)
                 else:
                     user.send_message(text)
             except (EOFError, KeyboardInterrupt):
