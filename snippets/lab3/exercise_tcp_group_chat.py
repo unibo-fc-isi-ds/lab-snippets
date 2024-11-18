@@ -7,6 +7,7 @@ import string
 import socket
 import sys
 import json
+import logging
 
 # Functions
 def validateIpAddress(ip: str):
@@ -98,20 +99,65 @@ class Message():
 
 # Può essere utile avere uno strumento di log
 class Peer():
-    def __init__(self, port: int, peers=None):
-        self.__set_peers(peers)
+    def __init__(self, port: int, peers = None, log: bool = False):
         self.__thread = []
-        self.__conn = []
         self.__observer = []
+        self.__logger = log
+        self.port = port
+        self.__username = None
+        
+        if (self.__logger):
+            logging.basicConfig(filename=("peer.log"),
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    filemode='w')
+            self.__logger = logging.getLogger()
+            self.__logger.setLevel(logging.DEBUG)
 
+        self.__set_peers(peers)
+        
+        if (self.__logger):
+            self.__logger.info((str(self.port) if not self.__isUsernameSet() 
+                                else "{"+self.__username+"}") 
+                               + " Peers: " + str(self.peers))
+
+        self.__inputUsername()
+        
+        self.server_thread = threading.Thread(target=self.__start, args=([port]))
+        self.server_thread.start()
+
+    def __isUsernameSet(self):
+        if (self.__username == None):
+            return False
+        else:
+            return True
+
+    def __inputUsername(self):
+        print("Choose an username for the chat: ")
+        self.__username = input()
+        if (self.__logger):
+            self.__logger.info((str(self.port) if not self.__isUsernameSet() 
+                                else "{"+self.__username+"}")
+                                  + " Usarname: " + self.__username)
+
+    def __start(self, port):
         try:
-            self.__set_server(port)
+            self.server_thread = threading.Thread(target=self.__set_server, args=([port]))
+            self.server_thread.daemon = True
+            self.server_thread.start()
+            self.server_thread.join()
         except KeyboardInterrupt:
+            self.shutdown()
             for thread in self.__thread:
                 thread.join()
             self.close()
-            print("\nSocket server chiuso")
+            if (self.__logger):
+                self.__logger.info((str(self.port) if not self.__isUsernameSet() 
+                                else "{"+self.__username+"}")
+                                 + " Server socket closed")
             sys.exit(0)
+
+    def shutdown(self):
+        self.server_thread.join()
             
     def send(self, message: Message):
         pass
@@ -120,7 +166,17 @@ class Peer():
         while True:
             message = conn.recv(2048) 
             message_str = message.decode('utf-8')
-            self.notify(message_str)
+            if (self.__logger):
+                    self.__logger.info((str(self.port) if not self.__isUsernameSet() 
+                            else "{"+self.__username+"}") + " Received message: " + message_str)
+            m = Message(message_str)
+            self.notify(m)
+            if(len(m.originalData["message"]) > 0 and m.originalData["message"] == '$$$EXIT'):
+                if (self.__logger):
+                    self.__logger.info((str(self.port) if not self.__isUsernameSet() 
+                                else "{"+self.__username+"}") + " Closed connection")
+                conn.close()
+                return
             
     def addObserver(self, observer):
         self.__observer.append(observer)
@@ -137,6 +193,8 @@ class Peer():
     def close(self):
         if self.__socket:
             self.__socket.close()
+        for i in self.__thread:
+            i.join()
 
     def __set_server(self, port):
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -144,15 +202,20 @@ class Peer():
             self.__socket.bind(obtainIpaddressFromString('127.0.0.1', port=port))
         except (InvalidPortRange, InvalidIpAddress) as e:
             print(f"Error: {e}")
+            if (self.__logger):
+                self.__logger.error((str(self.port) if not self.__isUsernameSet() 
+                                else "{"+self.__username+"}") + e)
             sys.exit(1)
         self.__socket.listen(100)
         while True:
             conn, addr = self.__socket.accept()  # Accept a client connection
-            self.__conn.append(conn)
             thread = threading.Thread(target=self.receive, args=(conn, addr))
+            thread.daemon = True
             self.__thread.append(thread)
             thread.start()  # Start a new thread for each client
-            print(f"Active connections: {threading.activeCount() - 1}")
+            if (self.__logger):
+                self.__logger.info((str(self.port) if not self.__isUsernameSet() 
+                        else "{"+self.__username+"}") + " New connection active")
 
     def __set_peers(self, peers):
         if peers is None:
@@ -161,14 +224,17 @@ class Peer():
             self.peers = {obtainIpaddressFromString(*peer) for peer in peers}
         except (InvalidPortRange, InvalidIpAddress) as e:
             print(f"Error: {e}")
+            if (self.__logger):
+                self.__logger.error((str(self.port) if not self.__isUsernameSet() 
+                                else "{"+self.__username+"}") + e)
             sys.exit(1)
     
     # funzione privata periodica di controllo della rete
 
 
 class Controller():
-    def handleOutputMessage(self, message):
-        print(message)
+    def handleOutputMessage(self, message: Message):
+        print(message.originalData["sender"] + " " + message.originalData["message"])
     def handleInputMessage(self, message: Message):
         pass
 
@@ -177,6 +243,81 @@ class View():
         pass
     def inputMessage(self) -> str:
         pass
+
+class Client:
+    def __init__(self, host, port):
+        self.host = host
+        self.port = port
+        
+    def invia_messaggi(self,port):
+        try:
+            client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            time.sleep(10)
+            client.connect((self.host, port))
+            time.sleep(2)
+            
+            strl= {
+                "sender": "Carlo",
+                "message": "Ciao"
+            }
+            client.send(bytes(Message(strl).encodedData, 'utf-8'))
+            time.sleep(2)
+            strl= {
+                "sender": "Carlo",
+                "message": "Ciao2"
+            }
+            client.send(bytes(Message(strl).encodedData, 'utf-8'))
+            time.sleep(2)
+            strl= {
+                "sender": "Carlo",
+                "message": "$$$EXIT"
+            }
+            client.send(bytes(Message(strl).encodedData, 'utf-8'))
+            client.close()
+
+        except KeyboardInterrupt:
+            print("E' qui")
+
+    def start(self):
+        self.invia_thread = []
+        for i in range(len(self.port)):
+            single = threading.Thread(target=self.invia_messaggi, args=([self.port[i]]))
+            self.invia_thread.append(single)
+            single.daemon = True
+            single.start()
+            
+        for j in self.invia_thread:
+            j.join()
+
+import time
+
+# TODO integrare client in peer
+# TODO aggiungere nome a peer e sistemare relativo log
+# TODO creare test peer
+# TODO sistemare Exception
+# TODO refactoring codice
+# TODO gestire problemi e stabilità connessione (network partition...)
+# TODO ordinare codice
+# TODO controllare se tutti i thread sono necessari
+# TODO associare connessioni con thread
+
+if __name__=='__main__':
+    try:
+        cl = Client('127.0.0.1',[8081,8082])
+        cl_thread = threading.Thread(target=cl.start)
+        cl_thread.daemon = True
+        cl_thread.start()
+        c = Controller()
+        peer1 = Peer(8081, peers=None, log=True)
+        peer2 = Peer(8082, peers=None, log=True)
+        peer1.addObserver(c)
+        peer2.addObserver(c)
+        cl_thread.join()
+    except KeyboardInterrupt:
+        peer1.shutdown()
+        peer2.shutdown()
+        for j in cl.invia_thread:
+            j.join()
 
 
 
@@ -271,44 +412,3 @@ class Test():
     def test_MessageInvalidString(self, valore):
         with pytest.raises(InvalidMessage):
             assert Message(valore)
-
-
-
-
-
-
-""" class Client:
-    def __init__(self, host, port):
-        self.host = host
-        self.port = port
-        self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        
-    def invia_messaggi(self):
-        self.client.connect((self.host, self.port))
-        time.sleep(2)
-        strl= 'Carlo $ Ciao'
-        self.client.send(strl.encode('utf-8'))
-        time.sleep(2)
-        strl= 'Carlo $ Ciao2'
-        self.client.send(strl.encode('utf-8'))
-        time.sleep(2)
-        strl= 'Carlo $ $$$EXIT'
-        self.client.send(strl.encode('utf-8'))
-        self.client.close()
-
-    def start(self):
-        
-        print("Ciao")
-        invia_thread = threading.Thread(target=self.invia_messaggi)
-        invia_thread.start()
-        invia_thread.join()
-
-import time
-
-if __name__=='__main__':
-    cl = Client('127.0.0.1',8080)
-    cl_thread = threading.Thread(target=cl.start)
-    cl_thread.start()
-    peer = Peer(int(sys.argv[1]), None)
-    cl_thread.join()
- """
