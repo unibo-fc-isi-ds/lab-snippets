@@ -15,7 +15,7 @@ def validateIpAddress(ip: str):
         value = ipaddress.ip_address(ip)
         return isinstance(value, ipaddress.IPv4Address)
     except ValueError:
-        return False
+        return ip == 'localhost'
     
 # Copied from __init__ lab3
 # Added check on ':' char, because accepted only x.x.x.x or x.x.x.x:p
@@ -122,7 +122,7 @@ class Peer():
 
         self.__inputUsername()
         
-        self.server_thread = threading.Thread(target=self.__start, args=([port]))
+        self.server_thread = threading.Thread(target=self.__serverStart, args=([port]))
         self.server_thread.start()
 
     def __isUsernameSet(self):
@@ -139,7 +139,7 @@ class Peer():
                                 else "{"+self.__username+"}")
                                   + " Usarname: " + self.__username)
 
-    def __start(self, port):
+    def __serverStart(self, port):
         try:
             self.server_thread = threading.Thread(target=self.__set_server, args=([port]))
             self.server_thread.daemon = True
@@ -292,7 +292,6 @@ class Client:
 import time
 
 # TODO integrare client in peer
-# TODO aggiungere nome a peer e sistemare relativo log
 # TODO creare test peer
 # TODO sistemare Exception
 # TODO refactoring codice
@@ -303,7 +302,7 @@ import time
 
 if __name__=='__main__':
     try:
-        cl = Client('127.0.0.1',[8081,8082])
+        cl = Client('localhost',[8081,8082])
         cl_thread = threading.Thread(target=cl.start)
         cl_thread.daemon = True
         cl_thread.start()
@@ -373,6 +372,10 @@ class Test():
     def test_IpAddressInvalidPortNotInteger(self, indirizzo_ip, porta):
         with pytest.raises(InvalidIpAddress):
             obtainIpaddressFromString(str(indirizzo_ip)+ ":" + str(porta))
+
+    # Test localhost string
+    def test_IpAddressValidLocalhost(self):
+        assert obtainIpaddressFromString('localhost:8080')
 
 
     # Valid Message from dict
