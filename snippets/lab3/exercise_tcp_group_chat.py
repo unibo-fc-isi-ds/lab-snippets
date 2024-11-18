@@ -61,6 +61,7 @@ class AsyncUser:
             self.on_event('error', error=e)
         finally:
             # come sicurezza fermo l'evento se la cosa non è stata gestita da close
+            #print("Ciao")
             if self.__active:
                 self.on_event('stop')
     
@@ -98,6 +99,7 @@ class AsyncUser:
         except Exception as e:
             self.on_event('error', error=e)
         finally:
+            #print("sooos")
             self.on_event('stop')
 
     # un metodo per gestire i messaggi dei peers
@@ -168,16 +170,22 @@ class AsyncUser:
 def run_chat_user(port, username, initial_peers=None):
     # al suo interno contiene una prima callback chiamata "handle_events" per gestire i possibili eventi (invio messaggio, nuova connessione, in ascolto...)
     def handle_events(event, connection, address, error, payload):
-        if event == 'message':
-            print(payload)
-        elif event == 'connect':
-            print(f"New connection from {address}")
-        elif event == 'error':
-            print(f"Error: {error}")
-        elif event == 'listen':
-            print(f"Listening on {address}")
-        elif event == 'stop':
-            print("Stopped listening")
+        match event:
+            case 'message':
+                print(payload)
+            
+            case 'connect':
+                print(f"New connection from {address}")
+            
+            case 'error':
+                print(f"Error: {error}")
+            
+            case 'listen':
+                print(f"Listening on {address}")
+            
+            case 'stop':
+                print("Finished work")
+            
 
     # creo poi un nuovo utente e in base al numero di peers passati all'inizio, mi connetto con tutti quelli passati
     user = AsyncUser(port, username, callback=handle_events)

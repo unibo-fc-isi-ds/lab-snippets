@@ -150,22 +150,32 @@
                 "localhost:8080"
             ],
         },{
-            "name": "L3E4: Exercise TCP Chat",
+            "name": "Test 1: introduce first user",
             "type": "debugpy",
             "request": "launch",
             "module": "snippets.lab3.exercise_tcp_group_chat",
             "args": [
-                "client",
+                "8080",
+                "Andrea",
+            ],
+        },{
+            "name": "Test 2: introduce second user",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab3.exercise_tcp_group_chat",
+            "args": [
+                "8081",
+                "Giovanni",
                 "localhost:8080"
             ],
         },{
-            "name": "L3E5: Exercise TCP Chat Almost Complete",
+            "name": "Test 3: introduce third user",
             "type": "debugpy",
             "request": "launch",
-            "module": "snippets.lab3.example5_tcp_group",
+            "module": "snippets.lab3.exercise_tcp_group_chat",
             "args": [
                 "8082",
-                "Giovanni",
+                "Francesco",
                 "localhost:8080",
                 "localhost:8081"
             ],
