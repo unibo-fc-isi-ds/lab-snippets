@@ -12,7 +12,8 @@ logging.basicConfig(
     filename="./snippets/lab3/chat_log.log",
     encoding="utf-8",
     filemode="a",
-    format="{levelname} - {message}",
+    format="{message}",
+#   format="{levelname} - {message}",    
     style="{"
 )
 
