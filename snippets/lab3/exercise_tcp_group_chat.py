@@ -55,8 +55,7 @@ class TCPPeer:
                 try:
                     peer.send(message(msg.strip(), self.__username))
                 except socket.error as e:
-                    self.__peers.remove(peer)
-                    print(f"Failed to deliver message to {peer.remote_address} ({e}). Peer removed.")
+                    print(f"Failed to deliver message to {peer.remote_address} ({e}).")
         else:
             print("Empty message, not sent")
 
