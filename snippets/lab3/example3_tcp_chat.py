@@ -20,6 +20,9 @@ def on_message_received(event, payload, connection, error):
     match event:
         case 'message':
             print(payload)
+            if(mode == 'server'):
+                for peer in remote_peers:
+                    peer.send(message(payload, "bc"))
         case 'close':
             print(f"Connection with peer {connection.remote_address} closed")
             remote_peers.remove(connection)
@@ -58,8 +61,6 @@ while True:
         content = input()
         send_message(content, username)
     except (EOFError, KeyboardInterrupt):
-        if remote_peer:
-            remote_peer.close()
         break
 if mode == 'server':
     server.close()
