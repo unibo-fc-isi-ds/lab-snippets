@@ -9,7 +9,7 @@ import os
 
 logging.basicConfig(
     level=logging.INFO,
-    filename="./snippets/lab3/chat_log.log",
+    filename="./tests/chat_log.log",
     encoding="utf-8",
     filemode="a",
     format="{message}",

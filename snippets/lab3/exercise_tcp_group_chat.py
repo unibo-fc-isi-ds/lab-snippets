@@ -11,14 +11,14 @@ Endpoints: TypeAlias = list[str]
 
 def make_message(text: str, sender: str, timestamp=None, debug=True) -> str:
     if debug:
-        return f"{sender} {text}"
+        return f"{sender}#{text}"
     if timestamp is None:
         timestamp = datetime.now()
     return f"[{timestamp.isoformat()}] {sender}:\n\t{text}"
 
 class TCPPeer:
     def __init__(self,
-                 username: str, 
+                 username: Username, 
                  port: Port, 
                  remote_endpoints: Endpoints | None = None):
         self.username = username
@@ -33,7 +33,8 @@ class TCPPeer:
             print("No peers connected, message is lost")
         elif msg:
             for peer in self.__remote_peers:
-                peer.send(make_message(msg.strip(), self.username))
+                payload = make_message(msg.strip(), self.username)
+                peer.send(payload)
         else:
             print("Empty message, not sent")
 
@@ -58,13 +59,14 @@ class TCPPeer:
                               error: str) -> None:
         match event:
             case 'message':
-                print(payload)
-                s = payload.split(" ")
-                logging.info(f"{s[0]} -> {self.username}: {s[1]}")
+                remote_peer_username, msg = payload.split("#")
+                logging.info(f"{remote_peer_username} -> {self.username}: {msg}")
+                print(msg)
             case 'close':
                 if connection in self.__remote_peers:
                     self.__remote_peers.remove(connection)
                 # print(f"Connection with peer {connection.remote_address} closed")
+                # ! TODO: enhance this message
                 print(f"{self.username} disconnected from peer {connection.remote_address}")
             case 'error':
                 print(error)
@@ -90,7 +92,7 @@ if __name__ == '__main__':
     port = int(sys.argv[1])
     remote_endpoints = sys.argv[2:]
     username = input('Enter your username to start the chat:\n')
-    
+
     peer = TCPPeer(username, port, remote_endpoints)
 
     print('Type your message and press Enter to send it. Messages from other peers will be displayed below.')
@@ -101,3 +103,9 @@ if __name__ == '__main__':
         except (EOFError, KeyboardInterrupt):
             peer.close()
             break
+
+# ? How to run?
+# Peer 0
+# poetry run python -m snippets -l 3 -e tcp_group_chat 8080
+# Peer 1, 2, etc.
+# poetry run python -m snippets -l 3 -e tcp_group_chat 8082 localhost:8080 localhost:8081
