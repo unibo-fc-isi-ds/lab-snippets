@@ -22,7 +22,7 @@ def on_message_received(event, payload, connection, error):
             print(payload)
             if(mode == 'server'):
                 for peer in remote_peers:
-                    peer.send(message(payload, "bc"))
+                    peer.send(payload)
         case 'close':
             print(f"Connection with peer {connection.remote_address} closed")
             remote_peers.remove(connection)
