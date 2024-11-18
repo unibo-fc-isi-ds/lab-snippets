@@ -14,17 +14,19 @@ Concurrency with Threads:
 
 Threads were chosen for their simplicity in handling I/O-bound tasks such as managing multiple client connections.
 Python's threading module provides an intuitive way to manage separate tasks for listening to client messages and broadcasting them.
+
 Socket Communication:
 
 The socket module was chosen for its flexibility and direct control over TCP communication.
 Using TCP ensures reliable message delivery between server and clients.
+
 Ease of Use:
 
 The application is designed to be simple to deploy and run.
 Clear instructions and intuitive commands (exit/quit) make it accessible for users with minimal technical expertise.
 
 
-Testing the Solution
+Testing the Solution:
 
 Pre-Requisites:
 Install Python 3.7 or later.
