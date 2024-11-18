@@ -1,4 +1,4 @@
-from snippets.lab3 import Server, Client, Connection, address, message, local_ips
+from snippets.lab3 import Server, Client, Connection, address, local_ips
 from typing import TypeAlias
 from datetime import datetime
 import sys
@@ -11,27 +11,29 @@ Endpoints: TypeAlias = list[str]
 
 def make_message(text: str, sender: str, timestamp=None, debug=True) -> str:
     if debug:
-        return f"{text}"
+        return f"{sender} {text}"
     if timestamp is None:
         timestamp = datetime.now()
     return f"[{timestamp.isoformat()}] {sender}:\n\t{text}"
 
 class TCPPeer:
-    def __init__(self, 
+    def __init__(self,
+                 username: str, 
                  port: Port, 
                  remote_endpoints: Endpoints | None = None):
+        self.username = username
         self.__port = port
         self.__server = Server(self.__port, self.__on_new_connection)
         self.__remote_peers = list()
         self.__initialize_connections(remote_endpoints if remote_endpoints is not None 
                                                        else list())
 
-    def send_message(self, msg: Message, sender: Username) -> None:
+    def send_message(self, msg: Message) -> None:
         if not self.__remote_peers:
             print("No peers connected, message is lost")
         elif msg:
             for peer in self.__remote_peers:
-                peer.send(make_message(msg.strip(), sender))
+                peer.send(make_message(msg.strip(), self.username))
         else:
             print("Empty message, not sent")
 
@@ -57,10 +59,13 @@ class TCPPeer:
         match event:
             case 'message':
                 print(payload)
-                logging.info(f"{connection.remote_address} -> {connection.local_address}: {payload}")
+                s = payload.split(" ")
+                logging.info(f"{s[0]} -> {self.username}: {s[1]}")
             case 'close':
-                self.__remote_peers.remove(connection)
-                print(f"Connection with peer {connection.remote_address} closed")
+                if connection in self.__remote_peers:
+                    self.__remote_peers.remove(connection)
+                # print(f"Connection with peer {connection.remote_address} closed")
+                print(f"{self.username} disconnected from peer {connection.remote_address}")
             case 'error':
                 print(error)
 
@@ -77,21 +82,22 @@ class TCPPeer:
                 connection.callback = self.__on_message_received
                 self.__remote_peers.append(connection)
             case 'stop':
-                print(f"Stop listening for new connections")
+                print(f"{self.username} stop listening for new connections")
             case 'error':
                 print(error)
 
 if __name__ == '__main__':
     port = int(sys.argv[1])
     remote_endpoints = sys.argv[2:]
-    peer = TCPPeer(port, remote_endpoints)
-
     username = input('Enter your username to start the chat:\n')
+    
+    peer = TCPPeer(username, port, remote_endpoints)
+
     print('Type your message and press Enter to send it. Messages from other peers will be displayed below.')
     while True:
         try:
             msg = input()
-            peer.send_message(msg, username)
+            peer.send_message(msg)
         except (EOFError, KeyboardInterrupt):
             peer.close()
             break
