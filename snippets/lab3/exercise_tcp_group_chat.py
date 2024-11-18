@@ -41,16 +41,25 @@ def obtainIpaddressFromString(ip='0.0.0.0:0', port=None):
 
 
 class InvalidPortRange(Exception):
-    def __init__(self):
-        super().__init__("Port number must be in the range 0-65535")
+    def __init__(self, message: str = None):
+        if (isinstance(message,str) and message != None):
+            super().__init__(message)
+        else:
+            super().__init__("Port number must be in the range 0-65535")
 
 class InvalidIpAddress(Exception):
-    def __init__(self):
-        super().__init__("Invalid IP address, must be a string (x.x.x.x:p or x.x.x.x) and IPv4 type")
+    def __init__(self, message: str = None):
+        if (isinstance(message,str) and message != None):
+            super().__init__(message)
+        else:
+            super().__init__("Invalid IP address, must be a string (x.x.x.x:p or x.x.x.x) and IPv4 type")
 
 class InvalidMessage(Exception):
-    def __init__(self):
-        super().__init__("Message args are not correct")
+    def __init__(self, message: str = None):
+        if (isinstance(message,str) and message != None):
+            super().__init__(message)
+        else:
+            super().__init__("Message args are not correct")
 
 
 
