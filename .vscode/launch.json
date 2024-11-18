@@ -177,5 +177,45 @@
                 "localhost:8080"
             ],
         },
+        {
+            "name": "L3T1: First User",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab3.exercise_tcp_group_chat",
+            "args": [
+                "8080"
+            ],
+        },
+        {
+            "name": "L3T1: Second User",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab3.exercise_tcp_group_chat",
+            "args": [
+                "8081",
+                "localhost:8080"
+            ],
+        },
+        {
+            "name": "L3T1: Third User",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab3.exercise_tcp_group_chat",
+            "args": [
+                "8082",
+                "localhost:8080",
+                "localhost:8081"
+            ],
+        },
+        {
+            "name": "L3T1: User that only knows the first user",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab3.exercise_tcp_group_chat",
+            "args": [
+                "8083",
+                "localhost:8080"
+            ],
+        }
     ]
 }
