@@ -7,7 +7,7 @@ Every time a client send a message, it's sent in broadcast to all connected ones
 Every time a client closes the connection with the Server, all connected ones are notified and the system continues to work.
 
 USAGE
-python3 exercise_tcp_group_chat.py <server|client> <IP> <port>
+python3 exercise_tcp_group_chat.py <server|client> <IPaddress> <Port>
 
 CLIENT POSSIBLE ACTIONS
 - join the group chat connecting to the Server
