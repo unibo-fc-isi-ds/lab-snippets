@@ -7,7 +7,7 @@ from datetime import datetime
 import sys
 import ipaddress
 from selectors import DefaultSelector, EVENT_READ
-
+from typing import Callable
 LENGTH_PREAMBLE_SIZE = 4
 COMMAND_PREFIX = "/"
 ENCODING = "utf-8"
@@ -30,20 +30,14 @@ class Peer:
         self.socket = socket
         self.name = name
 
-    @property
     def has_name(self) -> bool:
-        return self._name != None
-
-    @property
-    def name(self) -> str:
-        return self._name if self._name != None else "unknown"
-
-    @name.setter
-    def name(self, value: str | None):
-        self._name: str | None = value
+        return self.name != None
+    
+    def get_name(self) -> str:
+        return self.name if self.name != None else "unknown"
 
     def __str__(self):
-        return self.name + " at " + self.socket.getpeername()
+        return self.get_name() + " at " + self.socket.getpeername()
 
 
 class MultiTCPChatPeer:
@@ -51,19 +45,27 @@ class MultiTCPChatPeer:
     listen_port: int
 
     # on_message: Callable(msg: str, sender: str) -> None
-    def __init__(self, port: int, username: str, remote_endpoints: list[tuple[str, int]] = []):
+    def __init__(self, port: int, username: str, remote_endpoints: list[tuple[str, int]], on_message: Callable[[str, str], None], on_peer_connected: Callable[[str], None], on_peer_disconnected: Callable[[str], None], on_name_changed: Callable[[str, str], None]):
         """
         Initializes the client.
         Args:
             port: The port to listen for incoming connections.
             remote_endpoints: A list of [address, port] tuples of remote peers to connect to.
+            on_message: A callback function that is called when a message is received. The function should take two arguments: the message and the sender's name.
+            on_peer_connected: A callback function that is called when a peer connects. The function should take one argument: the peer's name.
+            on_peer_disconnected: A callback function that is called when a peer disconnects. The function should take one argument: the peer's name.
+            on_name_changed: A callback function that is called when a peer changes their name. The function should take two arguments: the old name and the new name.
         """
-        self._thread_lock = threading.Lock() 
+        self._thread_lock = threading.Lock()
         self.selector = DefaultSelector()
         self.remote_peers: list[Peer] = []
         self.closed: bool = False
         self.listen_port = port
-        self.username = username
+        self._username = username
+        self._on_message = on_message
+        self._on_peer_connected = on_peer_connected
+        self._on_peer_disconnected = on_peer_disconnected
+        self._on_name_changed = on_name_changed
         # Create a listener socket and its thread for incoming connections
         self._newconn_listener_socket = socket.socket(
             socket.AF_INET, socket.SOCK_STREAM)
@@ -77,23 +79,21 @@ class MultiTCPChatPeer:
         self._message_receiving_thread.start()
         # Connect to remote endpoints
         for endpoint in remote_endpoints:
-            # Check if the address and port are valid
-            try:
-                ipaddress.ip_address(endpoint[0])
-            except ValueError:
-                print(f"Invalid address: {endpoint[0]}")
-                continue
-            if not 0 < endpoint[1] < 65536:
-                print(f"Invalid port: {endpoint[1]}")
-                continue
+            # Check if the address and port are valid (if not, a ValueError will be raised)
+            ipaddress.ip_address(endpoint[0])  # TODO: Add port number
             # Connect to the peer
-            self._connect_to_peer(endpoint)
-        # Let main thread handle the messages sent by the user
-        self._handle_message_sending()
-        # When main thread finishes, close the client
-        self.close()
+            self.connect_to_peer(endpoint)
 
-    def add_peer(self, peer: Peer):
+    @property
+    def username(self):
+        return self._username
+
+    @username.setter
+    def username(self, value):
+        self._username = value
+        self._send_name_to_all(value)
+
+    def _add_peer(self, peer: Peer):
         with self._thread_lock:
             self.remote_peers.append(peer)
             peer.socket.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
@@ -103,12 +103,13 @@ class MultiTCPChatPeer:
         with self._thread_lock:
             if peer in self.remote_peers:
                 try:
-                    print(peer.name + " disconnected")
+                    self._on_peer_disconnected(peer.get_name())
                     self.remote_peers.remove(peer)
                     self.selector.unregister(peer.socket)
                     peer.socket.close()
                 except KeyError:
-                    logging.info(peer.name + " was already unregistered from selector")
+                    logging.info(
+                        peer.__str__() + " was already unregistered from selector")
 
     def close(self):
         """
@@ -126,11 +127,9 @@ class MultiTCPChatPeer:
             self._newconn_listener_thread.join()
             self._message_receiving_thread.join()
             self.selector.close()
-            self.logger.info("Client closed")
-            print("Client closed")
 
     def _handle_listener_thread(self):
-        print(f"Listening for incoming connections on port {self.listen_port}")
+        self.logger.info(f"Listening for incoming connections on port {self.listen_port}")
         self._newconn_listener_socket.listen()
         # Start listening for peers
         try:
@@ -138,8 +137,10 @@ class MultiTCPChatPeer:
                 new_socket, peer_address = self._newconn_listener_socket.accept()
                 self.logger.info(
                     f"Open ingoing connection from: {peer_address}")
-                self.add_peer(Peer(new_socket))
+                new_peer = Peer(new_socket)
+                self._add_peer(new_peer)
                 self.logger.info(f"Connected to {peer_address}")
+                self._send_name(self._username, new_peer)
         except ConnectionAbortedError as e:
             self.logger.info(f"Connection aborted: {e}")
         except (Exception, OSError) as e:
@@ -159,7 +160,9 @@ class MultiTCPChatPeer:
                 select_res = self.selector.select(timeout=1)
                 ready_sockets: list[socket.socket] = list(
                     map(lambda tuple: typing.cast(socket.socket, tuple[0][0]), select_res))
-                for peer in filter(lambda peer: peer.socket in ready_sockets, self.remote_peers):
+                def is_socket_ready(peer: Peer) -> bool:
+                    return peer.socket in ready_sockets
+                for peer in filter(is_socket_ready, self.remote_peers):
                     if is_socket_open(peer.socket):
                         try:
                             msg = self._receive(peer.socket)
@@ -168,45 +171,21 @@ class MultiTCPChatPeer:
                                     # Command received
                                     match (msg.split(" "))[0]:
                                         case "/name":
-                                            if peer.has_name == False:
-                                                print((msg.split(" "))[
-                                                      1] + " has joined the chat")
+                                            if peer.has_name() == False:
+                                                self._on_peer_connected((msg.split(" "))[1])
                                             else:
-                                                print(
-                                                    peer.name + " has changed their name to " + (msg.split(" "))[1])
+                                                self._on_name_changed(peer.get_name() , (msg.split(" "))[1])
                                             peer.name = (msg.split(" "))[1]
                                 else:
                                     # Message received
-                                    print(msg)  # TODO: call on_message
+                                    self._on_message(msg, peer.get_name())
                             else:
-                                print(peer.name + " disconnected")
                                 self.remove_peer(peer)
                         except ConnectionResetError:
                             # Peer closed connection
                             self.logger.info(f"Connection reset by peer")
                             self.remove_peer(peer)
                             return None
-
-    def _handle_message_sending(self):
-        # Read messages from the user and send them to all connected peers
-        while not self.closed:
-            try:
-                msg = input()
-                if msg.startswith(COMMAND_PREFIX):
-                    match msg.split(" ")[0]:
-                        case "/quit":
-                            self.close()  # Check if the command is /quit
-                        case "/name":
-                            self.username = (msg.split(" "))[1]
-                            self._send_name_to_all(self.username)
-                        case "/connect":
-                            self._connect_to_peer(
-                                (msg.split(" ")[1], int(msg.split(" ")[2])))
-                else:
-                    for peer in self.remote_peers:
-                        self._send_message(msg, peer)
-            except (EOFError, KeyboardInterrupt):
-                self.close()
 
     def _receive(self, socket: socket.socket):
         """
@@ -226,7 +205,7 @@ class MultiTCPChatPeer:
         else:
             return socket.recv(length).decode(encoding=ENCODING)
 
-    def _connect_to_peer(self, address: tuple[str, int]):
+    def connect_to_peer(self, address: tuple[str, int]):
         """
         Connects to a peer.
         Args:
@@ -236,32 +215,39 @@ class MultiTCPChatPeer:
         # TODO: Check if the address is valid and add port number
         peer_socket.connect(address)
         # Send username
-        new_peer = Peer(peer_socket, "")
-        self._send_name(self.username, new_peer)
+        new_peer = Peer(peer_socket)
+        self._send_name(self._username, new_peer)
         # Add the peer to the list
-        self.add_peer(new_peer)
+        self._add_peer(new_peer)
 
     def _send_name_to_all(self, name: str):
         for peer in self.remote_peers:
             self._send_name(name, peer)
 
     def _send_name(self, name: str, peer: Peer):
-        self._send_message(COMMAND_PREFIX + "name "+name, peer)
+        self._send_message_to_peer(COMMAND_PREFIX + "name "+name, peer)
 
-    def _send_message(self, message: str, peer: Peer):
+    def send_message(self, message: str):
+        for peer in self.remote_peers:
+            self._send_message_to_all_peers(message, peer)
+
+    def _send_message_to_all_peers(self, message: str, peer: Peer):
         """
         Sends a message to a peer.
         Args:
             message: The message to send.
         """
+        for peer in self.remote_peers:
+            self._send_message_to_peer(message, peer)
+    
+    def _send_message_to_peer(self, message: str, peer: Peer):
         if len(len(message).__str__()) > LENGTH_PREAMBLE_SIZE:
             # The message is too long for its length to be sent
-            print("Message too long")
-            return
+            raise ValueError("Message too long")
         if not message.startswith(COMMAND_PREFIX):
             # The message is not a command, so prepend the timestamp and username
             message = "[" + datetime.strftime(datetime.now(),
-                                              "%X %x") + "]" + self.username + ": " + message
+                                                "%X %x") + "]" + self._username + ": " + message
         # Encode the message
         enc_message = message.encode(encoding=ENCODING)
         enc_message = int.to_bytes(
@@ -276,20 +262,53 @@ class MultiTCPChatPeer:
         else:
             self.remove_peer(peer)
 
+def main():
+    # Check arguments
+    if len(sys.argv) < 2 or len(sys.argv) % 2 != 0:
+        print(
+            "Usage: python3 exercise_tcp_group_chat.py <port> [<remote_address> <remote_port> ...]")
+        sys.exit(1)
 
-# Check arguments
-if len(sys.argv) < 2 or len(sys.argv) % 2 != 0:
-    print(
-        "Usage: python3 exercise_tcp_group_chat.py <port> [<remote_address> <remote_port> ...]")
-    sys.exit(1)
+    # Parse remote addresses
+    remote_endpoints = []
+    for i in range(2, len(sys.argv), 2):
+        remote_endpoints.append((sys.argv[i], int(sys.argv[i+1])))
 
-# Parse remote addresses
-remote_endpoints = []
-for i in range(2, len(sys.argv), 2):
-    remote_endpoints.append((sys.argv[i], int(sys.argv[i+1])))
+    # Enable logging
+    logging.disable()
 
-# Start the client
-port = int(sys.argv[1])
-username = input("Enter your name: ")
-server = MultiTCPChatPeer(port=port, username=username,
-                        remote_endpoints=remote_endpoints)
+    # Start the client
+    port = int(sys.argv[1])
+    username = input("Enter your name: ")
+    print("Listening for connections on port " + str(port) + "...")
+    print("Type /quit to exit.")
+    print("Type /name <new_name> to change your name.")
+    print("Type /connect <address> <port> to connect to a peer.")
+    print("---------------------------------------------")
+    peer = MultiTCPChatPeer(port=port, username=username,
+                            remote_endpoints=remote_endpoints,
+                            on_message=lambda msg, sender: print(f"{msg}"),
+                            on_peer_connected=lambda name: print(f"{name} connected"),
+                            on_peer_disconnected=lambda name: print(f"{name} disconnected"),
+                            on_name_changed=lambda old_name, new_name: print(f"{old_name} changed name to {new_name}"))
+    try:
+        while peer.closed == False:
+            msg = input()
+            if msg.startswith(COMMAND_PREFIX):
+                match msg.split(" ")[0]:
+                    case "/quit":
+                        peer.close()  # Check if the command is /quit
+                    case "/name":
+                        peer.username = (msg.split(" "))[1]
+                    case "/connect":
+                        peer.connect_to_peer(
+                            (msg.split(" ")[1], int(msg.split(" ")[2]))
+                        )
+            else:
+                peer.send_message(msg)
+
+    except (EOFError, KeyboardInterrupt):
+        peer.close()
+
+if __name__ == '__main__':
+    main()
