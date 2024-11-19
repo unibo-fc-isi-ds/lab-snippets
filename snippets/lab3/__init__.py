@@ -64,6 +64,7 @@ class Connection:
     def close(self):
         self.__socket.close()
         if not self.__notify_closed:
+            # * We may need to pass remote peer's username to this function
             self.on_event('close')
             self.__notify_closed = True
 
