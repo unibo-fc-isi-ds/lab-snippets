@@ -5,7 +5,7 @@ from snippets.lab3 import *
 import sys
 
 mode = sys.argv[1].lower().strip()
-peers = []
+peers = [] #client has only 1 peer connected (server peer), server has more peer connected(client peer)
 
 def send_message(msg, sender):
     if peers == []:
@@ -15,7 +15,6 @@ def send_message(msg, sender):
             peer.send(message(msg.strip(), sender))
     else:
         print("Empty message, not sent")
-
 
 def on_message_received(event, payload, connection, error):
     match event:
@@ -31,7 +30,6 @@ def on_message_received(event, payload, connection, error):
             peers.remove(connection)
         case 'error':
             print(error)
-
 
 if mode == 'server':
     port = int(sys.argv[2])
@@ -60,7 +58,6 @@ elif mode == 'client':
     peers.append(peer)
     print(f"Connected to {peer.remote_address}")
 
-
 username = input('Enter your username to start the chat:\n')
 print('Type your message and press Enter to send it. Messages from other peers will be displayed below.')
 while True:
@@ -68,8 +65,6 @@ while True:
         content = input()
         send_message(content, username)
     except (EOFError, KeyboardInterrupt):
-        for peer in peers:
-            peers.close()
         break
 if mode == 'server':
     server.close()
