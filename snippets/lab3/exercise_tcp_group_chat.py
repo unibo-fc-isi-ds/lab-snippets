@@ -67,12 +67,11 @@ class TCPPeer:
                     return
                 remote_peer_username, msg = payload.split("#")
                 logging.info(f"{remote_peer_username} -> {self.username}: {msg}")
+                print(f"{remote_peer_username}: {msg}")
             case 'close':
                 if connection in self.__remote_peers:
                     self.__remote_peers.remove(connection)
-                # print(f"Connection with peer {connection.remote_address} closed")
-                # ! TODO: enhance this message
-                print(f"{self.username} disconnected from peer {connection.remote_address}")
+                print(f"Connection with peer {connection.remote_address} closed")
             case 'error':
                 print(error)
 
@@ -89,7 +88,7 @@ class TCPPeer:
                 connection.callback = self.__on_message_received
                 self.__remote_peers.append(connection)
             case 'stop':
-                print(f"{self.username} stop listening for new connections")
+                print(f"Stop listening for new connections")
             case 'error':
                 print(error)
 
