@@ -1,5 +1,6 @@
 from snippets.lab3 import *
 import sys
+import time
 
 #creo una nuova classe AsyncUser che contiene al suo interno aspetti di Client e Server
 class AsyncUser:
@@ -50,27 +51,16 @@ class AsyncUser:
             while self.__active and not self.__socket._closed:
                 socket, address = self.__socket.accept()
                 connection = Connection(socket, self.__handle_peer_message)
-                if not self.__is_duplicate_connection(connection):
-                    self.remote_peers_connections.add(connection)
-                    self.on_event('connect', connection, address)
-                    # Notifico qui tutti i peers che è entrato un nuovo utente
-                    self.broadcast_message(message(f"has joined the chat!", self.username))
+                self.remote_peers_connections.add(connection)
+                self.on_event('connect', connection, address)
         except ConnectionAbortedError:
             pass # silently ignore error, because this is simply the socket being closed locally
         except Exception as e:
             self.on_event('error', error=e)
         finally:
             # come sicurezza fermo l'evento se la cosa non è stata gestita da close
-            #print("Ciao")
             if self.__active:
                 self.on_event('stop')
-    
-    def __is_duplicate_connection(self, new_connection):
-        for conn in self.remote_peers_connections:
-            if (conn.remote_address == new_connection.remote_address and 
-                not conn.closed):
-                return True
-        return False
 
     # con questa nuova funzione implemento la capacità dei "Client" di far cominciare una nuova connessione
     # creo qui il nuovo socket, passandogli la porta e l'indirizzo mio per fare il binding
@@ -92,6 +82,8 @@ class AsyncUser:
             connection = Connection(sock, self.__handle_peer_message)
             self.remote_peers_connections.add(connection)
             # invio qui un messaggio per dire che si è unito qualcuno
+            # Notifico qui tutti i peers che è entrato un nuovo utente
+            #self.broadcast_message(message(f"has joined the chat!", self.username))
             connection.send(message(f"has connected from {ip_address}:{port}!", self.username))
             return connection
         except ConnectionAbortedError as e:
@@ -99,21 +91,19 @@ class AsyncUser:
         except Exception as e:
             self.on_event('error', error=e)
         finally:
-            #print("sooos")
             self.on_event('stop')
 
     # un metodo per gestire i messaggi dei peers
     def __handle_peer_message(self, event: str, payload: str, connection: Connection, error: Exception):
         # verifico prima di tutto se effettivamente si tratta di un nuovo messaggio e in tal caso lo invia a tutti i peers
         if event == 'message':
-            self.broadcast_message(payload, exclude=connection)
             self.on_event('message', connection, payload=payload)
         elif event == 'error':
-            print(f"Connection error: {error}")
+            if "[WinError 10054]" not in str(error):
+                print(f"Connection error: {error}")
             self.remove_peer(connection)
         elif event == 'close':
             self.remove_peer(connection)
-            self.broadcast_message(message("has left the chat!", self.username))
 
     # questo è il metodo che invia a tutti i peer connessi il messaggio inviato a tutti gli altri peer
     def broadcast_message(self, msg, exclude=None):
@@ -157,6 +147,14 @@ class AsyncUser:
             # si fa prima notifica che si sta uscendo
             self.broadcast_message(message("is disconnecting!", self.username))
             
+            # aspetto un attimo che il messaggio arrivi agli altri utenti e poi comincio a chiudere il socket e rimuovere
+            # le connessioni aperte
+            time.sleep(0.25)
+            
+            # rimuovo tutte le connessioni aperte
+            for conn in self.remote_peers_connections:
+                self.remove_peer(conn)
+            
             # poi si chiude il suo socket
             self.__socket.close()
             
@@ -185,7 +183,6 @@ def run_chat_user(port, username, initial_peers=None):
             
             case 'stop':
                 print("Finished work")
-            
 
     # creo poi un nuovo utente e in base al numero di peers passati all'inizio, mi connetto con tutti quelli passati
     user = AsyncUser(port, username, callback=handle_events)
