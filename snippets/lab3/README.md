@@ -5,7 +5,10 @@ In this exercise, i'll show my idea of a possible implementation of a Group Chat
 # Design and Implementation
 
 I've developed a class called ```AsyncUser``` that contains aspects of both ```Server``` and ```Client``` class shown in the previous lectures.
-Each ```AsyncUser``` contains data regarding his username, his socket, a set containing all its established connections with other chat users.
+Each ```AsyncUser``` contains data regarding his username, his socket, a set containing all its established connections with other chat users and a ```bool``` flag to check whether or not the user is active.
+
+```AsyncUser``` contains both ```def start_connection``` in order to start the connection with other peers that are currently in the group chat, and ```__handle_incoming_connections``` which lets each member of the chat to listen and accepts new connections with new peers that have entered the chat (adding them in their set ```remote_peers_connections```). Each new connection receives ```__handle_peer_message``` as their callback to handle new messages received by other peers. Each time a peer sends a new message, it is encoded inside ```def send_message``` and then sent to each other member them with  ```def broadcast_message```, that uses saved set of connections of that user to send a message to each connected peer. Once a peer decides to leave the chat (either by inputting ```/quit``` in the terminal or by generating a ```KeyboardInterrupt``` Exception with CTRL+C), method ```def close``` sends a final broadcast message to signal each other peer that the user is leaving the chat, then finally removing each peer from the set with ```def remove_peer``` (it closes each connection the leaving peer has) and finally closing the socket of the leaving peer.
+
 
 
 

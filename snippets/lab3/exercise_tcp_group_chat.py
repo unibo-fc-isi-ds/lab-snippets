@@ -83,7 +83,6 @@ class AsyncUser:
             self.remote_peers_connections.add(connection)
             # invio qui un messaggio per dire che si è unito qualcuno
             # Notifico qui tutti i peers che è entrato un nuovo utente
-            #self.broadcast_message(message(f"has joined the chat!", self.username))
             connection.send(message(f"has connected from {ip_address}:{port}!", self.username))
             return connection
         except ConnectionAbortedError as e:
@@ -161,8 +160,6 @@ class AsyncUser:
             # aspetto che il thread finisca di fare il suo lavoro e poi continuo
             if self.__listener_thread.is_alive():
                 self.__listener_thread.join()
-            
-            print(f"User {self.username} has left the chat.")
 
 # una funzione che utilizziamo per far cominciare la chat a partire da console
 def run_chat_user(port, username, initial_peers=None):
