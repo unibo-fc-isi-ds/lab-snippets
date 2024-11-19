@@ -16,10 +16,13 @@ def address(ip='0.0.0.0:0', port=None):
     return ip, port
 
 
-def message(text: str, sender: str, timestamp: datetime=None):
+def message(text: str, sender: str=None, timestamp: datetime=None):
     if timestamp is None:
         timestamp = datetime.now()
-    return f"[{timestamp.isoformat()}] {sender}:\n\t{text}"
+    if sender is None:
+        return f"[{timestamp.isoformat()}]:\n{text}"
+    else:
+        return f"[{timestamp.isoformat()}] {sender}:\n\t\t{text}"
 
 
 def local_ips():

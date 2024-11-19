@@ -62,10 +62,8 @@ class Connection:
                     break
                 if message.endswith(MSG_ENCODE):
                     self.on_event('message', message.removesuffix(MSG_ENCODE))
-                if message.endswith(JSON_ENCODE):
-                    self.on_event('update-list',message.removesuffix(JSON_ENCODE))
-                if message.endswith(EXIT_MESSAGE):
-                    self.close(message)
+                if message.endswith(EXIT_ENCODE):
+                    self.close(message.removesuffix(EXIT_ENCODE)+EXIT_MESSAGE)
         except Exception as e:
             if self.closed and isinstance(e, OSError):
                 return # silently ignore error, because this is simply the socket being closed locally
@@ -116,7 +114,6 @@ class Server:
         try:
             while not self.__socket._closed:
                 socket, address = self.__socket.accept()
-                #server_address = socket.getsockname()
                 connection = Connection(socket)
                 self.on_event('connect', connection, address)
         except ConnectionAbortedError as e:
