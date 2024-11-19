@@ -1,123 +1,110 @@
-from snippets.lab2 import *
+import socket
 import threading
 
 
-# Uncomment this line to observe timeout errors more often.
-# Beware: short timeouts can make demonstrations more difficult to follow.
-# socket.setdefaulttimeout(5) # set default timeout for blocking operations to 5 seconds
+class Peer:
+    def __init__(self, mode, address=None, port=None, callback=None):
+        self.mode = mode
+        self.callback = callback or (lambda *args: None)
+        self.local_address = (socket.gethostbyname(socket.gethostname()), port)
+        self.peers = set()
+        self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.connections = {}  
+        if mode == "server":
+            self.start_as_server(port)
+        elif mode == "client":
+            self.join_chat(address)
 
+    def start_as_server(self, port):
+        self.server_socket.bind(("0.0.0.0", port))
+        self.server_socket.listen()
+        print(f"Server listening at {self.local_address}")
+        threading.Thread(target=self.handle_incoming_connections, daemon=True).start()
+        self.peers.add(self.local_address)  
 
-class Connection:
-    def __init__(self, socket: socket.socket, callback=None):
-        self.__socket = socket
-        self.local_address = self.__socket.getsockname()
-        self.remote_address = self.__socket.getpeername()
-        self.__notify_closed = False
-        self.__callback = callback
-        self.__receiver_thread = threading.Thread(target=self.__handle_incoming_messages, daemon=True)
-        if self.__callback:
-            self.__receiver_thread.start()
+    def join_chat(self, server_address):
+        server_ip, server_port = server_address.split(":")
+        server_endpoint = (server_ip, int(server_port))
+        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client_socket.connect(server_endpoint)
+        self.connections[server_endpoint] = client_socket
+        self.peers.add(server_endpoint)  # Add the server to the peer list
+        self.local_address = client_socket.getsockname()  # Correctly assign local address and port
+        print(f"Connected to chat at {server_endpoint}")
+        threading.Thread(target=self.listen_for_messages, args=(client_socket,), daemon=True).start()
+        self.send_message("NEW_JOIN", self.local_address)
 
-    @property
-    def callback(self):
-        return self.__callback or (lambda *_: None)
-    
-    @callback.setter
-    def callback(self, value):
-        if self.__callback:
-            raise ValueError("Callback can only be set once")
-        self.__callback = value
-        if value:
-            self.__receiver_thread.start()
+    def handle_incoming_connections(self):
+        while True:
+            client_socket, client_address = self.server_socket.accept()
+            if client_address not in self.connections:
+                self.connections[client_address] = client_socket
+                print(f"New connection from {client_address}")
+                self.peers.add(client_address)
+                threading.Thread(target=self.handle_peer, args=(client_socket, client_address), daemon=True).start()
 
-    @property
-    def closed(self):
-        return self.__socket._closed
-    
-    def send(self, message):
-        if not isinstance(message, bytes):
-            message = message.encode()
-            message = int.to_bytes(len(message), 2, 'big') + message
-        self.__socket.sendall(message)
+    def handle_peer(self, client_socket, client_address):
+        while True:
+            try:
+                message = client_socket.recv(1024).decode()
+                if message:
+                    self.process_message(message, client_address)
+            except:
+                break
+        client_socket.close()
+        del self.connections[client_address]
+        self.peers.discard(client_address)
 
-    def receive(self):
-        length = int.from_bytes(self.__socket.recv(2), 'big')
-        if length == 0:
-            return None
-        return self.__socket.recv(length).decode()
-    
-    def close(self):
-        self.__socket.close()
-        if not self.__notify_closed:
-            self.on_event('close')
-            self.__notify_closed = True
+    def listen_for_messages(self, client_socket):
+        while True:
+            try:
+                message = client_socket.recv(1024).decode()
+                if message:
+                    self.process_message(message, None)
+            except:
+                break
 
-    def __handle_incoming_messages(self):
-        try:
-            while not self.closed:
-                message = self.receive()
-                if message is None:
-                    break
-                self.on_event('message', message)
-        except Exception as e:
-            if self.closed and isinstance(e, OSError):
-                return # silently ignore error, because this is simply the socket being closed locally
-            self.on_event('error', error=e)
-        finally:
-            self.close()
+    def process_message(self, message, sender_address):
+        if message.startswith("NEW_JOIN"):
+            _, new_peer = message.split(",", 1)
+            new_peer = eval(new_peer)
+            if new_peer != self.local_address and new_peer[1] is not None: 
+                self.peers.add(new_peer)
+                self.broadcast_peer_list()
+        elif message.startswith("PEER_LIST"):
+            _, peer_list = message.split(",", 1)
+            self.peers.update(eval(peer_list))
+            self.peers.discard(self.local_address)  
+            print(f"Updated peers: {self.peers}")
+        elif message.startswith("CHAT"):
+            _, chat_message = message.split(",", 1)
+            self.callback("message", chat_message)
+            if sender_address:  
+                self.broadcast_message("CHAT", chat_message, exclude=sender_address)
+        else:
+            self.callback("message", message)
 
-    def on_event(self, event: str, payload: str=None, connection: 'Connection'=None, error: Exception=None):
-        if connection is None:
-            connection = self
-        self.callback(event, payload, connection, error)
+    def send_message(self, message_type, payload):
+        message = f"{message_type},{payload}"
+        for peer in list(self.peers):
+            if peer in self.connections:
+                try:
+                    self.connections[peer].sendall(message.encode())
+                except Exception as e:
+                    print(f"Failed to send message to {peer}: {e}")
 
+    def broadcast_peer_list(self):
+        self.send_message("PEER_LIST", list(self.peers))
 
-class Client(Connection):
-    def __init__(self, server_address, callback=None):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.bind(address(port=0))
-        sock.connect(address(*server_address))
-        super().__init__(sock, callback)
+    def broadcast_message(self, message_type, payload, exclude=None):
+        message = f"{message_type},{payload}"
+        for peer in list(self.peers):
+            if peer != exclude and peer in self.connections:
+                try:
+                    self.connections[peer].sendall(message.encode())
+                except Exception as e:
+                    print(f"Failed to broadcast message to {peer}: {e}")
 
-
-class Server:
-    def __init__(self, port, callback=None):
-        self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.__socket.bind(address(port=port))
-        self.__listener_thread = threading.Thread(target=self.__handle_incoming_connections, daemon=True)
-        self.__callback = callback
-        if self.__callback:
-            self.__listener_thread.start()
-
-    @property
-    def callback(self):
-        return self.__callback or (lambda *_: None)
-    
-    @callback.setter
-    def callback(self, value):
-        if self.__callback:
-            raise ValueError("Callback can only be set once")
-        self.__callback = value
-        if value:
-            self.__listener_thread.start()
-    
-    def __handle_incoming_connections(self):
-        self.__socket.listen()
-        self.on_event('listen', address=self.__socket.getsockname())
-        try:
-            while not self.__socket._closed:
-                socket, address = self.__socket.accept()
-                connection = Connection(socket)
-                self.on_event('connect', connection, address)
-        except ConnectionAbortedError as e:
-            pass # silently ignore error, because this is simply the socket being closed locally
-        except Exception as e:
-            self.on_event('error', error=e)
-        finally:
-            self.on_event('stop')
-
-    def on_event(self, event: str, connection: Connection=None, address: tuple=None, error: Exception=None):
-        self.__callback(event, connection, address, error)
-
-    def close(self):
-        self.__socket.close()
+    def send_chat_message(self, message):
+        self.send_message("CHAT", message)
