@@ -13,18 +13,22 @@ var peers = make(map[string]net.Conn)
 var addrToUsername = make(map[string]string)
 var remoteAddressTable = make(map[string]string)
 var mutex sync.Mutex
-var reset = "\033[0m"
-var blue = "\033[34m"
+var reset = "\033[0m" // reset to default terminal strings color
+var blue = "\033[34m" // blue string color on terminal
 
+// check if the connection is from a peer
 func isPeer(conn net.Conn) bool {
 	_, ok := remoteAddressTable[conn.RemoteAddr().String()]
 	return !ok
 }
 
+// function to handle the connection, the peer will start listening for data messages
+// when the connection will be interrupter the for loop will break
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
 	peerAddr := conn.RemoteAddr().String()
 
+	// start scanning on the connection for messages
 	scanner := bufio.NewScanner(conn)
 	for scanner.Scan() {
 		message := scanner.Text()
@@ -39,6 +43,7 @@ func handleConnection(conn net.Conn) {
 	mutex.Unlock()
 }
 
+// function to broadcast the message to all other peers
 func broadcastMessage(message string, sender string) {
 	mutex.Lock()
 	defer mutex.Unlock()
@@ -49,6 +54,7 @@ func broadcastMessage(message string, sender string) {
 	}
 }
 
+// function to connect to a peer
 func connectToPeer(addr string, username string, port string) {
 	conn, err := net.Dial("tcp", "localhost:"+addr)
 	if err != nil {
@@ -62,6 +68,7 @@ func connectToPeer(addr string, username string, port string) {
 	go handleConnection(conn)
 }
 
+// function to receive the init message where the peer send his basic informations
 func getPresentationMessage(conn net.Conn) {
 	scanner := bufio.NewScanner(conn)
 	for scanner.Scan() {
@@ -78,10 +85,12 @@ func getPresentationMessage(conn net.Conn) {
 	}
 }
 
+// function to send the init message with all useful informations
 func sendPresentationMessage(conn net.Conn, username string, port string) {
 	fmt.Fprintf(conn, ">%s:%s\n", username, port)
 }
 
+// function to read an input from the console and broadcast it to all the connected peers
 func readInput(username string) {
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
