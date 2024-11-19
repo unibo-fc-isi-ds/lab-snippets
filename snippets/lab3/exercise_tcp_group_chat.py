@@ -7,9 +7,10 @@ import selectors
 import ipaddress
 
 class TCPChatUser:
-    def __init__(self, name, port, known_users=None):
+    def __init__(self, name, address, port, known_users=None):
         self.name = name
         self.port = port
+        self.address = address
         self.peers = {}
         self.selector = selectors.DefaultSelector()
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -20,8 +21,6 @@ class TCPChatUser:
         threading.Thread(target=self._listen_for_peers, daemon=True).start()
         if known_users:
             self._connect_to_known_users(known_users)
-        print("Welcome to the chat! Type your message and press Enter to send it.")
-        print("Type 'exit' to leave the chat.\n")
 
     def _accept_connection(self):
         try:
@@ -49,7 +48,7 @@ class TCPChatUser:
             # Read the length of the message (first 4 bytes)
             raw_msglen = self._recvall(client_socket, 4)
             if not raw_msglen:
-                raise Exception("Malformed message")
+                raise Exception("Error in reading message length")
             msglen = int.from_bytes(raw_msglen, byteorder='big')
             # Read the message data
             message = self._recvall(client_socket, msglen).decode('utf-8')
@@ -61,10 +60,10 @@ class TCPChatUser:
                 # Eventually I'll get a response containing all the users present in the group chat
                 # Each user is represented as "ip:port:name"
                 elif 'response' in data and data['response'] == 'peers':
-                    known_users = [f"{key.getpeername()[0]}:{self.peers[key][0]}" for key in self.peers]
+                    known_users = [f"{key.getpeername()[0] if key.getpeername()[0] != '127.0.0.1' else self.address}:{self.peers[key][0]}" for key in self.peers]
                     self.peers[client_socket] = [int(data['user'].split(':')[1]), data['user'].split(':')[2]] # I am already connected to the user, so I just update its record with their name
                     for peer in data['peers']:
-                        if f"{peer.split(':')[0]}:{peer.split(':')[1]}" not in known_users:
+                        if f"{peer.split(':')[0]}:{peer.split(':')[1]}" not in known_users: # I don't want to connect to the same user twice
                             sk = self._connect_to_peer(peer)
                             if sk is not None:
                                 sk.setblocking(False)
@@ -77,16 +76,18 @@ class TCPChatUser:
                 # Message to show that a user has left the chat
                 elif 'disconnect' in data and data['disconnect'] == 'exit':
                     self._remove_peer(client_socket)
+                # A simple message to display
                 else:
                     self._display_message(message)
-                    # self._broadcast(message, client_socket)
         except ConnectionResetError as e:
+            # The connection with the peer has closed unexpectedly
             self._remove_peer(client_socket)
         except Exception as e:
             pass
 
     def _recvall(self, client_socket, n):
         data = bytearray()
+        # Loop until we have received the number of bytes we expect
         while len(data) < n:
             packet = client_socket.recv(n - len(data))
             if not packet:
@@ -101,15 +102,17 @@ class TCPChatUser:
         except:
             print("Received malformed message")
 
-    def _broadcast(self, message, exclude_socket=None):
+    def _broadcast(self, message):
+        # Send the message to all the known peers
         for peer in self.peers.keys():
-            if peer != exclude_socket:
-                try:
-                    peer.send(self._compose_message(message))
-                except:
-                    self._remove_peer(peer)
+            try:
+                peer.send(self._compose_message(message))
+            except:
+                # If the connection is closed, remove the peer from the list
+                self._remove_peer(peer)
 
-    def _connect_to_known_users(self, known_users=None):
+    def _connect_to_known_users(self, known_users):
+        # Connect to the known users and ask for the list of peers
         connections = []
         for known_user in known_users:
             known_user_socket = self._connect_to_peer(known_user)
@@ -124,8 +127,10 @@ class TCPChatUser:
                 socket.send(self._compose_message(json.dumps({'request': 'peers'})))
 
     def _send_peers_list(self, client_socket):
-        peers_list = [f"{key.getpeername()[0]}:{self.peers[key][0]}:{self.peers[key][1]}" for key in self.peers if key != client_socket]
-        user = (f"{self.server_socket.getsockname()[0]}:{self.port}:{self.name}")
+        # Send the list of peers to the client, including myself
+        peers_list = [f"{key.getpeername()[0] if key.getpeername()[0] != '127.0.0.1' else self.address}:{self.peers[key][0]}:{self.peers[key][1]}" 
+                      for key in self.peers if key != client_socket]
+        user = (f"{self.address}:{self.port}:{self.name}")
         client_socket.send(self._compose_message(json.dumps({'response': 'peers', 'peers': peers_list, "user" : user})))
 
     def _connect_to_peer(self, peer):
@@ -141,7 +146,7 @@ class TCPChatUser:
             print(f"Failed to connect to {info[0]}:{port}")
             return None
 
-    # Adds the length of the message to the message itself
+    # Adds the length of the message to the message itself and adds encoding
     def _compose_message(self, message):
         message = message.encode('utf-8')
         length = len(message)
@@ -179,10 +184,11 @@ class TCPChatUser:
         del self.peers[peer_socket]
 
 
-def check_arguments(args):
+def check_arguments(args, own_address):
     # check if there are enough arguments
     if len(args) < 2:
-        print("Usage: python simple_tcp_chat_group.py <port> [address1:port1 address2:port2 ...]")
+        print("Usages:\n- poetry run python snippets/lab3/exercise_tcp_group_chat.py <port> [address1:port1 address2:port2 ...]")
+        print("- python exercise_tcp_group_chat.py <port> [address1:port1 address2:port2 ...]\n")
         return False
     # check if the port number is valid
     if not args[1].isdigit() or int(args[1]) not in range(0, 65536):
@@ -193,12 +199,12 @@ def check_arguments(args):
         peers = args[2:]
         for peer in peers:
             address, port = peer.split(':')
-            if not is_valid_address(address, port):
+            if not is_valid_address(address, port, own_address, int(args[1])):
                 print(f"Invalid address: {address}:{port}")
                 return False
     return True
-            
-def is_valid_address(address, port):
+
+def is_valid_address(address, port, own_address, own_port):
     try:
         if address != 'localhost':
             ip = ipaddress.ip_address(address)
@@ -208,27 +214,55 @@ def is_valid_address(address, port):
         if port not in range(0, 65536):
             return False
         
+        # Cannot connect to myself
+        if (address == own_address or address=="localhost" or address=="127.0.0.1") and port == own_port:
+            return False
+        
         return True
     
     except ValueError:
         return False
-        
     
+def translate_addresses(addresses, ip):
+    translated_list = []
+    for address in addresses:
+        if 'localhost' in address:
+            address.replace('localhost', ip)
+        elif '127.0.0.1' in address:
+            address.replace('127.0.0.1', ip)
+        translated_list.append(address)
+    return translated_list
+
 
 if __name__ == "__main__":
+        
+    local_chat = False
     
-    if not check_arguments(sys.argv):
+    address = socket.gethostbyname(socket.gethostname()) # Gets the local IP address
+    if address == '127.0.0.1':
+        local_chat = True
+        print("Cannot get the local IP address.\nCan join only chats on this device.\n")
+        
+    
+    if not check_arguments(sys.argv, address):
         sys.exit(1)
 
     name = input("Enter your name: ")
     port = int(sys.argv[1])
     known_users = sys.argv[2:]
+    if not local_chat:
+        known_users = translate_addresses(known_users, address)
 
     try:
-        user = TCPChatUser(name, port, known_users)
+        user = TCPChatUser(name, address, port, known_users)
     except OSError as e:
         print("Failed to start the chat. Make sure the port is not in use.")
         sys.exit(1)
+        
+    if not local_chat:
+        print(f"Your local IP address is: [{address}]")
+    print("Welcome to the chat! Type your message and press Enter to send it.")
+    print("Type 'exit' to leave the chat.\n")
 
     try:
         while True:
