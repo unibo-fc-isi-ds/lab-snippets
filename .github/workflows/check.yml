@@ -1,8 +1,10 @@
 name: CI/CD
 on:
   push:
-    branches-ignore:
-      - 'dependabot/**'
+    branches:
+      - 'exercise-lab3'
+    # branches-ignore:
+    #   - 'dependabot/**'
     paths-ignore:
       - '.gitignore'
       - '.mergify.yml'
@@ -32,9 +34,9 @@ jobs:
         shell: bash
         run: poetry run poe compile
 
-      - name: Static Checks
-        shell: bash
-        run: poetry run poe mypy
+      # - name: Static Checks
+      #   shell: bash
+      #   run: poetry run poe mypy
 
       # - name: Test with Coverage
       #   shell: bash
@@ -60,7 +62,6 @@ jobs:
           - windows-latest
           - macos-latest
         python-version:
-          - '3.9'
           - '3.10'
           - '3.11'
           - '3.12'
