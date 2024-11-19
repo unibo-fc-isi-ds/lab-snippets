@@ -6,6 +6,7 @@ Features
 The server can handle multiple clients simultaneously.
 Clients can send messages to the server, which broadcasts them to all connected clients.
 A simple protocol ensures that each message is prefixed by the username of the sender.
+
 Clean disconnection for clients:
 Clients can exit by typing exit or quit.
 
@@ -14,6 +15,8 @@ Concurrency with Threads:
 
 Threads were chosen for their simplicity in handling I/O-bound tasks such as managing multiple client connections.
 Python's threading module provides an intuitive way to manage separate tasks for listening to client messages and broadcasting them.
+The choise of the use of threads was made due to the fact that in this exercise we weren't supposed to use a lot of different clients,
+in that case this choise could be not so efficent because we use a thread for every client and so, with a lot of them this could be quite heavy for the system.
 
 Socket Communication:
 
@@ -24,7 +27,6 @@ Ease of Use:
 
 The application is designed to be simple to deploy and run.
 Clear instructions and intuitive commands (exit/quit) make it accessible for users with minimal technical expertise.
-
 
 Testing the Solution:
 
