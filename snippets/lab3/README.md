@@ -6,7 +6,7 @@ The Server runs a thread for each client, to handle its messages.
 Every time a client send a message, it's sent in broadcast to all connected ones.
 Every time a client closes the connection with the Server, all connected ones are notified and the system continues to work.
 
-++USAGE++
+USAGE
 python3 exercise_tcp_group_chat.py <server|client> <IP> <port>
 
 CLIENT POSSIBLE ACTIONS
