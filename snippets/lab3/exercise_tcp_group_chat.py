@@ -4,9 +4,9 @@ import sys
 import json
 import time
 import selectors
-import re
+import ipaddress
 
-class ChatUser:
+class TCPChatUser:
     def __init__(self, name, port, known_users=None):
         self.name = name
         self.port = port
@@ -83,7 +83,6 @@ class ChatUser:
         except ConnectionResetError as e:
             self._remove_peer(client_socket)
         except Exception as e:
-            #print(f"Error: {e}")
             pass
 
     def _recvall(self, client_socket, n):
@@ -186,39 +185,34 @@ def check_arguments(args):
         print("Usage: python simple_tcp_chat_group.py <port> [address1:port1 address2:port2 ...]")
         return False
     # check if the port number is valid
-    if not args[1].isdigit() or int(args[1]) not in range(1025, 65536):
+    if not args[1].isdigit() or int(args[1]) not in range(0, 65536):
         print("Invalid port number.")
         return False
     # check if the addresses are valid
     if len(args) > 2:
-        addresses = args[2:]
-        for address in addresses:
-            if not is_valid_address(address):
-                print(f"Invalid address: {address}")
+        peers = args[2:]
+        for peer in peers:
+            address, port = peer.split(':')
+            if not is_valid_address(address, port):
+                print(f"Invalid address: {address}:{port}")
                 return False
     return True
             
-def is_valid_address(address):
-    # Regular expression to match the format "x.x.x.x:y"
-    pattern = re.compile(r'^(\d{1,3}\.){3}\d{1,3}:\d{1,5}$')
-    if not pattern.match(address):
-        return False
-
-    # Split the address into IP and port
-    ip, port = address.split(':')
-    port = int(port)
-
-    # Check if port is in the valid range
-    if port < 0 or port > 65535:
-        return False
-
-    # Check if each part of the IP is in the valid range
-    octets = ip.split('.')
-    for octet in octets:
-        if int(octet) < 0 or int(octet) > 255:
+def is_valid_address(address, port):
+    try:
+        if address != 'localhost':
+            ip = ipaddress.ip_address(address)
+            
+        port = int(port)
+        
+        if port not in range(0, 65536):
             return False
-
-    return True
+        
+        return True
+    
+    except ValueError:
+        return False
+        
     
 
 if __name__ == "__main__":
@@ -230,7 +224,11 @@ if __name__ == "__main__":
     port = int(sys.argv[1])
     known_users = sys.argv[2:]
 
-    user = ChatUser(name, port, known_users)
+    try:
+        user = TCPChatUser(name, port, known_users)
+    except OSError as e:
+        print("Failed to start the chat. Make sure the port is not in use.")
+        sys.exit(1)
 
     try:
         while True:
