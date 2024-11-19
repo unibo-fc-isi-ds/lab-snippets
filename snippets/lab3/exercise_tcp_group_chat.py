@@ -112,19 +112,15 @@ class TCPChatUser:
                 self._remove_peer(peer)
 
     def _connect_to_known_users(self, known_users):
-        # Connect to the known users and ask for the list of peers
-        connections = []
+        # Connect to one of the known user and ask for the list of peers
         for known_user in known_users:
             known_user_socket = self._connect_to_peer(known_user)
             if known_user_socket is not None:
-                connections.append(known_user_socket)
                 known_user_socket.setblocking(False)
                 self.selector.register(known_user_socket, selectors.EVENT_READ, self._handle_peer)
-        if len(connections) == 0:
-            print("\nAll connections have failed, starting a new group chat\n")
-        else:
-            for socket in connections:
-                socket.send(self._compose_message(json.dumps({'request': 'peers'})))
+                known_user_socket.send(self._compose_message(json.dumps({'request': 'peers'})))
+                return
+        print("\nAll connections have failed, starting a new group chat\n")
 
     def _send_peers_list(self, client_socket):
         # Send the list of peers to the client, including myself
@@ -187,8 +183,7 @@ class TCPChatUser:
 def check_arguments(args, own_address):
     # check if there are enough arguments
     if len(args) < 2:
-        print("Usages:\n- poetry run python snippets/lab3/exercise_tcp_group_chat.py <port> [address1:port1 address2:port2 ...]")
-        print("- python exercise_tcp_group_chat.py <port> [address1:port1 address2:port2 ...]\n")
+        print("Usage: poetry run python snippets/lab3/exercise_tcp_group_chat.py <port> [address1:port1 address2:port2 ...]")
         return False
     # check if the port number is valid
     if not args[1].isdigit() or int(args[1]) not in range(0, 65536):
