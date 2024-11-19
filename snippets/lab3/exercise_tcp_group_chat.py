@@ -1,86 +1,116 @@
-"""
-TCP Group Chat - Unificato Server e Client.
-"""
-
-import socket as s
-import threading as th
+import socket
+import threading
 import sys
 
-bufferSize = 1024
+BUFFER_SIZE = 1024
 
 # Funzioni per il Server
 def start_server(host, port):
-    addr = {}
     clients = {}
 
     def broadcast(message, sender=""):
+        """Invia un messaggio a tutti i client connessi."""
         for client in clients:
-            client.send(bytes(sender, "utf8") + message)
+            try:
+                client.sendall(bytes(sender, "utf8") + message)
+            except Exception as e:
+                print(f"Errore durante l'invio al client: {e}")
 
-    def handle_client(client):
-        name = client.recv(bufferSize).decode("utf8")
-        welcome_message = f"Welcome {name}! Type {{exit}} to leave the chat."
-        client.send(bytes(welcome_message, "utf8"))
-        broadcast(bytes(f"{name} joined the chat.", "utf8"))
-        clients[client] = name
-        while True:
-            message = client.recv(bufferSize)
-            if message == bytes("{exit}", "utf8"):
-                client.close()
-                del clients[client]
-                broadcast(bytes(f"{name} has left the chat.", "utf8"))
-                break
-            else:
-                broadcast(message, f"{name}: ")
+    def handle_client(client_socket):
+        """Gestisce un singolo client."""
+        try:
+            name = client_socket.recv(BUFFER_SIZE).decode("utf8")
+            if not name:
+                raise ConnectionError("Nome non ricevuto.")
 
-    server = s.socket(s.AF_INET, s.SOCK_STREAM)
-    server.bind((host, port))
-    server.listen(5)
-    print(f"Server started on {host}:{port}")
+            welcome_message = f"Benvenuto {name}! Scrivi {{exit}} per uscire dalla chat."
+            client_socket.sendall(bytes(welcome_message, "utf8"))
+            broadcast(bytes(f"{name} si è unito alla chat.\n", "utf8"))
+            clients[client_socket] = name
+
+            while True:
+                message = client_socket.recv(BUFFER_SIZE)
+                if message == bytes("{exit}", "utf8"):
+                    broadcast(bytes(f"{name} ha lasciato la chat.\n", "utf8"))
+                    break
+                else:
+                    broadcast(message, f"{name}: ")
+
+        except Exception as e:
+            print(f"Errore con il client: {e}")
+        finally:
+            client_socket.close()
+            clients.pop(client_socket, None)
+
+    # Setup server socket
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.bind((host, port))
+    server_socket.listen(5)
+    print(f"Server avviato su {host}:{port}")
+
     while True:
-        client, client_addr = server.accept()
-        print(f"Connection from {client_addr}")
-        addr[client] = client_addr
-        th.Thread(target=handle_client, args=(client,), daemon=True).start()
+        try:
+            client_socket, client_address = server_socket.accept()
+            print(f"Connessione da {client_address}")
+            threading.Thread(target=handle_client, args=(client_socket,), daemon=True).start()
+        except KeyboardInterrupt:
+            print("Server in chiusura...")
+            break
+        except Exception as e:
+            print(f"Errore server: {e}")
+
+    server_socket.close()
 
 # Funzioni per il Client
 def start_client(host, port):
-    global running
-    running = True
-
-    def receive_messages():
-        while running:
+    def receive_messages(sock):
+        """Riceve messaggi dal server e li mostra."""
+        while True:
             try:
-                message = client.recv(bufferSize).decode("utf8")
-                print(message)
-            except OSError:
-                break
-
-    def send_messages():
-        global running  # Dichiarazione esplicita
-        print("Inserisci il nome...")
-        while running:
-            try:
-                message = input()
-                client.send(bytes(message, "utf8"))
-                if message == "{exit}":
-                    client.close()
-                    running = False
+                message = sock.recv(BUFFER_SIZE).decode("utf8")
+                if not message:
                     break
-            except OSError:
+                print(message)
+            except Exception:
+                print("Connessione al server persa.")
                 break
 
-    client = s.socket(s.AF_INET, s.SOCK_STREAM)
-    client.connect((host, port))
-    print(f"Connected to server at {host}:{port}")
+    def send_messages(sock):
+        """Invia messaggi al server."""
+        try:
+            username = input("Inserisci il tuo nome: ").strip()
+            sock.sendall(bytes(username, "utf8"))
 
-    th.Thread(target=receive_messages, daemon=True).start()
-    send_messages()
+            while True:
+                message = input()
+                sock.sendall(bytes(message, "utf8"))
+                if message == "{exit}":
+                    print("Disconnessione...")
+                    break
+        except Exception as e:
+            print(f"Errore di invio: {e}")
+        finally:
+            sock.close()
 
-# Main Entry Point
+    # Setup client socket
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        client_socket.connect((host, port))
+        print(f"Connesso al server su {host}:{port}")
+
+        # Avvio dei thread per ricezione e invio messaggi
+        threading.Thread(target=receive_messages, args=(client_socket,), daemon=True).start()
+        send_messages(client_socket)
+
+    except Exception as e:
+        print(f"Errore di connessione: {e}")
+    finally:
+        client_socket.close()
+
+# Entry point
 if __name__ == "__main__":
-    if len(sys.argv) < 3:
-        print("Usage: python exercise_tcp_group_chat.py <server|client> <HOST> <PORT>")
+    if len(sys.argv) < 4:
+        print("Uso: python exercise_tcp_group_chat.py <server|client> <HOST> <PORT>")
         sys.exit(1)
 
     mode = sys.argv[1].lower()
@@ -92,5 +122,5 @@ if __name__ == "__main__":
     elif mode == "client":
         start_client(host, port)
     else:
-        print("Invalid mode. Use 'server' or 'client'.")
+        print("Modalità non valida. Usa 'server' o 'client'.")
         sys.exit(1)
