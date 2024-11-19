@@ -149,6 +149,33 @@
                 "localhost:8080"
             ],
         },{
+            "name": "L3E4: TCP Chat Group - Peer 0",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab3.example4_tcp_group",
+            "args": [
+                "8080"
+            ],
+        },{
+            "name": "L3E4: TCP Chat Group - Peer 1",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab3.example4_tcp_group",
+            "args": [
+                "8081",
+                "localhost:8080"
+            ],
+        },{
+            "name": "L3E4: TCP Chat Group - Peer 2",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab3.example4_tcp_group",
+            "args": [
+                "8082",
+                "localhost:8080",
+                "localhost:8081"
+            ],
+        },{
             "name": "L4E0: Users",
             "type": "debugpy",
             "request": "launch",
