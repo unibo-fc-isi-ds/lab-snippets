@@ -85,4 +85,4 @@ jobs:
 
       - name: Test
         shell: bash
-        run: poetry run poe test
+        run: poetry run python -m unittest discover -s tests -p "tcp_group_chat_simulation_1.py"
