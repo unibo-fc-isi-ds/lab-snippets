@@ -1,3 +1,6 @@
+# run server: server [port]
+# run client: client [ip]:[port]
+
 from snippets.lab3 import *
 import sys
 
@@ -40,7 +43,6 @@ if mode == 'server':
             case 'connect':
                 print(f"Open ingoing connection from: {address}")
                 connection.callback = on_message_received
-                #global remote_peer; remote_peer = connection
                 peers.append(connection)
             case 'stop':
                 print(f"Stop listening for new connections")
@@ -53,7 +55,7 @@ elif mode == 'client':
     try:
         peer = Client(address(remote_endpoint), on_message_received)
     except(Exception):
-        print("Error in connection with server. Try again or try with another address ip.")
+        print("Error in connection with server. Try again or try with another ip address.")
         exit(1)
     peers.append(peer)
     print(f"Connected to {peer.remote_address}")
@@ -66,9 +68,6 @@ while True:
         content = input()
         send_message(content, username)
     except (EOFError, KeyboardInterrupt):
-        #if remote_peer:
-        #   remote_peer.close()
-        #   peers = []
         for peer in peers:
             peers.close()
         break
