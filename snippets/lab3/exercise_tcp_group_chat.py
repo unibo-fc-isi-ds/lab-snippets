@@ -28,13 +28,10 @@ def send_message(msg, sender):
 def on_message_received(event, payload, connection, error):
     match event:
         case 'message':
-            print(payload)
+            print(payload) 
         case 'close':
-            for c in clients:
-                    if c.remote_address == connection.remote_address:
-                        clients.remove(c)
-                        break
-                    print(f"Connection with peer {connection.remote_address} closed")
+            clients.discard(connection)
+            print(f"Connection with peer {connection.remote_address} closed")
         case 'error':
             print(error)
             if connection in clients:
@@ -80,21 +77,20 @@ if remote_endpoint:
 
 username = input('Enter your username to start the chat:\n')
 print('Type your message and press Enter to send it. Messages from other peers will be displayed below.')
-while True:
-    try:
+
+try:
+    while True:
         content = input()
         send_message(content, username)
-    except (EOFError, KeyboardInterrupt):
-        send_message("\nDisconneting\n",username)
-        # Close all client connections
-        if clients:
-            for c in clients.copy():
-                c.close()
-        # Stop the server
-        break
-    
-print("Disconnected.")     
-server.close()
+except (EOFError, KeyboardInterrupt):
+    send_message("\nDisconneting\n",username)
+    # Close all client connections
+    if clients:
+        for c in clients.copy():
+            c.close()
+    # Stop the server
+    print("Disconnected.")     
+    server.close()
     
 
 
