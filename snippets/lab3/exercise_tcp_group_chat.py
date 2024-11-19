@@ -4,13 +4,15 @@ from datetime import datetime
 import sys
 import logging
 
+DEBUG_MODE = True
+
 Message: TypeAlias = str
 Username: TypeAlias = str
 Port: TypeAlias = int
 Endpoints: TypeAlias = list[str]
 
-def make_message(text: str, sender: str, timestamp=None, debug=True) -> str:
-    if debug:
+def make_message(text: str, sender: str, timestamp=None) -> str:
+    if DEBUG_MODE:
         return f"{sender}#{text}"
     if timestamp is None:
         timestamp = datetime.now()
@@ -59,9 +61,12 @@ class TCPPeer:
                               error: str) -> None:
         match event:
             case 'message':
+                # * Not the greatest design, but it's okay for now...
+                if not DEBUG_MODE:
+                    print(payload)
+                    return
                 remote_peer_username, msg = payload.split("#")
                 logging.info(f"{remote_peer_username} -> {self.username}: {msg}")
-                print(msg)
             case 'close':
                 if connection in self.__remote_peers:
                     self.__remote_peers.remove(connection)
@@ -89,6 +94,7 @@ class TCPPeer:
                 print(error)
 
 if __name__ == '__main__':
+    DEBUG_MODE = False
     port = int(sys.argv[1])
     remote_endpoints = sys.argv[2:]
     username = input('Enter your username to start the chat:\n')
@@ -103,6 +109,7 @@ if __name__ == '__main__':
         except (EOFError, KeyboardInterrupt):
             peer.close()
             break
+    exit(0)
 
 # ? How to run?
 # Peer 0
