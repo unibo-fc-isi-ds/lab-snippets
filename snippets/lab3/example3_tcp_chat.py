@@ -2,22 +2,22 @@ from snippets.lab3 import *
 import sys
 
 mode = sys.argv[1].lower().strip()
-remote_peers = []  # Lista dei peer connessi (solo lato server)
+remote_peers = []  # List of connected peers (server side only)
 
 
 def send_message(msg, sender):
-    """Invia un messaggio a tutti i peer connessi."""
+    """Sends a message to all connected peers."""
     if not remote_peers:
-        print("Nessun peer connesso, il messaggio è perso")
+        print("No peers connected, message lost")
     elif msg.strip():
         for peer in remote_peers:
             peer.send(message(msg.strip(), sender))
     else:
-        print("Messaggio vuoto, non inviato")
+        print("Empty message, not sent")
 
 
 def on_message_received(event, payload, connection, error):
-    """Gestisce i messaggi ricevuti e altri eventi."""
+    """Handles received messages and other events."""
     match event:
         case 'message':
             print(payload)  
@@ -26,29 +26,29 @@ def on_message_received(event, payload, connection, error):
                     if peer != connection:  
                         peer.send(payload)
         case 'close':
-            print(f"Connessione con il peer {connection.remote_address} chiusa")
+            print(f"Connection with peer {connection.remote_address} closed")
             if mode == 'server' and connection in remote_peers:
                 remote_peers.remove(connection)
         case 'error':
-            print(f"Errore: {error}")
+            print(f"Error: {error}")
 
 
 if mode == 'server':
     port = int(sys.argv[2])
 
     def on_new_connection(event, connection, address, error):
-        """Gestisce nuove connessioni in ingresso."""
+        """Handles new incoming connections."""
         match event:
             case 'listen':
-                print(f"Server in ascolto sulla porta {port} all'indirizzo {', '.join(local_ips())}")
+                print(f"Server listening on port {port} at address {', '.join(local_ips())}")
             case 'connect':
-                print(f"Nuova connessione da: {address}")
+                print(f"New connection from: {address}")
                 connection.callback = on_message_received
                 remote_peers.append(connection) 
             case 'stop':
-                print("Interrotto l'ascolto per nuove connessioni")
+                print("Stopped listening for new connections")
             case 'error':
-                print(f"Errore: {error}")
+                print(f"Error: {error}")
 
     server = Server(port, on_new_connection)
 
@@ -56,18 +56,18 @@ elif mode == 'client':
     remote_endpoint = sys.argv[2]
     remote_peer = Client(address(remote_endpoint), on_message_received)
     remote_peers.append(remote_peer)  
-    print(f"Connesso al server {remote_peer.remote_address}")
+    print(f"Connected to server {remote_peer.remote_address}")
 
 
-username = input("Inserisci il tuo username per iniziare la chat:\n")
-print("Scrivi il messaggio e premi Invio per inviarlo. I messaggi degli altri peer verranno mostrati qui.")
+username = input("Insert your username to start chatting:\n")
+print("Write your message here and press enter. Other people's messages will be displayed here.")
 
 try:
     while True:
         content = input()
         send_message(content, username)
 except (EOFError, KeyboardInterrupt):
-    print("Disconnessione in corso...")
+    print("Disconnecting...")
     for peer in remote_peers:
         peer.close()  
     if mode == 'server':
