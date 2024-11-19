@@ -4,6 +4,21 @@ import sys
 #Server have a set of connected clients
 clients = set()
 
+""" #Send the list of all connected peers to a new peer.
+def broadcast_peer_list(connection):
+    print(connection)
+    peer_list = [c.remote_address for c in clients if c != connection]
+    connection.send(f"PEER_LIST:{','.join(peer_list)}")
+
+#Connect to peers discovered from another peer.
+def connect_to_discovered_peers(peer_list):
+    for peer in peer_list:
+        try:
+            ip, port = peer.split(":")
+            connect_to_peer(f"{ip}:{port}")
+        except Exception as e:
+            print(f"Failed to connect to discovered peer {peer}: {e}") """
+
 
 def broadcastmsg(user,msg):
     if clients:
@@ -28,10 +43,15 @@ def send_message(msg, sender):
 def on_message_received(event, payload, connection, error):
     match event:
         case 'message':
-            print(payload) 
+            if payload.startswith("PEER_LIST:"):
+                # Handle peer discovery message
+                peer_list = payload[len("PEER_LIST:"):].split(",")
+            #connect_to_discovered_peers(peer_list)
+            else:
+                print(payload) 
         case 'close':
-            clients.discard(connection)
             print(f"Connection with peer {connection.remote_address} closed")
+            clients.discard(connection)
         case 'error':
             print(error)
             if connection in clients:
@@ -54,6 +74,7 @@ def connect_to_peer(endpoint):
     try:
         remote_peer = Client(address(endpoint), on_message_received)
         clients.add(remote_peer)  # Add the remote peer to the set of connections
+        #broadcast_peer_list(remote_peer)
     except Exception as e:
         print(f"Failed to connect to peer at {endpoint}: {e}")
         sys.exit(1) 
@@ -69,10 +90,13 @@ server = Server(port, on_new_connection)
 
 
 #check if it's a client
-remote_endpoint = sys.argv[2] if len(sys.argv) > 2 else None
-if remote_endpoint:
-    connect_to_peer(remote_endpoint)
-     
+""" remote_endpoint = sys.argv[2] if len(sys.argv) > 2 else None
+if remote_endpoint: """
+    
+if len(sys.argv) > 2:
+    remote_endpoints = sys.argv[2:]
+    for remote_endpoint in remote_endpoints:
+        connect_to_peer(remote_endpoint)
 
 
 username = input('Enter your username to start the chat:\n')
