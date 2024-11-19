@@ -47,23 +47,23 @@ def handle_incoming_connection(peer: ConnectedPeer, peers):
         peers.remove(peer)
         print(f"{peer} <LEFT THE CHAT>")
 
-def send_message_to_peers(peers):
+def send_message_to_peers(peers: list[ConnectedPeer]):
     """
     Allows the user to send messages to the connected peers.
     """
     print("Type your message and press Enter to send it. Messages from other peers will be displayed below.")
     while True:
         msg = input("")
-        for peer_address, peer_socket in peers:
+        for peer in peers:
             try:
                 message = {
                     'name': local_peer.name,
                     'message': msg,
                     'timestamp': datetime.now().isoformat()
                 }
-                peer_socket.send(json.dumps(message).encode())
+                peer.socket.send(json.dumps(message).encode())
             except BrokenPipeError:
-                print(f"Can't send message to: {peer_address}")
+                print(f"Can't send message to: {peer}")
 
 def start_peer(local_peer: Peer, peer_list: list[Peer]):
     """
