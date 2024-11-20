@@ -7,7 +7,7 @@ def broadcast_message(msg, sender):
     if not peer_connected:
         print("No peer connected, message is lost")
     if msg:
-        for peer in peer_connected:       
+        for peer in peer_connected:
             peer.send(message(msg.strip(), sender))
     else:
         print("Empty message, not sent")
@@ -19,7 +19,7 @@ def on_message_received(event, payload, connection, error):
             print(payload)
         case 'close':
             print(f"Connection with peer {connection.remote_address} closed")
-            global peer_connected; peer_connected = None
+            #global peer_connected; peer_connected = None
         case 'error':
             print(error)
 
@@ -28,8 +28,8 @@ def server_received(event, payload, connection, error):
         case 'message':
             print(payload)
         case 'close':
-            close_string = f"Connection with peer {connection.remote_address} closed"
-            broadcast_message(close_string)
+            print(f"Connection with peer {connection.remote_address} closed")
+            connection.close()
             peer_connected.remove(connection)
         case 'error':
             print(error)
@@ -70,5 +70,6 @@ while True:
     except (EOFError, KeyboardInterrupt):
         for remote_peer in peer_connected:
             remote_peer.close()
+        server.close()
         break
 server.close()
