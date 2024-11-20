@@ -75,6 +75,12 @@ class InvalidMessage(Exception):
         else:
             super().__init__("Message args are not correct")
 
+class ImpossibleToConnectToPeer(Exception):
+    def __init__(self, message: str = None):
+        if (isinstance(message,str) and message != None):
+            super().__init__(message)
+        else:
+            super().__init__("Impossible to connect with the peer")
 
 
 # Class dict -> Encoded data str (JSON), Encoded data str -> dict
@@ -156,11 +162,11 @@ class Peer():
             self.send(ip, port, message)
             
     def send(self, ip: str, port: int, message: str):
-        try:
+        #try:
             self.__connections[(ip, port)].sendall(bytes(message, 'utf-8'))
             self.__logInfo("Send message <" + message + "> to " + ip + ":" + str(port))
-        except Exception as e:
-            self.__logError("Error send message: " + str(e))
+        #except Exception as e:
+        #    self.__logError("Error send message: " + str(e.__dict__))
 
     def receive(self, conn):
         while True:
@@ -191,8 +197,17 @@ class Peer():
             self.__connections[(ip, port)] = client
             self.send(ip, port, Message(self.__newConnectionMessage()).encodedData)
             self.__logInfo("Connected with ip: " + ip + " port: " + str(port))
+            
         except OSError:
             self.__logError("Can not connect with ip: " + ip + " port: " + str(port))
+            data = {
+                "username": "TCP Group Chat",
+                "message": "Impossible to connect with ip: " + ip + " port: " + str(port)
+            }
+            self.notify(Message(data))
+            #del self.__connections[(ip, port)]
+
+            #raise ImpossibleToConnectToPeer("Impossible to connect with ip: " + ip + " port: " + str(port))
                     
     def disconnect(self, ip: str, port: int):
         self.__connections[(ip, port)].close()
@@ -211,8 +226,11 @@ class Peer():
 
     def __connectToAllPeers(self):
         for addr, port in self.peers:
-            addr, port = obtainIpaddressFromString(addr, port)
-            self.connect(addr, port)
+            #try:
+                addr, port = obtainIpaddressFromString(addr, port)
+                self.connect(addr, port)
+            #except ImpossibleToConnectToPeer:
+            #    del self.peers[(addr, port)]
 
     def __newConnectionMessage(self):
         return {
@@ -238,7 +256,7 @@ class Peer():
         self.connect(ip, port)
 
     def __isNewConnectionMessage(self, message: Message):
-        return message.originalData["message"] == self.NEW_CONNECTION_REQUEST and not ((message.originalData["serverIP"], message.originalData["serverPort"]) in self.peers)
+        return message.originalData["message"] == self.NEW_CONNECTION_REQUEST and not ((message.originalData["serverIP"], message.originalData["serverPort"]) in self.__connections)
 
     def __isCloseConnectionMessage(self, message):
         return message == self.CLOSED_CONNECTION_REQUEST
@@ -317,6 +335,9 @@ class Controller():
         
         self.___inputUsername()
         print('\nType your message and press Enter to send it. Messages from other peers will be displayed below.\n')
+
+        time.sleep(1)
+        self.__peer.start()
         
     def start(self):
         try:
@@ -349,8 +370,7 @@ class Controller():
         print("\nEnter your username to start the chat: ")
         self.__username = input()
         self.__peer.inputUsername(self.__username)
-        time.sleep(1)
-        self.__peer.start()
+        
 
 class View():
     def outputMessage(self, message: str):
