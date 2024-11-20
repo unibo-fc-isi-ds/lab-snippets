@@ -43,6 +43,7 @@ def on_message_received_server(event, payload, connection, error):
             message_forward(payload, connection)
         case 'close':
             print(f"Connection with peer {connection.remote_address} closed")
+            message_forward(f"Connection with peer {connection.remote_address} closed", connection)
             global remote_peer; remote_peer.remove(connection)
         case 'error':
             print(error)
