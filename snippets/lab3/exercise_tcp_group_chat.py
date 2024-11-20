@@ -97,6 +97,7 @@ class Message():
         try:
             self.originalData = self.__Dictmethod(values)
             self.encodedData = self.__JSONmethod(values)
+            self.messageLen = len(self.encodedData)
         except ValueError:
             raise InvalidMessage()
         
@@ -121,6 +122,7 @@ class Message():
     
     def __DicttoJSON(self, dictionary):
         return json.dumps(dictionary)
+
 
 
 
@@ -155,7 +157,7 @@ class Peer():
             sys.exit(1)
         
         self.__set_peers(peers)
-        self.__logger.info("Peers: " + str(self.peers))
+        self.__logInfo("Peers: " + str(self.peers))
 
     def start(self):        
         self.server_thread = threading.Thread(target=self.__serverStart, args=([self.port]))
@@ -181,6 +183,14 @@ class Peer():
             self.disconnect(ip, port)
             
     def send(self, ip: str, port: int, message: str):
+        if (len(message) >= self.BUFFER_SIZE):
+            self.__logError("Length of the message is more than the buffer size. Cannot send.")
+            data = {
+                "username": "TCP Group Chat",
+                "message": "Length of the message is more than the buffer size. Cannot send."
+            }
+            self.notify(Message(data))
+            return
         try:
             self.__connections[(ip, port)].sendall(bytes(message, 'utf-8'))
             self.__logInfo("Send message <" + message + "> to " + ip + ":" + str(port))
@@ -243,6 +253,9 @@ class Peer():
             self.__logInfo("Closed connection with: " + ip + ":" +str(port))
         if self.__socket:
             self.__socket.close()
+
+    def simulateInvolontaryDisconection(self):
+        self.__socket.close()
 
     def __connectToAllPeers(self):
         for addr, port in self.peers:
@@ -386,14 +399,15 @@ class Controller():
         self.__observer.append(observer)
 
     def handleOutputMessage(self, message: Message):
-        if (message.originalData["message"] == self.__peer.NEW_CONNECTION_REQUEST):
-            print("<" + message.originalData["username"] + ">: Join the chat")
-        elif (message.originalData["message"] == self.__peer.CLOSED_CONNECTION_REQUEST):
-            print("<" + message.originalData["username"] + ">: Left the chat")
-        elif (message.originalData["message"] == self.__peer.CHECK_CONNECTION_REQUEST):
-            pass
-        else:
-            print("<" + message.originalData["username"] + ">: " + message.originalData["message"])
+        match message.originalData["message"]:
+            case self.__peer.NEW_CONNECTION_REQUEST:
+                print("<" + message.originalData["username"] + ">: Join the chat")
+            case self.__peer.CLOSED_CONNECTION_REQUEST:
+                print("<" + message.originalData["username"] + ">: Left the chat")
+            case self.__peer.CHECK_CONNECTION_REQUEST:
+                pass
+            case _:
+                print("<" + message.originalData["username"] + ">: " + message.originalData["message"])
 
     def handleInputMessage(self, message: Message):
         for singlebserver in self.__observer:
@@ -418,7 +432,48 @@ if __name__=='__main__':
     c.start()
 
 
+
 class Test():
+
+    # Controller class only for testing use
+    class Testing_Controller(Controller):
+        __test__ = False
+        def __init__(self, args, name = "Default"):
+            self.__observer = []
+            self.peer = Peer(args[0], int(args[1]), peers=args[2:], log=False)
+            self.peer.addObserver(self)
+            self.addObserver(self.peer)
+            self.solution= []
+            
+            self.peer.inputUsername(name)
+
+            time.sleep(0.5)
+            self.peer.start()
+
+        def handleOutputMessage(self, message: Message):
+            match message.originalData["message"]:
+                case self.peer.NEW_CONNECTION_REQUEST:
+                    self.solution.append((message.originalData["username"], self.peer.NEW_CONNECTION_REQUEST))
+                case self.peer.CLOSED_CONNECTION_REQUEST:
+                    self.solution.append((message.originalData["username"], self.peer.CLOSED_CONNECTION_REQUEST))
+                case self.peer.CHECK_CONNECTION_REQUEST:
+                    pass
+                case _:
+                    self.solution.append((message.originalData["username"], message.originalData["message"]))
+
+        def handleInputMessage(self, message: Message):
+            for singlebserver in self.__observer:
+                singlebserver.sendToEveryone(message.encodedData)
+        
+        def close(self):
+            self.peer.close()
+
+        def addObserver(self, observer):
+            self.__observer.append(observer)
+
+        def getResult(self):
+            return self.solution
+
     # Those test check ip address and port
     # Valid "x.x.x.x:port" format
     @given(indirizzo_ip=st.ip_addresses(v=4),
@@ -509,7 +564,89 @@ class Test():
         assert ms.encodedData == jsonString
         assert isinstance(ms.encodedData, str)
 
-    @given(valore = st.text(alphabet=string.ascii_letters + string.punctuation))
-    def test_MessageInvalidString(self, valore):
-        with pytest.raises(InvalidMessage):
-            assert Message(valore)
+    # Check too long messange
+
+    def test_longMessagePeer(self):
+        controller1 = self.Testing_Controller(["localhost", "8080"])
+        controller2 = self.Testing_Controller(["localhost", "8081", "localhost:8080"])
+        time.sleep(0.5)
+        long_string = 'a'*(Peer.BUFFER_SIZE)
+        data = {
+            "username": "Default",
+            "message": long_string
+        }
+        controller1.handleInputMessage(Message(data))
+        data = {
+            "username": "Default",
+            "message": 0
+        }
+        controller2.handleInputMessage(Message(data))
+        time.sleep(0.5)
+        controller1.close()
+        time.sleep(0.5)
+        controller2.close()
+
+        expected_result = []
+        expected_result.append(("Default", Peer.NEW_CONNECTION_REQUEST))
+        expected_result.append(('TCP Group Chat', 'Length of the message is more than the buffer size. Cannot send.'))
+        expected_result.append(("Default", 0))
+
+        assert expected_result == controller1.getResult()
+
+        expected_result = []
+        expected_result.append(("Default", Peer.NEW_CONNECTION_REQUEST))
+        expected_result.append(("Default", Peer.CLOSED_CONNECTION_REQUEST))
+
+        assert expected_result == controller2.getResult()
+
+    # Normal Peer connection
+    def test_normalPeer(self):
+        controller1 = self.Testing_Controller(["localhost", "8082"])
+        controller2 = self.Testing_Controller(["localhost", "8083", "localhost:8082"])
+        time.sleep(0.5)
+        long_string = 'a'*(Peer.BUFFER_SIZE-50)
+        data = {
+            "username": "Default",
+            "message": long_string
+        }
+        controller1.handleInputMessage(Message(data))
+        data = {
+            "username": "Default",
+            "message": 0
+        }
+        controller2.handleInputMessage(Message(data))
+        time.sleep(0.5)
+        controller1.close()
+        time.sleep(0.5)
+        controller2.close()
+
+        expected_result = []
+        expected_result.append(("Default", Peer.NEW_CONNECTION_REQUEST))
+        expected_result.append(("Default", 0))
+
+        assert expected_result == controller1.getResult()
+
+        expected_result = []
+        expected_result.append(("Default", Peer.NEW_CONNECTION_REQUEST))
+        expected_result.append(("Default", long_string))
+        expected_result.append(("Default", Peer.CLOSED_CONNECTION_REQUEST))
+
+        assert expected_result == controller2.getResult() 
+
+    def test_disconectionPeer(self):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.bind(('localhost',8087))
+        sock.listen(1)
+
+        controller2 = self.Testing_Controller(["localhost", "8086", "localhost:8087"])
+        time.sleep(0.5)
+        sock.close()
+
+        time.sleep(10)
+        controller2.close()
+        time.sleep(0.1)
+
+        expected_result = []
+        expected_result.append(('TCP Group Chat','Peer ip: 127.0.0.1 port: 8087 is unrichable. Disconnected.'))
+
+        assert expected_result == controller2.getResult()
