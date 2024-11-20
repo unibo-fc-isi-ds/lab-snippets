@@ -15,12 +15,13 @@ def send_message(msg, sender):
     else:
         print("Empty message, not sent")
 
-def message_forward(msg):
+def message_forward(msg, connection_with_sender):
     if not remote_peer:
         print("No peer connected, message is lost")
     elif msg:
         for peer in remote_peer:
-            peer.send(msg)
+            if peer != connection_with_sender:
+                peer.send(msg)
     else:
         print("Empty message, not sent")
 
