@@ -1,29 +1,16 @@
 from snippets.lab3 import *
 import sys
 
-mode = sys.argv[1].lower().strip()
-remote_peer: Client | None = None
-
 peer_connected = []
 
-
-def send_message(msg, sender):
-    if remote_peer is None:
-        print("No peer connected, message is lost")
-    elif msg:
-        remote_peer.send(message(msg.strip(), sender))
-    else:
-        print("Empty message, not sent")
-
-def broadcast_message(connection, msg):
+def broadcast_message(msg, sender):
     if not peer_connected:
         print("No peer connected, message is lost")
-
-    for client in peer_connected:
-        if msg and client != connection:
-            client.send(msg.strip())
-        else:
-            print("Empty message, not sent")
+    if msg:
+        for peer in peer_connected:       
+            peer.send(message(msg.strip(), sender))
+    else:
+        print("Empty message, not sent")
 
 
 def on_message_received(event, payload, connection, error):
@@ -32,59 +19,56 @@ def on_message_received(event, payload, connection, error):
             print(payload)
         case 'close':
             print(f"Connection with peer {connection.remote_address} closed")
-            global remote_peer; remote_peer = None
+            global peer_connected; peer_connected = None
         case 'error':
             print(error)
-
-
 
 def server_received(event, payload, connection, error):
     match event:
         case 'message':
             print(payload)
-            broadcast_message(connection, payload)
         case 'close':
             close_string = f"Connection with peer {connection.remote_address} closed"
-            broadcast_message(connection, close_string)
+            broadcast_message(close_string)
             peer_connected.remove(connection)
         case 'error':
             print(error)
 
+port = int(sys.argv[1])
 
-if mode == 'server':
-    port = int(sys.argv[2])
-
-    def on_new_connection(event, connection, address, error):
-        match event:
-            case 'listen':
-                print(f"Server listening on port {address[0]} at {', '.join(local_ips())}")
-            case 'connect':
-                print(f"Open ingoing connection from: {address}")
-                connection.callback = server_received
-                global remote_peer; remote_peer = connection
-                peer_connected.append(remote_peer)
-            case 'stop':
-                print(f"Stop listening for new connections")
-            case 'error':
-                print(error)
-
-    server = Server(port, on_new_connection)
-elif mode == 'client':
-    remote_endpoint = sys.argv[2]
-
-    remote_peer = Client(address(remote_endpoint), on_message_received)
-    print(f"Connected to {remote_peer.remote_address}")
+def on_new_connection(event, connection, address, error):
+    match event:
+        case 'connect':
+            print(f"Peer connected: {address}")
+            connection.callback = server_received
+            global remote_peer; remote_peer = connection
+            peer_connected.append(remote_peer)
+        case 'stop':
+            print(f"Stop listening for new connections")
+        case 'error':
+            print(error)
 
 
 username = input('Enter your username to start the chat:\n')
+
+server = Server(port, on_new_connection)
+
 print('Type your message and press Enter to send it. Messages from other peers will be displayed below.')
+
+
+remote_endpoint = sys.argv[2:]
+
+for peer in remote_endpoint:
+    remote_peer = Client(address(peer), on_message_received)
+    peer_connected.append(remote_peer)
+    print(f"Connected to {remote_peer.remote_address}")
+
 while True:
     try:
         content = input()
-        send_message(content, username)
+        broadcast_message(content, username)
     except (EOFError, KeyboardInterrupt):
-        if remote_peer:
+        for remote_peer in peer_connected:
             remote_peer.close()
         break
-if mode == 'server':
-    server.close()
+server.close()
