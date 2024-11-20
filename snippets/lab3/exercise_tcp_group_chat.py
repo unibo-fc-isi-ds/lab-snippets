@@ -32,6 +32,7 @@ def on_message_received(event, payload, connection, error):
             print(payload)
         case 'close':
             print(f"Connection with peer {connection.remote_address} closed")
+            message_forward(f"Connection with peer {connection.remote_address} closed", connection)
             global remote_peer; remote_peer.remove(connection)
         case 'error':
             print(error)
@@ -40,35 +41,37 @@ def on_message_received_server(event, payload, connection, error):
     match event:
         case 'message':
             print(payload)
-            message_forward(payload, connection)
+#            message_forward(payload, connection)
         case 'close':
             print(f"Connection with peer {connection.remote_address} closed")
-            message_forward(f"Connection with peer {connection.remote_address} closed", connection)
+#            message_forward(f"Connection with peer {connection.remote_address} closed", connection)
             global remote_peer; remote_peer.remove(connection)
         case 'error':
             print(error)
 
-if mode == 'server':
-    port = int(sys.argv[2])
+# define server side
+port = int(sys.argv[1])
 
-    def on_new_connection(event, connection, address, error):
-        match event:
-            case 'listen':
-                print(f"Server listening on port {address[0]} at {', '.join(local_ips())}")
-            case 'connect':
-                print(f"Open ingoing connection from: {address}")
-                connection.callback = on_message_received_server
-                global remote_peer; remote_peer.append(connection)
-            case 'stop':
-                print(f"Stop listening for new connections")
-            case 'error':
-                print(error)
+def on_new_connection(event, connection, address, error):
+    match event:
+        case 'listen':
+            print(f"Server listening on port {address[0]} at {', '.join(local_ips())}")
+        case 'connect':
+            print(f"Open ingoing connection from: {address}")
+            connection.callback = on_message_received_server
+            global remote_peer; remote_peer.append(connection)
+        case 'stop':
+            print(f"Stop listening for new connections")
+        case 'error':
+            print(error)
 
-    server = Server(port, on_new_connection)
-elif mode == 'client':
-    remote_endpoint = sys.argv[2]
+server = Server(port, on_new_connection)
 
-    remote_peer.append(Client(address(remote_endpoint), on_message_received))
+# define client side
+remote_endpoint = sys.argv[2:]
+for peer in remote_endpoint:
+    print(peer)
+    remote_peer.append(Client(address(peer), on_message_received))
     print(f"Connected to {remote_peer[0].remote_address}")
 
 username = input('Enter your username to start the chat:\n')
