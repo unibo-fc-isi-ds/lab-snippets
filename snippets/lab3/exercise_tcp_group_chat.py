@@ -124,7 +124,7 @@ class Peer():
         self.__observer = []
         self.__logger = log
         self.port = port
-        self.__username = None
+        self.username = None
         self.__connections = {}
         self.ip = ip
 
@@ -144,15 +144,16 @@ class Peer():
 
     def start(self):        
         self.server_thread = threading.Thread(target=self.__serverStart, args=([self.port]))
+        self.server_thread.daemon = True
         self.server_thread.start()
         self.__connectToAllPeers()
 
     def inputUsername(self, name: str):
-        self.__username = name
+        self.username = name
 
     def sendToEveryone(self, message: str):
-        for receiver in self.peers:
-            self.send(receiver[0], receiver[1], message)
+        for (ip, port), _ in self.__connections.items():
+            self.send(ip, port, message)
             
     def send(self, ip: str, port: int, message: str):
         try:
@@ -166,12 +167,12 @@ class Peer():
             message = conn.recv(self.BUFFER_SIZE).decode('utf-8')
             if (len(message) > 0):
                 self.__logInfo("Received message <" + message + "> from ip: " 
-                               + str(conn.getpeername()[0]) + " port: " + str(conn.getpeername()[1]))
+                            + str(conn.getpeername()[0]) + " port: " + str(conn.getpeername()[1]))
                 m = Message(message)
                 self.notify(m)
                 if(self.__isCloseConnectionMessage(m.originalData["message"])):
-                    self.__logInfo("Closed connection")
-                    conn.close()
+                    self.__logInfo("Closed connection with: " + m.originalData["serverIP"] + ":" +str(m.originalData["serverPort"]))
+                    self.disconnect(m.originalData["serverIP"], m.originalData["serverPort"])
                     return
                 if(self.__isNewConnectionMessage(m)):
                     self.__acceptNewConnection(m)
@@ -194,17 +195,20 @@ class Peer():
         except OSError:
             self.__logError("Can not connect with ip: " + ip + " port: " + str(port))
                     
-    def disconnect(self, peers: list['Peer']):
-        pass
+    def disconnect(self, ip: str, port: int):
+        self.__connections[(ip, port)].close()
+        del self.__connections[(ip, port)]
 
     def close(self):
+        for (ip, port), value in self.__connections.items():
+            self.send(ip, port, Message(self.__disconnectionMessage()).encodedData)
+            self.__connections[(ip, port)].close()
+            self.__logInfo("Closed connection with: " + ip + ":" +str(port))
         if self.__socket:
             self.__socket.close()
-        for key, value in self.__connections.items():
-            value.close()
-        for i in self.__thread:
-            i.join()
-        self.server_thread.join()
+        #for i in self.__thread:
+        #    i.join()
+        #self.server_thread.join()
 
     def __connectToAllPeers(self):
         for addr, port in self.peers:
@@ -215,9 +219,18 @@ class Peer():
         return {
             "serverIP": self.ip,
             "serverPort": self.port,
-            "username": self.__username if self.__isUsernameSet() 
+            "username": self.username if self.__isUsernameSet() 
                 else (self.ip + ":" + str(self.port)),
             "message": self.NEW_CONNECTION_REQUEST
+        }
+    
+    def __disconnectionMessage(self):
+        return {
+            "serverIP": self.ip,
+            "serverPort": self.port,
+            "username": self.username if self.__isUsernameSet() 
+                else (self.ip + ":" + str(self.port)),
+            "message": self.CLOSED_CONNECTION_REQUEST
         }
 
     def __acceptNewConnection(self, message: Message):
@@ -272,22 +285,22 @@ class Peer():
     def __logError(self, message):
         if (self.__logger):
                 self.__logger.error((str(self.port) if not self.__isUsernameSet() 
-                                else "{"+self.__username+"} ") + message)
+                                else "{"+self.username+"} ") + message)
                 
     def __logInfo(self, message):
         if (self.__logger):
                 self.__logger.info((str(self.port) if not self.__isUsernameSet() 
-                                else "{"+self.__username+"} ") + message)
+                                else "{"+self.username+"} ") + message)
                 
     def __isUsernameSet(self):
-        if (self.__username == None):
+        if (self.username == None):
             return False
         else:
             return True
         
     def __startLogger(self):
         if (self.__logger):
-            logging.basicConfig(filename=(self.LOG_FILE_NAME),
+            logging.basicConfig(filename=(self.ip+":"+str(self.port)+".log"),
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     filemode='w')
             self.__logger = logging.getLogger()
@@ -325,18 +338,34 @@ class View():
 
 if __name__=='__main__':
     try:
-        peer2 = Peer('127.0.0.1', 8082, peers=None, log=True)
-        peer1 = Peer('127.0.0.1', 8081, peers=["localhost:8082"], log=True)
+        peer = Peer(sys.argv[1], int(sys.argv[2]), peers=sys.argv[3:], log=True)
         c = Controller()
-        peer1.addObserver(c)
-        peer2.addObserver(c)
-        c.addObserver(peer1)
+        peer.addObserver(c)
+        c.addObserver(peer)
         print("Inserire Username:")
-        peer1.inputUsername(input())
+        peer.inputUsername(input())
+        peer.start()
+        while True:
+            
+            content = input()
+            data = {
+                "username": peer.username,
+                "message": content
+            }
+            c.handleInputMessage(Message(data))
+            #peer.send_all(message(content, username))
+
+        peer2 = Peer('127.0.0.1', 8082, peers=None, log=True)
+        
+        
+        
+        peer2.addObserver(c)
+        
+        
         print("Inserire Username:")
         peer2.inputUsername(input())
         peer2.start()
-        peer1.start()
+        
         time.sleep(5)
         strl= {
             "username": "Carlo",
@@ -344,8 +373,7 @@ if __name__=='__main__':
         }
         c.handleInputMessage(Message(strl))
     except KeyboardInterrupt:
-        peer1.shutdown()
-        peer2.shutdown()
+        peer.close()
 
 
 class Test():
