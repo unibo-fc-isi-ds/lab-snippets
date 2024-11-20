@@ -29,7 +29,6 @@ def server_received(event, payload, connection, error):
             print(payload)
         case 'close':
             print(f"Connection with peer {connection.remote_address} closed")
-            connection.close()
             peer_connected.remove(connection)
         case 'error':
             print(error)
