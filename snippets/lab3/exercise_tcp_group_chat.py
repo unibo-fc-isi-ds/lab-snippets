@@ -1,25 +1,14 @@
-import os
-import threading
-import pytest
+import os, threading, pytest, ipaddress, string, socket, sys, json, logging, time, psutil
 import hypothesis.strategies as st
 from hypothesis import given
-import ipaddress
-import string
-import socket
-import sys
-import json
-import logging
-import time
-import psutil
 
-
+# Function taken from __init__ lab2
 def local_ips():
     for interface in psutil.net_if_addrs().values():
         for addr in interface:
             if addr.family == socket.AF_INET:
                     yield addr.address
 
-# Functions
 def validateIpAddress(ip: str):
     try:
         value = ipaddress.ip_address(ip)
@@ -27,7 +16,7 @@ def validateIpAddress(ip: str):
     except ValueError:
         return ip == 'localhost'
     
-# Copied from __init__ lab3
+# Function taken from __init__ lab3
 # Added check on ':' char, because accepted only x.x.x.x or x.x.x.x:p
 # Can raise InvalideIpAddress or InvalidPortRange
 def obtainIpaddressFromString(ip='0.0.0.0:0', port=None):
@@ -54,7 +43,7 @@ def obtainIpaddressFromString(ip='0.0.0.0:0', port=None):
     return ip, port
 
 
-
+# Exceptions
 class InvalidPortRange(Exception):
     def __init__(self, message: str = None):
         if (isinstance(message,str) and message != None):
@@ -124,9 +113,6 @@ class Message():
         return json.dumps(dictionary)
 
 
-
-
-# Può essere utile avere uno strumento di log
 class Peer():
     LOG_FILE_NAME = "peer.log"
     BUFFER_SIZE = 2048
@@ -135,6 +121,8 @@ class Peer():
     CHECK_CONNECTION_REQUEST = "$$$CHECK"
     SELF_IP_ADDRESS = "127.0.0.1"
     MAX_NUMBER_LISTENER = 100
+    APP_NAME = "TCP Group Chat"
+    SECONDS_BETWEEN_CHECKS = 5
 
     def __init__(self, ip: str, port: int, peers = None, log: bool = False):
         self.__thread = []
@@ -186,7 +174,7 @@ class Peer():
         if (len(message) >= self.BUFFER_SIZE):
             self.__logError("Length of the message is more than the buffer size. Cannot send.")
             data = {
-                "username": "TCP Group Chat",
+                "username": self.APP_NAME,
                 "message": "Length of the message is more than the buffer size. Cannot send."
             }
             self.notify(Message(data))
@@ -197,7 +185,7 @@ class Peer():
         except socket.error as e:
             self.__logError("The connection is failed with ip: " + ip + " port: " + str(port) + str(e))
             data = {
-                "username": "TCP Group Chat",
+                "username": self.APP_NAME,
                 "message": "Peer ip: " + ip + " port: " + str(port) + " is unrichable. Disconnected."
             }
             self.notify(Message(data))
@@ -219,7 +207,8 @@ class Peer():
                     return
                 if(self.__isNewConnectionMessage(m)):
                     self.__acceptNewConnection(m)
-            
+
+    # Pattern observer for controller     
     def addObserver(self, observer):
         self.__observer.append(observer)
 
@@ -237,15 +226,17 @@ class Peer():
         except OSError:
             self.__logError("Can not connect with ip: " + ip + " port: " + str(port))
             data = {
-                "username": "TCP Group Chat",
+                "username": self.APP_NAME,
                 "message": "Impossible to connect with ip: " + ip + " port: " + str(port)
             }
             self.notify(Message(data))
-                    
+
+    # Disconnect a single connection      
     def disconnect(self, ip: str, port: int):
         self.__connections[(ip, port)].close()
         del self.__connections[(ip, port)]
 
+    # Close all sockets
     def close(self):
         for (ip, port), value in self.__connections.items():
             self.send(ip, port, Message(self.__disconnectionMessage()).encodedData)
@@ -253,9 +244,6 @@ class Peer():
             self.__logInfo("Closed connection with: " + ip + ":" +str(port))
         if self.__socket:
             self.__socket.close()
-
-    def simulateInvolontaryDisconection(self):
-        self.__socket.close()
 
     def __connectToAllPeers(self):
         for addr, port in self.peers:
@@ -285,12 +273,14 @@ class Peer():
                                                port = message.originalData["serverPort"])
         self.connect(ip, port)
 
+    # Check if the connection request is already present
     def __isNewConnectionMessage(self, message: Message):
         return message.originalData["message"] == self.NEW_CONNECTION_REQUEST and not ((message.originalData["serverIP"], message.originalData["serverPort"]) in self.__connections)
 
     def __isCloseConnectionMessage(self, message):
         return message == self.CLOSED_CONNECTION_REQUEST
 
+    # Different thread for server
     def __serverStart(self, port):
         try:
             self.server_thread = threading.Thread(target=self.__set_server, args=([port]))
@@ -317,6 +307,7 @@ class Peer():
             print("Address already in use. Restart the app with different port")
             os._exit(1)
         self.__socket.listen(self.MAX_NUMBER_LISTENER)
+        # Loop for connections accept
         while True:
             conn, _ = self.__socket.accept()  # Accept a client connection
             thread = threading.Thread(target=self.receive, args=([conn]))
@@ -325,6 +316,7 @@ class Peer():
             thread.start()  # Start a new thread for each client
             self.__logInfo("New connection active from ip: " + str(conn.getpeername()[0]) + " port: " + str(conn.getpeername()[1]))
 
+    # Take from args peers and save in self.__peers
     def __set_peers(self, peers):
         if peers is None:
             peers = set()
@@ -349,7 +341,7 @@ class Peer():
             return False
         else:
             return True
-        
+    
     def __startLogger(self):
         if (self.__logger):
             logging.basicConfig(filename=(self.ip+":"+str(self.port)+".log"),
@@ -358,11 +350,13 @@ class Peer():
             self.__logger = logging.getLogger()
             self.__logger.setLevel(logging.DEBUG)
     
+    # Loop with message check
     def __checkPeerConnections(self):
         while True:
-            time.sleep(5)
+            time.sleep(self.SECONDS_BETWEEN_CHECKS)
             self.sendToEveryone(Message(self.__checkPeerMessage()).encodedData)
 
+    # Create message for check peers
     def __checkPeerMessage(self):
         return {
             "username": self.username,
@@ -383,6 +377,7 @@ class Controller():
         time.sleep(1)
         self.__peer.start()
         
+    # Main loop for input
     def start(self):
         try:
             while True:
@@ -395,6 +390,7 @@ class Controller():
         except KeyboardInterrupt:
             self.__peer.close()
 
+    # Pattern Observer
     def addObserver(self, observer):
         self.__observer.append(observer)
 
@@ -405,6 +401,7 @@ class Controller():
             case self.__peer.CLOSED_CONNECTION_REQUEST:
                 print("<" + message.originalData["username"] + ">: Left the chat")
             case self.__peer.CHECK_CONNECTION_REQUEST:
+                # Check if peer is alive
                 pass
             case _:
                 print("<" + message.originalData["username"] + ">: " + message.originalData["message"])
@@ -417,15 +414,7 @@ class Controller():
         print("\nEnter your username to start the chat: ")
         self.__username = input()
         self.__peer.inputUsername(self.__username)
-        
 
-# TODO creare test peer
-# TODO sistemare Exception
-# TODO refactoring codice
-# TODO ordinare codice
-# TODO controllare se tutti i thread sono necessari
-# TODO associare connessioni con thread
-# TODO controllare concorrenza
 
 if __name__=='__main__':
     c = Controller(sys.argv)
@@ -633,6 +622,7 @@ class Test():
 
         assert expected_result == controller2.getResult() 
 
+    # Simulate a disconection
     def test_disconectionPeer(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.bind(('localhost',8087))
