@@ -1,3 +1,4 @@
+import os
 import threading
 import pytest
 import hypothesis.strategies as st
@@ -82,6 +83,13 @@ class ImpossibleToConnectToPeer(Exception):
         else:
             super().__init__("Impossible to connect with the peer")
 
+class PeerNotExpectedDisconection(Exception):
+    def __init__(self, message: str = None):
+        if (isinstance(message,str) and message != None):
+            super().__init__(message)
+        else:
+            super().__init__("Peer disconnected unexpectedly")
+
 
 # Class dict -> Encoded data str (JSON), Encoded data str -> dict
 class Message():
@@ -122,6 +130,7 @@ class Peer():
     BUFFER_SIZE = 2048
     CLOSED_CONNECTION_REQUEST = "$$$EXIT"
     NEW_CONNECTION_REQUEST = "$$$NEWCONNECT"
+    CHECK_CONNECTION_REQUEST = "$$$CHECK"
     SELF_IP_ADDRESS = "127.0.0.1"
     MAX_NUMBER_LISTENER = 100
 
@@ -154,19 +163,37 @@ class Peer():
         self.server_thread.start()
         self.__connectToAllPeers()
 
+        self.check_connections = threading.Thread(target=self.__checkPeerConnections, args=([]))
+        self.check_connections.daemon = True
+        self.check_connections.start()
+
     def inputUsername(self, name: str):
         self.username = name
 
     def sendToEveryone(self, message: str):
+        notReacheablePeers = []
         for (ip, port), _ in self.__connections.items():
-            self.send(ip, port, message)
+            try:
+                self.send(ip, port, message)
+            except PeerNotExpectedDisconection:
+                notReacheablePeers.append((ip, port))
+        for ip, port in notReacheablePeers:
+            self.disconnect(ip, port)
             
     def send(self, ip: str, port: int, message: str):
-        #try:
+        try:
             self.__connections[(ip, port)].sendall(bytes(message, 'utf-8'))
             self.__logInfo("Send message <" + message + "> to " + ip + ":" + str(port))
-        #except Exception as e:
-        #    self.__logError("Error send message: " + str(e.__dict__))
+        except socket.error as e:
+            self.__logError("The connection is failed with ip: " + ip + " port: " + str(port) + str(e))
+            data = {
+                "username": "TCP Group Chat",
+                "message": "Peer ip: " + ip + " port: " + str(port) + " is unrichable. Disconnected."
+            }
+            self.notify(Message(data))
+            raise PeerNotExpectedDisconection()
+        except Exception as e:
+            self.__logError("Error send message: " + str(e))
 
     def receive(self, conn):
         while True:
@@ -197,7 +224,6 @@ class Peer():
             self.__connections[(ip, port)] = client
             self.send(ip, port, Message(self.__newConnectionMessage()).encodedData)
             self.__logInfo("Connected with ip: " + ip + " port: " + str(port))
-            
         except OSError:
             self.__logError("Can not connect with ip: " + ip + " port: " + str(port))
             data = {
@@ -205,9 +231,6 @@ class Peer():
                 "message": "Impossible to connect with ip: " + ip + " port: " + str(port)
             }
             self.notify(Message(data))
-            #del self.__connections[(ip, port)]
-
-            #raise ImpossibleToConnectToPeer("Impossible to connect with ip: " + ip + " port: " + str(port))
                     
     def disconnect(self, ip: str, port: int):
         self.__connections[(ip, port)].close()
@@ -220,17 +243,11 @@ class Peer():
             self.__logInfo("Closed connection with: " + ip + ":" +str(port))
         if self.__socket:
             self.__socket.close()
-        #for i in self.__thread:
-        #    i.join()
-        #self.server_thread.join()
 
     def __connectToAllPeers(self):
         for addr, port in self.peers:
-            #try:
-                addr, port = obtainIpaddressFromString(addr, port)
-                self.connect(addr, port)
-            #except ImpossibleToConnectToPeer:
-            #    del self.peers[(addr, port)]
+            addr, port = obtainIpaddressFromString(addr, port)
+            self.connect(addr, port)
 
     def __newConnectionMessage(self):
         return {
@@ -272,7 +289,7 @@ class Peer():
                 thread.join()
             self.close()
             self.__logInfo("Server socket closed")
-            sys.exit(0)
+            os._exit(0)
 
     def __set_server(self, port):
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -280,7 +297,12 @@ class Peer():
             self.__socket.bind(obtainIpaddressFromString(self.SELF_IP_ADDRESS, port=port))
         except (InvalidPortRange, InvalidIpAddress) as e:
             self.__logError(e)
-            sys.exit(1)
+            print(str(e) + ". Restart the app with different port")
+            os._exit(1)
+        except (OSError):
+            self.__logError("Address already in use")
+            print("Address already in use. Restart the app with different port")
+            os._exit(1)
         self.__socket.listen(self.MAX_NUMBER_LISTENER)
         while True:
             conn, _ = self.__socket.accept()  # Accept a client connection
@@ -323,7 +345,16 @@ class Peer():
             self.__logger = logging.getLogger()
             self.__logger.setLevel(logging.DEBUG)
     
-    # funzione privata periodica di controllo della rete
+    def __checkPeerConnections(self):
+        while True:
+            time.sleep(5)
+            self.sendToEveryone(Message(self.__checkPeerMessage()).encodedData)
+
+    def __checkPeerMessage(self):
+        return {
+            "username": self.username,
+            "message": self.CHECK_CONNECTION_REQUEST
+        }
 
 
 class Controller():
@@ -359,6 +390,8 @@ class Controller():
             print("<" + message.originalData["username"] + ">: Join the chat")
         elif (message.originalData["message"] == self.__peer.CLOSED_CONNECTION_REQUEST):
             print("<" + message.originalData["username"] + ">: Left the chat")
+        elif (message.originalData["message"] == self.__peer.CHECK_CONNECTION_REQUEST):
+            pass
         else:
             print("<" + message.originalData["username"] + ">: " + message.originalData["message"])
 
@@ -372,16 +405,9 @@ class Controller():
         self.__peer.inputUsername(self.__username)
         
 
-class View():
-    def outputMessage(self, message: str):
-        pass
-    def inputMessage(self) -> str:
-        pass
-
 # TODO creare test peer
 # TODO sistemare Exception
 # TODO refactoring codice
-# TODO gestire problemi e stabilità connessione (network partition...)
 # TODO ordinare codice
 # TODO controllare se tutti i thread sono necessari
 # TODO associare connessioni con thread
