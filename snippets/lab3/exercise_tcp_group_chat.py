@@ -4,7 +4,7 @@ import sys
 mode = sys.argv[1].lower().strip()
 remote_peer: Client | None = None
 
-client_connected = []
+peer_connected = []
 
 
 def send_message(msg, sender):
@@ -16,10 +16,10 @@ def send_message(msg, sender):
         print("Empty message, not sent")
 
 def broadcast_message(connection, msg):
-    if not client_connected:
+    if not peer_connected:
         print("No peer connected, message is lost")
 
-    for client in client_connected:
+    for client in peer_connected:
         if msg and client != connection:
             client.send(msg.strip())
         else:
@@ -44,8 +44,9 @@ def server_received(event, payload, connection, error):
             print(payload)
             broadcast_message(connection, payload)
         case 'close':
-            print(f"Connection with peer {connection.remote_address} closed")
-            global remote_peer; remote_peer = None
+            close_string = f"Connection with peer {connection.remote_address} closed"
+            broadcast_message(connection, close_string)
+            peer_connected.remove(connection)
         case 'error':
             print(error)
 
@@ -61,7 +62,7 @@ if mode == 'server':
                 print(f"Open ingoing connection from: {address}")
                 connection.callback = server_received
                 global remote_peer; remote_peer = connection
-                client_connected.append(remote_peer)
+                peer_connected.append(remote_peer)
             case 'stop':
                 print(f"Stop listening for new connections")
             case 'error':
