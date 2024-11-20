@@ -190,7 +190,6 @@ class Peer():
             client.connect((ip, port))
             self.__connections[(ip, port)] = client
             self.send(ip, port, Message(self.__newConnectionMessage()).encodedData)
-            print("Connected with ip: " + ip + " port: " + str(port))
             self.__logInfo("Connected with ip: " + ip + " port: " + str(port))
         except OSError:
             self.__logError("Can not connect with ip: " + ip + " port: " + str(port))
@@ -310,15 +309,48 @@ class Peer():
 
 
 class Controller():
-    def __init__(self):
+    def __init__(self, args):
         self.__observer = []
+        self.__peer = Peer(args[1], int(args[2]), peers=args[3:], log=True)
+        self.__peer.addObserver(self)
+        self.addObserver(self.__peer)
+        
+        self.___inputUsername()
+        print('\nType your message and press Enter to send it. Messages from other peers will be displayed below.\n')
+        
+    def start(self):
+        try:
+            while True:
+                content = input()
+                data = {
+                    "username": self.__username,
+                    "message": content
+                }
+                self.handleInputMessage(Message(data))
+        except KeyboardInterrupt:
+            self.__peer.close()
+
     def addObserver(self, observer):
         self.__observer.append(observer)
+
     def handleOutputMessage(self, message: Message):
-        print(message.originalData["username"] + " " + message.originalData["message"])
+        if (message.originalData["message"] == self.__peer.NEW_CONNECTION_REQUEST):
+            print("<" + message.originalData["username"] + ">: Join the chat")
+        elif (message.originalData["message"] == self.__peer.CLOSED_CONNECTION_REQUEST):
+            print("<" + message.originalData["username"] + ">: Left the chat")
+        else:
+            print("<" + message.originalData["username"] + ">: " + message.originalData["message"])
+
     def handleInputMessage(self, message: Message):
         for singlebserver in self.__observer:
             singlebserver.sendToEveryone(message.encodedData)
+
+    def ___inputUsername(self):
+        print("\nEnter your username to start the chat: ")
+        self.__username = input()
+        self.__peer.inputUsername(self.__username)
+        time.sleep(1)
+        self.__peer.start()
 
 class View():
     def outputMessage(self, message: str):
@@ -326,7 +358,6 @@ class View():
     def inputMessage(self) -> str:
         pass
 
-# TODO aggiungere disconnesione da rete
 # TODO creare test peer
 # TODO sistemare Exception
 # TODO refactoring codice
@@ -337,43 +368,8 @@ class View():
 # TODO controllare concorrenza
 
 if __name__=='__main__':
-    try:
-        peer = Peer(sys.argv[1], int(sys.argv[2]), peers=sys.argv[3:], log=True)
-        c = Controller()
-        peer.addObserver(c)
-        c.addObserver(peer)
-        print("Inserire Username:")
-        peer.inputUsername(input())
-        peer.start()
-        while True:
-            
-            content = input()
-            data = {
-                "username": peer.username,
-                "message": content
-            }
-            c.handleInputMessage(Message(data))
-            #peer.send_all(message(content, username))
-
-        peer2 = Peer('127.0.0.1', 8082, peers=None, log=True)
-        
-        
-        
-        peer2.addObserver(c)
-        
-        
-        print("Inserire Username:")
-        peer2.inputUsername(input())
-        peer2.start()
-        
-        time.sleep(5)
-        strl= {
-            "username": "Carlo",
-            "message": "Ciao"
-        }
-        c.handleInputMessage(Message(strl))
-    except KeyboardInterrupt:
-        peer.close()
+    c = Controller(sys.argv)
+    c.start()
 
 
 class Test():
