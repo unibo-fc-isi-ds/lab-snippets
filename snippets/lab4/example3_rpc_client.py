@@ -2,19 +2,23 @@ from snippets.lab3 import Client, address
 from snippets.lab4.users import *
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 
-
+# questo è il famoso ClientStub, che fa exploit di TCP Client "under the hood"
 class ClientStub:
     def __init__(self, server_address: tuple[str, int]):
         self.__server_address = address(*server_address)
 
+    # creo qua dentro il Client, che contatterà il server di certo indirizzo. Farà
+    # poi lui la connessione creando una request passando il nome della funzione e gli argomenti.
     def rpc(self, name, *args):
         client = Client(self.__server_address)
         try:
             print('# Connected to %s:%d' % client.remote_address)
             request = Request(name, args)
+            # anche qui dopo che il Client ha creato la request, faccio marshall del messaggio
             print('# Marshalling', request, 'towards', "%s:%d" % client.remote_address)
             request = serialize(request)
             print('# Sending message:', request.replace('\n', '\n# '))
+            # invio la richiesta al Server e la ricevo, facendo poi Unmarshall
             client.send(request)
             response = client.receive()
             print('# Received message:', response.replace('\n', '\n# '))
@@ -29,10 +33,12 @@ class ClientStub:
             print('# Disconnected from %s:%d' % client.remote_address)
 
 
+# anche in questo caso implemento l'interfaccia UserDatabase
 class RemoteUserDatabase(ClientStub, UserDatabase):
     def __init__(self, server_address):
         super().__init__(server_address)
 
+    # in questo caso l'implementazione viene fatta usando la funzione rpc passandogli argomenti necessari (nome funzione, argomenti)
     def add_user(self, user: User):
         return self.rpc('add_user', user)
 

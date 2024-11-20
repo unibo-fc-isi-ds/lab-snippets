@@ -1,7 +1,6 @@
 from ..users import *
 import hashlib
 
-
 def _compute_sha256_hash(input: str) -> str:
     sha256_hash = hashlib.sha256()
     sha256_hash.update(input.encode('utf-8'))
@@ -17,6 +16,7 @@ class _Debuggable:
             print(*args, **kwargs)
 
 
+# questo è la classe che implementa l'interfaccia UserDatabase
 class InMemoryUserDatabase(UserDatabase, _Debuggable):
     def __init__(self, debug: bool = True):
         _Debuggable.__init__(self, debug)
