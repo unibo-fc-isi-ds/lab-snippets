@@ -48,10 +48,11 @@ if __name__ == '__main__':
                 print(user_db.check_password(credentials))
             case 'authenticate':
                 credentials = Credentials(args.user, args.password)
-                print(auth_service.authenticate(credentials))
+                auth_service.__token = auth_service.authenticate(credentials)
+                print(auth_service.__token)
             case 'validate':
-                token = Token(User(args.user, args.email, args.name, Role[args.role.upper()]), datetime.now(), args.token)
-                print(auth_service.validate_token(token))
+                # token = Token(User(args.user, args.email, args.name, Role[args.role.upper()]), datetime.now(), args.token)
+                print(auth_service.validate_token(auth_service.__token))
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:
