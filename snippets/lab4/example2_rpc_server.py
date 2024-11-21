@@ -2,6 +2,7 @@ from snippets.lab3 import Server
 from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 import traceback
+from snippets.lab4.users import Role
 
 
 class ServerStub(Server):
@@ -28,6 +29,13 @@ class ServerStub(Server):
                 request = deserialize(payload)
                 assert isinstance(request, Request)
                 print('[%s:%d] Unmarshall request:' % connection.remote_address, request)
+                
+                if request.name == 'get' and not self.__authorization(request.metadata):
+                    response = Response(None, 'Unauthorized')
+                    connection.send(serialize(response))
+                    connection.close()
+                    return
+                
                 response = self.__handle_request(request)
                 connection.send(serialize(response))
                 print('[%s:%d] Marshall response:' % connection.remote_address, response)
@@ -49,7 +57,13 @@ class ServerStub(Server):
             result = None
             error = " ".join(e.args)
         return Response(result, error)
-
+    
+    def __authorization(self, token):
+        if not self.__auth_service.validate_token(token):
+            return False
+        elif not token.user.role == Role.ADMIN:
+            return False
+        return True
 
 if __name__ == '__main__':
     import sys
