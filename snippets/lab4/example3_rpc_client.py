@@ -1,6 +1,6 @@
 from snippets.lab3 import Client, address
 from snippets.lab4.users import *
-from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
+from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response, Service
 
 class ClientStub:
     def __init__(self, server_address: tuple[str, int]):
@@ -33,23 +33,23 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
         super().__init__(server_address)
 
     def add_user(self, user: User):
-        return self.rpc('add_user', 'database', user)
+        return self.rpc('add_user', Service.DATABASE, user)
 
     def get_user(self, id: str) -> User:
-        return self.rpc('get_user', 'database', id)
+        return self.rpc('get_user', Service.DATABASE, id)
 
     def check_password(self, credentials: Credentials) -> bool:
-        return self.rpc('check_password', 'database', credentials)
+        return self.rpc('check_password', Service.DATABASE, credentials)
 
 class RemoteAuthenticationService(ClientStub, AuthenticationService):
     def __init__(self, server_address):
         super().__init__(server_address)
 
     def authenticate(self, credentials: Credentials, duration: timedelta = None) -> Token:
-        return self.rpc('authenticate', 'authentication', credentials, duration)
+        return self.rpc('authenticate', Service.AUTHENTICATION, credentials, duration)
 
     def validate_token(self, token: Token) -> bool:
-        return self.rpc('validate_token', 'authentication', token)
+        return self.rpc('validate_token', Service.AUTHENTICATION, token)
 
 
 if __name__ == '__main__':

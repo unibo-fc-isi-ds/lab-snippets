@@ -1,6 +1,6 @@
 from snippets.lab3 import Server
 from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService
-from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
+from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response, Service
 import traceback
 
 DEBUG_AUTH_SECRET = "secret"
@@ -40,13 +40,12 @@ class ServerStub(Server):
     
     def __handle_request(self, request: Request):
         try:
-            # method = getattr(self.__user_db, request.name)
-            if request.service == 'database':
+            if request.service is Service.DATABASE:
                 method = getattr(self.__user_db, request.name)
-            elif request.service == 'authentication':
+            elif request.service is Service.AUTHENTICATION:
                 method = getattr(self.__auth_service, request.name)
             else:
-                raise Exception("Bad request")
+                raise Exception("Bad Request: no valid service called")
             
             result = method(*request.args)
             error = None

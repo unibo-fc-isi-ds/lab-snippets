@@ -67,7 +67,6 @@ if __name__ == '__main__':
             case 'authenticate':
                 if not args.password:
                     raise ValueError("Password is required")
-                
                 credentials = Credentials(ids[0], args.password)
                 token = auth_service.authenticate(credentials)
                 print(token)
