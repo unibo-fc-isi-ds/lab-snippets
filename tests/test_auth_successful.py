@@ -1,7 +1,6 @@
-from snippets.lab4.example2_rpc_server import ServerStub
 from snippets.lab4.example3_rpc_client import RemoteUserDatabase, RemoteAuthenticationService
 from snippets.lab4.users import User, Role, Credentials, Token
-
+from snippets.lab4.example2_rpc_server import ServerStub
 import unittest
 import time
 
