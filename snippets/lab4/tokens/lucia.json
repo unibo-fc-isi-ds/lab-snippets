@@ -1,0 +1,21 @@
+{
+  "signature": "774b175951f18839b6ccad1298b430ecfbd90f07d482f91398753c7e89545c5b",
+  "user": {
+    "username": "lucia",
+    "emails": [
+      "lucia.castellucci@gmail.com"
+    ],
+    "full_name": "Lucia Castellucci",
+    "role": {
+      "name": "ADMIN",
+      "$type": "Role"
+    },
+    "password": null,
+    "$type": "User"
+  },
+  "expiration": {
+    "datetime": "2024-11-23T18:58:48.569835",
+    "$type": "datetime"
+  },
+  "$type": "Token"
+}
