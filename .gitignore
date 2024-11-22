@@ -141,4 +141,4 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-./snippets/lab4/token.json
+./snippets/lab4/tokens/

@@ -1,0 +1,21 @@
+{
+  "signature": "52817aea2b6079c10883b66fe38c71519d0a40655025e68e05b3a6bdd420cb39",
+  "user": {
+    "username": "luca",
+    "emails": [
+      "test@gmail.com"
+    ],
+    "full_name": "Luca Samor\u00e8",
+    "role": {
+      "name": "ADMIN",
+      "$type": "Role"
+    },
+    "password": null,
+    "$type": "User"
+  },
+  "expiration": {
+    "datetime": "2024-11-23T20:51:40.502234",
+    "$type": "datetime"
+  },
+  "$type": "Token"
+}
