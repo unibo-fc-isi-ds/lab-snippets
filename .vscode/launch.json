@@ -176,6 +176,38 @@
             "args": [
                 "localhost:8080"
             ],
-        },
+        },{
+            "name": "L4E4: RPC Client CLI - Add",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab4.example4_rpc_client_cli",
+            "args": [
+                "localhost:8080",
+                "add",
+                "-u",
+                "lucia",
+                "-a",
+                "lucia.castellucci@gmail.com",
+                "-n",
+                "Lucia Castellucci",
+                "-r",
+                "admin",
+                "-p",
+                "password"
+            ],
+        },{
+            "name": "L4E4: RPC Client CLI - Authenticate",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab4.example4_rpc_client_cli",
+            "args": [
+                "localhost:8080",
+                "authenticate",
+                "-u",
+                "lucia",
+                "-p",
+                "password"
+            ],
+        }
     ]
 }
