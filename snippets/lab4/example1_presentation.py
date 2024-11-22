@@ -11,11 +11,11 @@ class Request:
     """
 
     name: str
+    service: str
     args: tuple
 
     def __post_init__(self):
         self.args = tuple(self.args)
-
 
 @dataclass
 class Response:
@@ -77,7 +77,7 @@ class Serializer:
         }
 
     def _datetime_to_ast(self, dt: datetime):
-        raise NotImplementedError("Missing implementation for datetime serialization")
+        return {'datetime': dt.isoformat()}
 
     def _role_to_ast(self, role: Role):
         return {'name': role.name}
@@ -85,6 +85,7 @@ class Serializer:
     def _request_to_ast(self, request: Request):
         return {
             'name': self._to_ast(request.name),
+            'service': self._to_ast(request.service),
             'args': [self._to_ast(arg) for arg in request.args],
         }
 
@@ -97,10 +98,10 @@ class Serializer:
 
 class Deserializer:
     def deserialize(self, string):
-        return self._ast_to_obj(self._string_to_ast(string))
+        return self._ast_to_obj(self._ast_to_string(string))
 
-    def _string_to_ast(self, string):
-        return json.loads(string)
+    def _ast_to_string(self, data):
+        return json.loads(data)
 
     def _ast_to_obj(self, data):
         if isinstance(data, dict):
@@ -138,7 +139,7 @@ class Deserializer:
         )
 
     def _ast_to_datetime(self, data):
-        raise NotImplementedError("Missing implementation for datetime deserialization")
+        return datetime.fromisoformat(data['datetime'])
 
     def _ast_to_role(self, data):
         return Role[self._ast_to_obj(data['name'])]
@@ -146,6 +147,7 @@ class Deserializer:
     def _ast_to_request(self, data):
         return Request(
             name=self._ast_to_obj(data['name']),
+            service=self._ast_to_obj(data['service']),
             args=tuple(self._ast_to_obj(arg) for arg in data['args']),
         )
 
