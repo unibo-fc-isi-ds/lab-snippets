@@ -1,7 +1,19 @@
 from .example3_rpc_client import *
+from .example1_presentation import Serializer, Deserializer
 import argparse
 import sys
 
+TOKEN_FILE = "./snippets/lab4/token.json"
+
+def save_token_to_file() -> None:
+    with open(TOKEN_FILE, 'w') as f:
+        serializer = Serializer()
+        f.write(serializer.serialize(token))
+
+def read_token_from_file() -> Token:
+    with open(TOKEN_FILE, 'r') as f:
+        deserializer = Deserializer()
+        return deserializer.deserialize(f.read())
 
 if __name__ == '__main__':
 
@@ -25,7 +37,7 @@ if __name__ == '__main__':
         sys.exit(0)
 
     args.address = address(args.address)
-    user_db = RemoteUserDatabase(args.address) # client stub for database
+    user_db = RemoteUserDatabase(args.address)
     auth_service = RemoteAuthenticationService(args.address)
 
     try :
@@ -50,10 +62,13 @@ if __name__ == '__main__':
                     raise ValueError("Password is required")
                 
                 credentials = Credentials(ids[0], args.password)
-                print(auth_service.authenticate(credentials))
-
+                token = auth_service.authenticate(credentials)
+                print(token)
+                save_token_to_file()
             case 'validate_token':
-                pass
+                token = read_token_from_file()
+                print("Token validated" if auth_service.validate_token(token) 
+                                        else "Token expired")
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:
