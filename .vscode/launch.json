@@ -176,6 +176,41 @@
             "args": [
                 "localhost:8080"
             ],
+        },{
+            "name": "L4E4: RPC Client CLI",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab4.example4_rpc_client_cli",
+            "args": [
+                "localhost:8080",
+                "add",
+                "-u",
+                "luca",
+                "-a",
+                "test@gmail.com",
+                "-n",
+                "Luca Samore",
+                "-r",
+                "admin",
+                "-p",
+                "password"
+            ],
+        },
+        {
+            "name": "L4E4: RPC Client CLI Authenticate",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab4.example4_rpc_client_cli",
+            "args": [
+                "localhost:8080",
+                "authenticate",
+                "-u",
+                "luca",
+                "-p",
+                "password"
+            ],
         },
     ]
 }
+
+//  -r admin -p "my secret password"
