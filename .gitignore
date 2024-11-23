@@ -144,3 +144,4 @@ dmypy.json
 
 snippets/lab4/tokens/
 snippets/lab4/users/database/
+tests/users/
