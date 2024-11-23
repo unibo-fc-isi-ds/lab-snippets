@@ -23,8 +23,9 @@ class InMemoryUserDatabase(UserDatabase, _Debuggable):
     def __init__(self, debug: bool = True):
         _Debuggable.__init__(self, debug)
         self.__DATABASE_FILE = './snippets/lab4/database.json'
+        self.__debug = debug
 
-        users = self.__read_users_from_file()
+        users = self.__read_users_from_file() if not debug else {}
         if users:
             self.__users: dict[str, User] = users
             self._log("User database initialized with existing users")
@@ -41,7 +42,8 @@ class InMemoryUserDatabase(UserDatabase, _Debuggable):
         user = user.copy(password=_compute_sha256_hash(user.password))
         for id in user.ids:
             self.__users[id] = user
-        self.__store_users_to_file()
+        if not self.__debug:
+            self.__store_users_to_file()
         self._log(f"Add: {user}")
     
     def get_user(self, id: str) -> User:

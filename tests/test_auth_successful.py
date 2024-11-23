@@ -4,7 +4,7 @@ from snippets.lab4.example2_rpc_server import ServerStub
 import unittest
 import time
 
-SERVER_PORT = 8080
+SERVER_PORT = 8081
 USER = User(
     username='user123',
     emails={'test@gmail.com'},
@@ -16,7 +16,7 @@ USER = User(
 class TestAuthIsSuccessful(unittest.TestCase):
     
     def setUp(self):
-        self.server = ServerStub(SERVER_PORT)
+        self.server = ServerStub(SERVER_PORT, debug=True)
         time.sleep(3)
         self.database = RemoteUserDatabase(('localhost', SERVER_PORT))
         time.sleep(3)

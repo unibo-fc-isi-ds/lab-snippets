@@ -3,16 +3,12 @@ from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticatio
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response, Service
 import traceback
 
-DEBUG_AUTH_SECRET = "secret"
-
 class ServerStub(Server):
     def __init__(self, port, debug=False):
         super().__init__(port, self.__on_connection_event)
-        self.__user_db = InMemoryUserDatabase()
-        self.__auth_service = \
-            InMemoryAuthenticationService(self.__user_db) if not debug \
-                                                          else InMemoryAuthenticationService(self.__user_db, secret=DEBUG_AUTH_SECRET)
-    
+        self.__user_db = InMemoryUserDatabase(debug)
+        self.__auth_service = InMemoryAuthenticationService(self.__user_db)
+
     def __on_connection_event(self, event, connection, address, error):
         match event:
             case 'listen':
