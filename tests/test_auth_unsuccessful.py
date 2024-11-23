@@ -4,16 +4,9 @@ from snippets.lab4.users import User, Role, Credentials, Token
 import unittest
 import time
 
-SERVER_PORT = 8080
-USER = User(
-    username='user123',
-    emails={'test@gmail.com'},
-    full_name='User',
-    role=Role.ADMIN,
-    password='tell_nobody'
-)
+SERVER_PORT = 8081
 
-class TestAuthIsSuccessful(unittest.TestCase):
+class TestAuthIsUnsuccessful(unittest.TestCase):
     
     def setUp(self):
         self.server = ServerStub(SERVER_PORT, debug=True)
@@ -22,13 +15,12 @@ class TestAuthIsSuccessful(unittest.TestCase):
         time.sleep(3)
         self.auth_service = RemoteAuthenticationService(('localhost', SERVER_PORT))
         time.sleep(3)
-        self.database.add_user(USER)
         return super().setUp()
     
-    def test_authentication_is_successful(self):
-        credentials = Credentials('user123', 'tell_nobody')
-        token = self.auth_service.authenticate(credentials)
-        self.assertIsInstance(token, Token)
+    def test_authentication_is_unsuccessful(self):
+        credentials = Credentials('user456', 'tell_nobody_2')
+        with self.assertRaises(RuntimeError):
+            self.auth_service.authenticate(credentials)
 
     def tearDown(self):
         self.server.close()

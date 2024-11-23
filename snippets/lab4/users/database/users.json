@@ -1,28 +1,28 @@
 {
-  "lucia.castellucci@gmail.com": {
-    "username": "lucia",
+  "test@gmail.com": {
+    "username": "user123",
     "emails": [
-      "lucia.castellucci@gmail.com"
+      "test@gmail.com"
     ],
-    "full_name": "Lucia Castellucci",
+    "full_name": "User",
     "role": {
       "name": "ADMIN",
       "$type": "Role"
     },
-    "password": "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8",
+    "password": "ce54d5f044de62c1a4d19be97f49a56d5ed7278096d4b436978c53c0730def2d",
     "$type": "User"
   },
-  "lucia": {
-    "username": "lucia",
+  "user123": {
+    "username": "user123",
     "emails": [
-      "lucia.castellucci@gmail.com"
+      "test@gmail.com"
     ],
-    "full_name": "Lucia Castellucci",
+    "full_name": "User",
     "role": {
       "name": "ADMIN",
       "$type": "Role"
     },
-    "password": "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8",
+    "password": "ce54d5f044de62c1a4d19be97f49a56d5ed7278096d4b436978c53c0730def2d",
     "$type": "User"
   }
 }

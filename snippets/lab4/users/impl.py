@@ -20,7 +20,10 @@ class _Debuggable:
 class InMemoryUserDatabase(UserDatabase, _Debuggable):
     def __init__(self, debug: bool = True):
         _Debuggable.__init__(self, debug)
-        self.__USERS_DIR = './snippets/lab4/users/database/users.json'
+        if debug:
+            self.__USERS_DIR = './tests/users/users.json'
+        else:
+            self.__USERS_DIR = './snippets/lab4/users/database/users.json'
         users = self.__read_users_from_file()
         if users:
             self.__users = users
@@ -61,8 +64,9 @@ class InMemoryUserDatabase(UserDatabase, _Debuggable):
         return self.__users[id]
     
     def __save_users_to_file(self) -> None:
-        if not os.path.exists(self.__USERS_DIR):
-            os.makedirs(self.__USERS_DIR)
+        directory = os.path.dirname(self.__USERS_DIR)
+        if not os.path.exists(directory):
+            os.makedirs(directory)
         with open(self.__USERS_DIR, 'w') as f:
             serializer = Serializer()
             f.write(serializer.serialize(self.__users))
@@ -103,3 +107,4 @@ class InMemoryAuthenticationService(AuthenticationService, _Debuggable):
         result = token.expiration > datetime.now() and self.__validate_token_signature(token)
         self._log(f"{token} is " + ('valid' if result else 'invalid'))
         return result
+ 
