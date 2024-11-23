@@ -142,5 +142,5 @@ dmypy.json
 .pyre/
 
 
-./snippets/lab4/tokens/
-./snippets/lab4/database/
+snippets/lab4/tokens/
+snippets/lab4/users/database/
