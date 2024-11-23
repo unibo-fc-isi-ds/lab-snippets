@@ -63,7 +63,7 @@ class InMemoryUserDatabase(UserDatabase, _Debuggable):
     def __save_users_to_file(self) -> None:
         if not os.path.exists(self.__USERS_DIR):
             os.makedirs(self.__USERS_DIR)
-        with open(self.__USERS_DIR + '/users.json', 'w') as f:
+        with open(self.__USERS_DIR, 'w') as f:
             serializer = Serializer()
             f.write(serializer.serialize(self.__users))
 
