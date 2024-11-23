@@ -1,5 +1,7 @@
+from snippets.lab4.example1_presentation import Serializer, Deserializer
 from ..users import *
 import hashlib
+import os
 
 
 def _compute_sha256_hash(input: str) -> str:
@@ -20,8 +22,15 @@ class _Debuggable:
 class InMemoryUserDatabase(UserDatabase, _Debuggable):
     def __init__(self, debug: bool = True):
         _Debuggable.__init__(self, debug)
-        self.__users: dict[str, User] = {}
-        self._log("User database initialized with empty users")
+        self.__DATABASE_FILE = './snippets/lab4/database.json'
+
+        users = self.__read_users_from_file()
+        if users:
+            self.__users: dict[str, User] = users
+            self._log("User database initialized with existing users")
+        else:
+            self.__users: dict[str, User] = {}
+            self._log("User database initialized with empty users")
     
     def add_user(self, user: User):
         for id in user.ids:
@@ -32,12 +41,8 @@ class InMemoryUserDatabase(UserDatabase, _Debuggable):
         user = user.copy(password=_compute_sha256_hash(user.password))
         for id in user.ids:
             self.__users[id] = user
+        self.__store_users_to_file()
         self._log(f"Add: {user}")
-
-    def __get_user(self, id: str) -> User:
-        if id not in self.__users:
-            raise KeyError(f"User with ID {id} not found")
-        return self.__users[id]
     
     def get_user(self, id: str) -> User:
         result = self.__get_user(id).copy(password=None)
@@ -52,6 +57,23 @@ class InMemoryUserDatabase(UserDatabase, _Debuggable):
             result = False
         self._log(f"Checking {credentials}: {'correct' if result else 'incorrect'}")
         return result
+    
+    def __get_user(self, id: str) -> User:
+        if id not in self.__users:
+            raise KeyError(f"User with ID {id} not found")
+        return self.__users[id]
+    
+    def __store_users_to_file(self) -> None:
+        with open(self.__DATABASE_FILE, 'w') as f:
+            serializer = Serializer()
+            f.write(serializer.serialize(self.__users))
+
+    def __read_users_from_file(self) -> dict[str, User]:
+        if not os.path.exists(self.__DATABASE_FILE):
+            return {}
+        with open(self.__DATABASE_FILE, 'r') as f:
+            deserializer = Deserializer()
+            return deserializer.deserialize(f.read())
     
 
 class InMemoryAuthenticationService(AuthenticationService, _Debuggable):
