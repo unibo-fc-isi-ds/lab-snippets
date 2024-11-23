@@ -1,5 +1,5 @@
 from .users import User, Credentials, Token, Role
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 from dataclasses import dataclass
 
@@ -9,7 +9,6 @@ class Request:
     """
     A container for RPC requests: a name of the function to call and its arguments.
     """
-
     name: str
     args: tuple
 
@@ -24,7 +23,6 @@ class Response:
     When error is None, it means there was no error.
     Result may be None, if the function returns None.
     """
-
     result: object | None
     error: str | None
 
@@ -77,7 +75,18 @@ class Serializer:
         }
 
     def _datetime_to_ast(self, dt: datetime):
-        raise NotImplementedError("Missing implementation for datetime serialization")
+        return {
+            'iso': dt.isoformat(),
+            '$type': 'datetime'
+        }
+
+    def _timedelta_to_ast(self, td: timedelta):
+        return {
+            'days': td.days,
+            'seconds': td.seconds,
+            'microseconds': td.microseconds,
+            '$type': 'timedelta'
+        }
 
     def _role_to_ast(self, role: Role):
         return {'name': role.name}
@@ -105,12 +114,12 @@ class Deserializer:
     def _ast_to_obj(self, data):
         if isinstance(data, dict):
             if '$type' not in data:
-                return {key: self._ast_to_obj(value) for key, value in data.items()}
+                raise KeyError(f"Missing $type in data: {data}")
             # selects the appropriate method to convert the AST to object via reflection
             method_name = f'_ast_to_{data["$type"].lower()}'
             if hasattr(self, method_name):
                 return getattr(self, method_name)(data)
-            raise ValueError(f"Unsupported type {data['type']}")
+            raise ValueError(f"Unsupported type {data['$type']}")
         if isinstance(data, list):
             return [self._ast_to_obj(item) for item in data]
         return data
@@ -138,7 +147,14 @@ class Deserializer:
         )
 
     def _ast_to_datetime(self, data):
-        raise NotImplementedError("Missing implementation for datetime deserialization")
+        return datetime.fromisoformat(data['iso'])
+
+    def _ast_to_timedelta(self, data):
+        return timedelta(
+            days=data['days'],
+            seconds=data['seconds'],
+            microseconds=data['microseconds']
+        )
 
     def _ast_to_role(self, data):
         return Role[self._ast_to_obj(data['name'])]
@@ -174,11 +190,12 @@ if __name__ == '__main__':
     request = Request(
         name='my_function',
         args=(
-            gc_credentials_wrong, # an instance of Credentials
-            gc_user, # an instance of User
-            ["a string", 42, 3.14, True, False], # a list, containing various primitive types
-            {'key': 'value'}, # a dictionary
-            Response(None, 'an error'), # a Response, which contains a None field
+            gc_credentials_wrong,  # an instance of Credentials
+            gc_user,  # an instance of User
+            ["a string", 42, 3.14, True, False],  # a list, containing various primitive types
+            {'key': 'value'},  # a dictionary
+            Response(None, 'an error'),  # a Response, which contains a None field
+            timedelta(days=2, seconds=3600)  # timedelta example
         )
     )
     serialized = serialize(request)
