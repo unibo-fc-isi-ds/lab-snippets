@@ -1,7 +1,8 @@
+from typing import Optional
 from .users import User, Credentials, Token, Role
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass
@@ -16,6 +17,12 @@ class Request:
     def __post_init__(self):
         self.args = tuple(self.args)
 
+@dataclass
+class SecureRequest(Request):
+    """
+    An extended request that includes a metadata field of type Token for authentication.
+    """
+    metadata: Optional[Token] = field(default=None)
 
 @dataclass
 class Response:
@@ -77,7 +84,22 @@ class Serializer:
         }
 
     def _datetime_to_ast(self, dt: datetime):
-        raise NotImplementedError("Missing implementation for datetime serialization")
+        return {
+            'year': self._to_ast(dt.year),
+            'month': self._to_ast(dt.month),
+            'day': self._to_ast(dt.day),
+            'hour': self._to_ast(dt.hour),
+            'minute': self._to_ast(dt.minute),
+            'second': self._to_ast(dt.second),
+            'microsecond': self._to_ast(dt.microsecond),
+        }
+    
+    def _timedelta_to_ast(self, td: timedelta):
+        return {
+            'days': self._to_ast(td.days),
+            'seconds': self._to_ast(td.seconds),
+            'microseconds': self._to_ast(td.microseconds),
+        }
 
     def _role_to_ast(self, role: Role):
         return {'name': role.name}
@@ -86,6 +108,13 @@ class Serializer:
         return {
             'name': self._to_ast(request.name),
             'args': [self._to_ast(arg) for arg in request.args],
+        }
+    
+    def _securerequest_to_ast(self, request: SecureRequest):
+        return {
+            'name': self._to_ast(request.name),
+            'args': [self._to_ast(arg) for arg in request.args],
+            'metadata': self._to_ast(request.metadata)
         }
 
     def _response_to_ast(self, response: Response):
@@ -138,8 +167,23 @@ class Deserializer:
         )
 
     def _ast_to_datetime(self, data):
-        raise NotImplementedError("Missing implementation for datetime deserialization")
-
+        return datetime(
+            year=self._ast_to_obj(data['year']),
+            month=self._ast_to_obj(data['month']),
+            day=self._ast_to_obj(data['day']),
+            hour=self._ast_to_obj(data['hour']),
+            minute=self._ast_to_obj(data['minute']),
+            second=self._ast_to_obj(data['second']),
+            microsecond=self._ast_to_obj(data['microsecond']),
+        )
+    
+    def _ast_to_timedelta(self, data):
+        return timedelta(
+            days=self._ast_to_obj(data['days']),
+            seconds=self._ast_to_obj(data['seconds']),
+            microseconds=self._ast_to_obj(data['microseconds']),
+        )
+    
     def _ast_to_role(self, data):
         return Role[self._ast_to_obj(data['name'])]
 
@@ -148,13 +192,19 @@ class Deserializer:
             name=self._ast_to_obj(data['name']),
             args=tuple(self._ast_to_obj(arg) for arg in data['args']),
         )
+    
+    def _ast_to_securerequest(self, data):
+        return SecureRequest(
+            name=self._ast_to_obj(data['name']),
+            args=tuple(self._ast_to_obj(arg) for arg in data['args']),
+            metadata=self._ast_to_obj(data['metadata'])
+        )
 
     def _ast_to_response(self, data):
         return Response(
             result=self._ast_to_obj(data['result']) if data['result'] is not None else None,
             error=self._ast_to_obj(data['error']),
         )
-
 
 DEFAULT_SERIALIZER = Serializer()
 DEFAULT_DESERIALIZER = Deserializer()
