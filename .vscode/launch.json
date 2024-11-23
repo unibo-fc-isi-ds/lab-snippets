@@ -196,6 +196,17 @@
                 "password"
             ],
         },{
+            "name": "L4E4: RPC Client CLI - Get",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab4.example4_rpc_client_cli",
+            "args": [
+                "localhost:8080",
+                "get",
+                "-u",
+                "lucia"
+            ],
+        },{
             "name": "L4E4: RPC Client CLI - Authenticate",
             "type": "debugpy",
             "request": "launch",

@@ -40,7 +40,6 @@ class ServerStub(Server):
     
     def __handle_request(self, request: Request):
         try:
-            # method = getattr(self.__user_db, request.name)
             if request.service == 'database':
                 method = getattr(self.__user_db, request.name)
             elif request.service == 'authentication':

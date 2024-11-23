@@ -1,5 +1,5 @@
 {
-  "signature": "774b175951f18839b6ccad1298b430ecfbd90f07d482f91398753c7e89545c5b",
+  "signature": "798ab7e52a0265ee600867748bc38ba676fcfec8d0c6c5ec6303969694c38f43",
   "user": {
     "username": "lucia",
     "emails": [
@@ -14,7 +14,7 @@
     "$type": "User"
   },
   "expiration": {
-    "datetime": "2024-11-23T18:58:48.569835",
+    "datetime": "2024-11-24T10:11:49.221336",
     "$type": "datetime"
   },
   "$type": "Token"

@@ -2,14 +2,25 @@ from .example3_rpc_client import *
 from .example1_presentation import Serializer, Deserializer
 import argparse
 import sys
+import os
 
-def save_token_to_file(username: str, token: Token) -> None:
-    with open(f'./snippets/lab4/tokens/{username}.json', 'w') as f:
+TOKENS_DIR = './snippets/lab4/tokens'
+USERS_DIR = './snippets/lab4/users/database'
+
+def get_token_file(username: str) -> str:
+    return f'{TOKENS_DIR}/{username}.json'
+
+def save_token_to_file(file_name: str, token: Token) -> None:
+    if not os.path.exists(TOKENS_DIR):
+        os.makedirs(TOKENS_DIR)
+    file_path = get_token_file(file_name)
+    with open(file_path, 'w') as f:
         serializer = Serializer()
         f.write(serializer.serialize(token))
 
-def read_token_from_file(username: str) -> Token:
-    with open(f'./snippets/lab4/tokens/{username}.json', 'r') as f:
+def read_token_from_file(file_name: str) -> Token:
+    file_path = get_token_file(file_name)
+    with open(file_path, 'r') as f:
         deserializer = Deserializer()
         return deserializer.deserialize(f.read())
 
@@ -61,12 +72,13 @@ if __name__ == '__main__':
                 credentials = Credentials(ids[0], args.password)
                 token = auth_service.authenticate(credentials)
                 print(token)
-                save_token_to_file(args.user, token)
-
+                save_token_to_file(file_name=token.user.username, token=token)
             case 'validate_token':
+                if not args.user:
+                    raise ValueError("Username is required")
                 token = read_token_from_file(args.user)
-                print("Token validated" if auth_service.validate_token(token) 
-                                        else "Token expired")
+                print("Token is valid" if auth_service.validate_token(token) 
+                                       else "Token expired")
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:
