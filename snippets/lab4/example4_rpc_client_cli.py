@@ -2,21 +2,31 @@ from .example3_rpc_client import *
 import argparse
 import sys
 
+ERR_PASSWORD_REQUIRED = "Password is required"
+ERR_TOKEN_REQUIRED = "Token is required"
+ERR_EXPIRATION_REQUIRED = "Expiration date is required"
+ERR_SIGNATURE_REQUIRED = "Signature is required"
+
+def _parse_datetime(input: str) -> datetime:
+    d = input.translate(str.maketrans("", "", "dateim.()")).split(",")
+    d = [int(elem) for elem in d]
+    return datetime(*d) 
 
 if __name__ == '__main__':
-
     parser = argparse.ArgumentParser(
         prog=f'python -m snippets -l 4 -e 4',
         description='RPC client for user database',
         exit_on_error=False,
     )
     parser.add_argument('address', help='Server address in the form ip:port')
-    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check'])
+    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check', 'auth', 'validate'])
     parser.add_argument('--user', '-u', help='Username')
     parser.add_argument('--email', '--address', '-a', nargs='+', help='Email address')
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
+    parser.add_argument('--expiration', '-E', help='Expiration')
+    parser.add_argument('--signature', '-s', help='Signature')
 
     if len(sys.argv) > 1:
         args = parser.parse_args()
@@ -26,6 +36,7 @@ if __name__ == '__main__':
 
     args.address = address(args.address)
     user_db = RemoteUserDatabase(args.address)
+    auth = RemoteAuthenticationService(args.address)
 
     try :
         ids = (args.email or []) + [args.user]
@@ -34,7 +45,7 @@ if __name__ == '__main__':
         match args.command:
             case 'add':
                 if not args.password:
-                    raise ValueError("Password is required")
+                    raise ValueError(ERR_PASSWORD_REQUIRED)
                 if not args.name:
                     raise ValueError("Full name is required")
                 user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
@@ -44,6 +55,19 @@ if __name__ == '__main__':
             case 'check':
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
+            case 'auth':
+                if not args.password:
+                    raise ValueError(ERR_PASSWORD_REQUIRED)
+                credentials = Credentials(ids[0], args.password)
+                print(auth.authenticate(credentials))
+            case 'validate':
+                if not args.expiration:
+                    raise ValueError(ERR_EXPIRATION_REQUIRED)
+                if not args.signature:
+                    raise ValueError(ERR_SIGNATURE_REQUIRED)
+                user = user_db.get_user(ids[0])
+                expiration = _parse_datetime(args.expiration)
+                print(auth.validate_token(Token(user, expiration, args.signature)))
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:
