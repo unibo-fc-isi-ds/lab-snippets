@@ -18,6 +18,7 @@ if __name__ == '__main__':
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
     parser.add_argument('--token', '-t', help='Token')
+    parser.add_argument('--path', help='Path where to save/load the token file')
 
     if len(sys.argv) > 1:
         args = parser.parse_args()
@@ -49,12 +50,21 @@ if __name__ == '__main__':
             case 'authenticate':
                 credentials = Credentials(ids[0], args.password)
                 token = auth_service.authenticate(credentials)
+                if args.path:
+                    with open(args.path, 'w') as f:
+                        f.write(serialize(token))
                 print(token)
             case 'validate':
-                if not args.token:
-                    raise ValueError("Token is required")
-                token = deserialize(args.token)
-                print(auth_service.validate_token(token))
+                if args.token and args.path:
+                    raise ValueError("Provide either a token or a path, not both")
+                if args.token:
+                    token = args.token
+                if args.path:
+                    with open(args.path, 'r') as file:
+                        token = file.read().strip()
+                else:
+                    raise ValueError("Either a token or a path to a token file is required")
+                print(auth_service.validate_token(deserialize(token)))
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:
