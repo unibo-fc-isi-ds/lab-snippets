@@ -20,6 +20,8 @@ def save_token_to_file(file_name: str, token: Token) -> None:
 
 def read_token_from_file(file_name: str) -> Token:
     file_path = get_token_file(file_name)
+    if not os.path.exists(file_path):
+        return None
     with open(file_path, 'r') as f:
         deserializer = Deserializer()
         return deserializer.deserialize(f.read())
@@ -34,6 +36,7 @@ if __name__ == '__main__':
     parser.add_argument('address', help='Server address in the form ip:port')
     parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check', 'authenticate', 'validate_token'])
     parser.add_argument('--user', '-u', help='Username')
+    parser.add_argument('--admin', '-d', help="Admin username")
     parser.add_argument('--email', '--address', '-a', nargs='+', help='Email address')
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
@@ -62,8 +65,12 @@ if __name__ == '__main__':
                 user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
                 print(user_db.add_user(user))
             case 'get':
+                token = read_token_from_file(ids[0])
+                user_db.set_token(token)
                 print(user_db.get_user(ids[0]))
-            case 'check':
+            case 'check': 
+                token = read_token_from_file(ids[0])
+                user_db.set_token(token)
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
             case 'authenticate':
@@ -77,6 +84,8 @@ if __name__ == '__main__':
                 if not args.user:
                     raise ValueError("Username is required")
                 token = read_token_from_file(args.user)
+                if token is None:
+                    raise ValueError("User in not authenticated")
                 print("Token is valid" if auth_service.validate_token(token) 
                                        else "Token expired")
             case _:
