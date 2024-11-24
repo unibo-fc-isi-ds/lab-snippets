@@ -12,6 +12,7 @@ class Request:
 
     name: str
     service: str
+    token: Token | None
     args: tuple
 
     def __post_init__(self):
@@ -70,11 +71,13 @@ class Serializer:
         }
 
     def _token_to_ast(self, token: Token):
-        return {
-            'signature': self._to_ast(token.signature),
-            'user': self._to_ast(token.user),
-            'expiration': self._to_ast(token.expiration),
-        }
+        if token is not None:
+            return {
+                'signature': self._to_ast(token.signature),
+                'user': self._to_ast(token.user),
+                'expiration': self._to_ast(token.expiration),
+            } 
+        return None
 
     def _datetime_to_ast(self, dt: datetime):
         return {'datetime': dt.isoformat()}
@@ -86,6 +89,7 @@ class Serializer:
         return {
             'name': self._to_ast(request.name),
             'service': self._to_ast(request.service),
+            'token': self._token_to_ast(request.token),
             'args': [self._to_ast(arg) for arg in request.args],
         }
 
@@ -132,11 +136,13 @@ class Deserializer:
         )
 
     def _ast_to_token(self, data):
-        return Token(
-            signature=self._ast_to_obj(data['signature']),
-            user=self._ast_to_obj(data['user']),
-            expiration=self._ast_to_obj(data['expiration']),
-        )
+        if data is not None: 
+            return Token(
+                signature=self._ast_to_obj(data['signature']),
+                user=self._ast_to_obj(data['user']),
+                expiration=self._ast_to_obj(data['expiration']),
+            ) 
+        return None
 
     def _ast_to_datetime(self, data):
         return datetime.fromisoformat(data['datetime'])
@@ -148,6 +154,7 @@ class Deserializer:
         return Request(
             name=self._ast_to_obj(data['name']),
             service=self._ast_to_obj(data['service']),
+            token=self._ast_to_token(data['token']),
             args=tuple(self._ast_to_obj(arg) for arg in data['args']),
         )
 

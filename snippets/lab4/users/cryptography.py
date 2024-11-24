@@ -1,10 +1,12 @@
 
 from . import Signer
 import hashlib
+
 def compute_sha256_hash(input: str) -> str:
     sha256_hash = hashlib.sha256()
     sha256_hash.update(input.encode('utf-8'))
     return sha256_hash.hexdigest()
+
 class DefaultSigner(Signer):
     def __init__(self, secret: str | None = None):
         if not secret:
