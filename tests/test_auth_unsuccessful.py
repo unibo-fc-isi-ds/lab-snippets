@@ -23,5 +23,7 @@ class TestAuthIsUnsuccessful(unittest.TestCase):
             self.auth_service.authenticate(credentials)
 
     def tearDown(self):
+        time.sleep(3)
         self.server.close()
+        time.sleep(3)
         return super().tearDown()
