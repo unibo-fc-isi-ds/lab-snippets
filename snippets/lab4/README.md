@@ -3,7 +3,7 @@
 ## Introduction
 This project is a JSON-based RPC Authentication Service, enabling user authentication and token validation. Users can be authenticated only if pre-registered in the database, with all interactions handled via a command-line interface.
 
-## Assumptions and limitations
+## Assumptions and Limitations
 - All users must be inserted into the database before authentication
 
 ## High Level Design

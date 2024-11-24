@@ -1,14 +1,7 @@
 from snippets.lab4.example1_presentation import Serializer, Deserializer
+from snippets.lab4.users.cryptography import compute_sha256_hash, DefaultSigner
 from ..users import *
-import hashlib
 import os
-
-
-def _compute_sha256_hash(input: str) -> str:
-    sha256_hash = hashlib.sha256()
-    sha256_hash.update(input.encode('utf-8'))
-    return sha256_hash.hexdigest()
-
 
 class _Debuggable:
     def __init__(self, debug: bool = True):
@@ -39,7 +32,7 @@ class InMemoryUserDatabase(UserDatabase, _Debuggable):
                 raise ValueError(f"User with ID {id} already exists")
         if user.password is None:
             raise ValueError("Password digest is required")
-        user = user.copy(password=_compute_sha256_hash(user.password))
+        user = user.copy(password=compute_sha256_hash(user.password))
         for id in user.ids:
             self.__users[id] = user
         if not self.__debug:
@@ -54,7 +47,7 @@ class InMemoryUserDatabase(UserDatabase, _Debuggable):
     def check_password(self, credentials: Credentials) -> bool:
         try:
             user = self.__get_user(credentials.id)
-            result = user.password == _compute_sha256_hash(credentials.password)
+            result = user.password == compute_sha256_hash(credentials.password)
         except KeyError:
             result = False
         self._log(f"Checking {credentials}: {'correct' if result else 'incorrect'}")
@@ -79,14 +72,15 @@ class InMemoryUserDatabase(UserDatabase, _Debuggable):
     
 
 class InMemoryAuthenticationService(AuthenticationService, _Debuggable):
-    def __init__(self, database: UserDatabase, secret: str = None, debug: bool = True):
+    def __init__(self, 
+                 database: UserDatabase,
+                 signer: Signer = DefaultSigner(), 
+                 debug: bool = True):
+        
         _Debuggable.__init__(self, debug)
         self.__database = database
-        if not secret:
-            import uuid
-            secret = str(uuid.uuid4())
-        self.__secret = secret
-        self._log(f"Authentication service initialized with secret {secret}")
+        self.__signer = signer
+        self._log(f"Authentication service initialized with secret {self.__signer.signature}")
     
     def authenticate(self, credentials: Credentials, duration: timedelta = None) -> Token:
         if duration is None:
@@ -94,16 +88,17 @@ class InMemoryAuthenticationService(AuthenticationService, _Debuggable):
         if self.__database.check_password(credentials):
             expiration = datetime.now() + duration
             user = self.__database.get_user(credentials.id)
-            signature = _compute_sha256_hash(f"{user}{expiration}{self.__secret}")
+            signature = self.__signer.sign(user, expiration)
             result = Token(user, expiration, signature)
             self._log(f"Generate token for user {credentials.id}: {result}")
             return result
         raise ValueError("Invalid credentials")
     
     def __validate_token_signature(self, token: Token) -> bool:
-        return token.signature == _compute_sha256_hash(f"{token.user}{token.expiration}{self.__secret}")
+        return token.signature == self.__signer.sign(token.user, token.expiration)
 
     def validate_token(self, token: Token) -> bool:
-        result = token.expiration > datetime.now() and self.__validate_token_signature(token)
+        result = token.expiration > datetime.now() and \
+                 self.__validate_token_signature(token)
         self._log(f"{token} is " + ('valid' if result else 'invalid'))
         return result
