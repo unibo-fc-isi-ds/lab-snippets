@@ -7,13 +7,16 @@ from dataclasses import dataclass
 @dataclass
 class Request:
     """
-    A container for RPC requests: a name of the function to call and its arguments.
+    A container for RPC requests: a name of the function to call, its arguments, and optional metadata.
     """
     name: str
     args: tuple
+    metadata: dict | None = None
 
     def __post_init__(self):
         self.args = tuple(self.args)
+        if self.metadata is None:
+            self.metadata = {}
 
 
 @dataclass
@@ -95,12 +98,14 @@ class Serializer:
         return {
             'name': self._to_ast(request.name),
             'args': [self._to_ast(arg) for arg in request.args],
+            'metadata': self._to_ast(request.metadata) if request.metadata is not None else None,
         }
 
     def _response_to_ast(self, response: Response):
         return {
             'result': self._to_ast(response.result) if response.result is not None else None,
             'error': self._to_ast(response.error),
+            '$type': 'Response'  # Add missing type information
         }
 
 
@@ -113,14 +118,12 @@ class Deserializer:
 
     def _ast_to_obj(self, data):
         if isinstance(data, dict):
-            if '$type' not in data:
-                raise KeyError(f"Missing $type in data: {data}")
-            # selects the appropriate method to convert the AST to object via reflection
-            method_name = f'_ast_to_{data["$type"].lower()}'
-            if hasattr(self, method_name):
-                return getattr(self, method_name)(data)
-            raise ValueError(f"Unsupported type {data['$type']}")
-        if isinstance(data, list):
+            if '$type' in data:
+                type_name = data['$type'].lower()
+                if hasattr(self, f'_ast_to_{type_name}'):
+                    return getattr(self, f'_ast_to_{type_name}')(data)
+            return {key: self._ast_to_obj(value) for key, value in data.items()}
+        elif isinstance(data, list):
             return [self._ast_to_obj(item) for item in data]
         return data
 
@@ -143,7 +146,7 @@ class Deserializer:
         return Token(
             signature=self._ast_to_obj(data['signature']),
             user=self._ast_to_obj(data['user']),
-            expiration=self._ast_to_obj(data['expiration']),
+            expiration=self._ast_to_obj(data['expiration'])
         )
 
     def _ast_to_datetime(self, data):
@@ -163,12 +166,13 @@ class Deserializer:
         return Request(
             name=self._ast_to_obj(data['name']),
             args=tuple(self._ast_to_obj(arg) for arg in data['args']),
+            metadata=self._ast_to_obj(data['metadata']) if data['metadata'] is not None else None,
         )
 
     def _ast_to_response(self, data):
         return Response(
-            result=self._ast_to_obj(data['result']) if data['result'] is not None else None,
-            error=self._ast_to_obj(data['error']),
+            result=self._ast_to_obj(data.get('result')),
+            error=self._ast_to_obj(data.get('error'))
         )
 
 

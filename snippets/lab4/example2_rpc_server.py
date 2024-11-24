@@ -1,4 +1,5 @@
 from snippets.lab3 import Server
+from snippets.lab4.users import Role, Token
 from snippets.lab4.users.impl import InMemoryUserDatabase,InMemoryAuthenticationService
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 import traceback
@@ -47,11 +48,28 @@ class ServerStub(Server):
             case 'close':
                 print('[%s:%d] Close connection' % connection.remote_address)
 
+    def __check_authorization(self, request: Request, required_role: Role = Role.ADMIN):
+        if 'token' not in request.metadata:
+            raise ValueError("Authentication required")
+        
+        token = request.metadata['token']
+        # 确保 token 是 Token 类型
+        if not isinstance(token, Token):
+            raise ValueError("Invalid token format")
+            
+        if not self.__auth_service.validate_token(token):
+            raise ValueError("Invalid or expired token")
+            
+        if token.user.role != required_role:
+            raise ValueError(f"Operation requires {required_role.name} role")
+
     def __handle_request(self, request):
         try:
-            print(f"Handling request: {request.name} with args: {request.args}")  # 添加日志
+            # Check authorization for sensitive operations
+            sensitive_operations = {'get_user'}
+            if request.name in sensitive_operations:
+                self.__check_authorization(request)
 
-            # 确保请求的方法名称在用户数据库或认证服务中
             if hasattr(self.__user_db, request.name):
                 method = getattr(self.__user_db, request.name)
             elif hasattr(self.__auth_service, request.name):
@@ -59,14 +77,11 @@ class ServerStub(Server):
             else:
                 raise ValueError(f"Method {request.name} not found")
 
-            # 调用该方法并记录结果
             result = method(*request.args)
-            print(f"Request handled successfully, result: {result}")
             error = None
         except Exception as e:
             result = None
-            error = " ".join(e.args)
-            print(f"Error handling request: {error}")
+            error = " ".join(str(arg) for arg in e.args)
             traceback.print_exc()
         return Response(result, error)
 

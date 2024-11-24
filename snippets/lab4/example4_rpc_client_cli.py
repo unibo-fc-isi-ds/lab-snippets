@@ -2,6 +2,18 @@ from .example3_rpc_client import *
 import argparse
 import sys
 import json
+import os
+
+class TokenManager:
+    @staticmethod
+    def save_token(token: Token, filepath: str):
+        with open(filepath, 'w') as f:
+            f.write(serialize(token))
+    
+    @staticmethod
+    def load_token(filepath: str) -> Token:
+        with open(filepath, 'r') as f:
+            return deserialize(f.read())
 
 if __name__ == '__main__':
 
@@ -31,6 +43,12 @@ if __name__ == '__main__':
     user_db = RemoteUserDatabase(args.address)
     auth_service = RemoteAuthenticationService(args.address)
 
+    # Load saved token if specified
+    if args.token_file and os.path.exists(args.token_file):
+        token = TokenManager.load_token(args.token_file)
+        user_db.set_auth_token(token)
+        auth_service.set_auth_token(token)
+
     try:
         match args.command:
             case 'add':
@@ -57,10 +75,10 @@ if __name__ == '__main__':
 
                 # 如果提供了 --save-token 参数，将令牌保存为 JSON 文件
                 if args.save_token:
-                    with open(args.save_token, 'w') as token_file:
-                        serialized_token = serialize(token)  # 将 Token 序列化为 JSON 字符串
-                        token_file.write(serialized_token)
+                    TokenManager.save_token(token, args.save_token)
                     print(f'Token saved to {args.save_token}')
+                user_db.set_auth_token(token)
+                auth_service.set_auth_token(token)
             case 'validate':
                 if args.token:
                     # 如果通过 -t 参数直接传递了令牌，则进行反序列化
