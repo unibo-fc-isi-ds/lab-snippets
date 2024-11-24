@@ -2,6 +2,7 @@ from snippets.lab3 import Server
 from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 from snippets.lab4.users.cryptography import DefaultSigner
+from snippets.lab4.users import Role
 import traceback
 
 TEST_SECRET = 'secret'
@@ -13,6 +14,7 @@ class ServerStub(Server):
         self.__auth_service = \
             InMemoryAuthenticationService(self.__user_db) if not debug else \
             InMemoryAuthenticationService(self.__user_db, DefaultSigner(TEST_SECRET))    
+        self.__protected_operations = {'get_user', 'check_password'}
         
     def __on_connection_event(self, event, connection, address, error):
         match event:
@@ -44,12 +46,20 @@ class ServerStub(Server):
     def __handle_request(self, request: Request):
         try:
             if request.service == 'database':
+                if request.name in self.__protected_operations:
+                    if request.token is None:
+                        raise Exception('Bad request: protected operation called with no authentication token provided')
+                    validation_result = self.__auth_service.validate_token(token=request.token)
+                    if not validation_result:
+                        raise Exception('Bad request: protected operation called with invalid token provided')
+                    admin_user = self.__user_db.get_user(id=request.token.user.username)
+                    if admin_user.role is not Role.ADMIN:
+                        raise Exception('Bad request: protected operation called by unauthorized user')
                 method = getattr(self.__user_db, request.name)
             elif request.service == 'authentication':
                 method = getattr(self.__auth_service, request.name)
             else:
-                raise Exception("Bad Request: no valid service called")
-            
+                raise Exception('Bad Request: no valid service called')
             result = method(*request.args)
             error = None
         except Exception as e:
