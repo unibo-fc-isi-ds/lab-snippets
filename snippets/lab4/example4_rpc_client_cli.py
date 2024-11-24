@@ -51,8 +51,8 @@ if __name__ == '__main__':
                 token = auth_service.authenticate(credentials)
                 print(token)
             case 'validate':
-                if args.token is None:
-                    raise ValueError(f"Invalid token")
+                if not args.token:
+                    raise ValueError("Token is required")
                 token = deserialize(args.token)
                 print(auth_service.validate_token(token))
             case _:
