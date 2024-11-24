@@ -34,17 +34,15 @@ class Connection:
     def closed(self):
         return self.__socket._closed
     
-    # IMPORTANT! first send the size of the message and then the actual message
     def send(self, message):
         if not isinstance(message, bytes):
             message = message.encode()
-            size = len(message)
-            message = int.to_bytes(size, 2, 'big') + message    # The function is used to convert size from int to byte
+            message = int.to_bytes(len(message), 2, 'big') + message
         self.__socket.sendall(message)
 
     def receive(self):
         length = int.from_bytes(self.__socket.recv(2), 'big')
-        if length == 0: # We use the size to know how long the message is
+        if length == 0:
             return None
         return self.__socket.recv(length).decode()
     

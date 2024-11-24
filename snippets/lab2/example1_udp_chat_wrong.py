@@ -13,4 +13,4 @@ username = input('Enter your username to start the chat:\n')
 while True:
     content = input('> ')
     peer.send_all(message(content, username))
-    print(peer.receive()[0])    # Not allowing multiple response message and receiving only after send one.
+    print(peer.receive()[0])
