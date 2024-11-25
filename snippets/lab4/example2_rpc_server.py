@@ -27,15 +27,14 @@ class ServerStub(Server):
             case 'message':
                 print('[%s:%d] Open connection' % connection.remote_address)
                 
-                print("payload: ", payload)
+                # print("payload: ", payload)
                 request = deserialize(payload)
                 assert isinstance(request, Request)
                 print('[%s:%d] Unmarshall request:' % connection.remote_address, request)
                 # print(f"Request name: {request.name}")
             
                 if request.name == 'get_user':
-                    print(f"\nChecking authorization with token: {request.metadata}")
-                    # print("Result: ", self.__authorization(request.metadata))
+                    # print(f"\nChecking authorization with token: {request.metadata}")
                     if not self.__authorization(request.metadata):
                         print("Checking authorization failed\n")
                         response = Response(None, 'Unauthorized')
