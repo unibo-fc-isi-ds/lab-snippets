@@ -5,11 +5,6 @@ import sys
 ERR_PASSWORD_REQUIRED = "Password is required"
 ERR_SIGNATURE_REQUIRED = "Signature is required"
 
-def _parse_datetime(input: str) -> datetime:
-    d = input.translate(str.maketrans("", "", "dateim.()")).split(",")
-    d = [int(elem) for elem in d]
-    return datetime(*d)
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         prog=f'python -m snippets -l 4 -e 4',

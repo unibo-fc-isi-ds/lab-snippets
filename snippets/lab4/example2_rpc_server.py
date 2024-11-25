@@ -1,5 +1,5 @@
 from snippets.lab3 import Server
-from snippets.lab4.users import Role
+from snippets.lab4.users import Role, Token
 from snippets.lab4.users.impl import InMemoryAuthenticationService, InMemoryUserDatabase
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 import traceback
@@ -42,11 +42,13 @@ class ServerStub(Server):
 
     def __can_perform_request(self, request) -> tuple[bool, str]:
         if self.__requires_admin(request.name):
-            is_token_valid = self.__auth.validate_token(request.metadata)
-            if not is_token_valid:
+            token: Token = request.metadata['token']
+            if not token:
+                return (False, "A token is required.")
+            if not self.__auth.validate_token(token):
                 return (False, "Invalid token.")
-            if request.metadata.user.role != Role.ADMIN:
-                return (False, f"User {request.metadata.user.username} does not have the required privileges to perform this operation.")
+            if token.user.role != Role.ADMIN:
+                return (False, f"User {token.user.username} does not have admin privileges.")
         return (True, "")
 
     def __handle_request(self, request):

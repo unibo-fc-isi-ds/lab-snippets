@@ -11,7 +11,7 @@ class Request:
 
     name: str
     args: tuple
-    metadata: object | None
+    metadata: dict
 
     def __post_init__(self):
         self.args = tuple(self.args)
