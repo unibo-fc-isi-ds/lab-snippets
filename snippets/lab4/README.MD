@@ -34,7 +34,7 @@ python -m snippets -l 4 -e 4 0.0.0.0:8080 add -u gciatto -a giovanni.ciatto@unib
 
 Authenticate the user (generate token)
 ```
-python -m snippets -l 4 -e 4 0.0.0.0:3000 authenticate -u gciatto -p "my secret password"
+python -m snippets -l 4 -e 4 0.0.0.0:8080 authenticate -u gciatto -p "my secret password"
 ```
 
 
@@ -42,5 +42,5 @@ python -m snippets -l 4 -e 4 0.0.0.0:3000 authenticate -u gciatto -p "my secret 
 Validate the newly created token (mock)
 
 ```
-python -m snippets -l 4 -e 4 0.0.0.0:3000 validate -u gciatto python -m snippets -l 4 -e 4 0.0.0.0:8080 add -u gciatto -a giovanni.ciatto@unibo.it giovanni.ciatto@gmail.com -n "Giovanni Ciatto" -r admin -p "my secret password" -e "2024-11-26 17:35:26.856975" -s mysignature
+python -m snippets -l 4 -e 4 0.0.0.0:8080 validate -u gciatto -a giovanni.ciatto@unibo.it giovanni.ciatto@gmail.com -n "Giovanni Ciatto" -r admin -p "my secret password" -e "2024-11-26 17:35:26.856975" -s mysignature
 ```
