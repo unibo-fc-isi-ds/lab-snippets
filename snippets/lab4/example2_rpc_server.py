@@ -1,8 +1,8 @@
 from snippets.lab3 import Server
+from snippets.lab4.users import Role
 from snippets.lab4.users.impl import InMemoryAuthenticationService, InMemoryUserDatabase
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 import traceback
-
 
 class ServerStub(Server):
     def __init__(self, port):
@@ -37,7 +37,22 @@ class ServerStub(Server):
             case 'close':
                 print('[%s:%d] Close connection' % connection.remote_address)
 
+    def __requires_admin(self, request_name: str) -> bool:
+        return request_name in ["get_user"]
+
+    def __can_perform_request(self, request) -> tuple[bool, str]:
+        if self.__requires_admin(request.name):
+            is_token_valid = self.__auth.validate_token(request.metadata)
+            if not is_token_valid:
+                return (False, "Invalid token.")
+            if request.metadata.user.role != Role.ADMIN:
+                return (False, f"User {request.metadata.user.username} does not have the required privileges to perform this operation.")
+        return (True, "")
+
     def __handle_request(self, request):
+        can_perform, err = self.__can_perform_request(request)
+        if not can_perform:
+            return Response(None, err)
         for backend in [self.__user_db, self.__auth]:
             method = getattr(backend, request.name, None)
             if callable(method):

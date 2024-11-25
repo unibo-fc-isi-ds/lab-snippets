@@ -3,7 +3,13 @@ from snippets.lab3 import Client, address
 from snippets.lab4.users import *
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 from snippets.lab4.users import Credentials, Token
+from pathlib import Path
 
+_TOKEN_DIR = Path("./token/")
+_TOKEN_PATH = _TOKEN_DIR / "token.json"
+
+def _get_token() -> Token | None:
+    return deserialize(_TOKEN_PATH.read_text("utf-8")) if _TOKEN_PATH.exists() else None
 
 class ClientStub:
     def __init__(self, server_address: tuple[str, int]):
@@ -13,7 +19,7 @@ class ClientStub:
         client = Client(self.__server_address)
         try:
             print('# Connected to %s:%d' % client.remote_address)
-            request = Request(name, args)
+            request = Request(name, args, _get_token())
             print('# Marshalling', request, 'towards', "%s:%d" % client.remote_address)
             request = serialize(request)
             print('# Sending message:', request.replace('\n', '\n# '))
@@ -49,10 +55,15 @@ class RemoteAuthenticationService(ClientStub, AuthenticationService):
         super().__init__(server_address)
 
     def authenticate(self, credentials: Credentials, duration: timedelta = None) -> Token:
-        return self.rpc('authenticate', credentials, duration)
-    
+        _TOKEN_DIR.mkdir(exist_ok=True)
+        new_token = self.rpc('authenticate', credentials, duration)
+        if new_token is not None:
+            _TOKEN_PATH.write_text(serialize(new_token), encoding="utf-8")
+        return new_token
+
     def validate_token(self, token: Token) -> bool:
-        return self.rpc('validate_token', token)
+        token = _get_token()
+        return self.rpc('validate_token', token) if token is not None else False
 
 if __name__ == '__main__':
     from snippets.lab4.example0_users import gc_user, gc_credentials_ok, gc_credentials_wrong

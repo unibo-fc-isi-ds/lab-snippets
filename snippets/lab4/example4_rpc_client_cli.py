@@ -3,14 +3,12 @@ import argparse
 import sys
 
 ERR_PASSWORD_REQUIRED = "Password is required"
-ERR_TOKEN_REQUIRED = "Token is required"
-ERR_EXPIRATION_REQUIRED = "Expiration date is required"
 ERR_SIGNATURE_REQUIRED = "Signature is required"
 
 def _parse_datetime(input: str) -> datetime:
     d = input.translate(str.maketrans("", "", "dateim.()")).split(",")
     d = [int(elem) for elem in d]
-    return datetime(*d) 
+    return datetime(*d)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -25,8 +23,6 @@ if __name__ == '__main__':
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
-    parser.add_argument('--expiration', '-E', help='Expiration')
-    parser.add_argument('--signature', '-s', help='Signature')
 
     if len(sys.argv) > 1:
         args = parser.parse_args()
@@ -38,7 +34,7 @@ if __name__ == '__main__':
     user_db = RemoteUserDatabase(args.address)
     auth = RemoteAuthenticationService(args.address)
 
-    try :
+    try:
         ids = (args.email or []) + [args.user]
         if len(ids) == 0:
             raise ValueError("Username or email address is required")
@@ -61,13 +57,7 @@ if __name__ == '__main__':
                 credentials = Credentials(ids[0], args.password)
                 print(auth.authenticate(credentials))
             case 'validate':
-                if not args.expiration:
-                    raise ValueError(ERR_EXPIRATION_REQUIRED)
-                if not args.signature:
-                    raise ValueError(ERR_SIGNATURE_REQUIRED)
-                user = user_db.get_user(ids[0])
-                expiration = _parse_datetime(args.expiration)
-                print(auth.validate_token(Token(user, expiration, args.signature)))
+                print(auth.validate_token(None))
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:
