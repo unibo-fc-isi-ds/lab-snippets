@@ -5,12 +5,19 @@ from snippets.lab4.example1_presentation import serialize, deserialize, Request,
 class ClientStub:
     def __init__(self, server_address: tuple[str, int]):
         self.__server_address = address(*server_address)
+        self.__token: Token | None = None
+
+    def get_token(self) -> Token | None:
+        return self.__token
+    
+    def set_token(self, token: Token) -> None:
+        self.__token = token
 
     def rpc(self, name, service, *args):
         client = Client(self.__server_address)
         try:
             print('# Connected to %s:%d' % client.remote_address)
-            request = Request(name, service, args)
+            request = Request(name, service, self.__token, args)
             print('# Marshalling', request, 'towards', "%s:%d" % client.remote_address)
             request = serialize(request)
             print('# Sending message:', request.replace('\n', '\n# '))
