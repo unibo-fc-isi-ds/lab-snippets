@@ -2,7 +2,6 @@ from .example3_rpc_client import *
 import argparse
 import sys
 
-
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(
