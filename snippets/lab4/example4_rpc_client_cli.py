@@ -9,13 +9,13 @@ from datetime import timedelta
 class TokenManager:
     @staticmethod
     def save_token(token: Token, filepath: str):
-        """Save a token to a file in serialized format."""
+        """Save the token to a file"""
         with open(filepath, 'w') as f:
             f.write(serialize(token))
 
     @staticmethod
     def load_token(filepath: str) -> Token:
-        """Load a token from a file."""
+        """Load the token from a file"""
         with open(filepath, 'r') as f:
             return deserialize(f.read())
 
@@ -27,7 +27,7 @@ if __name__ == '__main__':
         exit_on_error=False,
     )
     parser.add_argument('address', help='Server address in the form ip:port')
-    parser.add_argument('command', help='Method to call', choices=['add', 'auth', 'validate'])
+    parser.add_argument('command', help='Method to call', choices=['add', 'auth', 'validate', 'get'])
     parser.add_argument('--user', '-u', help='Username')
     parser.add_argument('--email', '-a', nargs='+', help='Email address')
     parser.add_argument('--name', '-n', help='Full name')
@@ -111,6 +111,16 @@ if __name__ == '__main__':
                 else:
                     raise ValueError("Either a token or a token file must be provided")
                 print(auth_service.validate_token(token))
+
+            case 'get':
+                # Get user information (requires admin authorization)
+                if not args.user:
+                    raise ValueError("Username is required")
+                try:
+                    user = user_db.get_user(args.user)
+                    print(user)
+                except RuntimeError as e:
+                    print(f"Error: {e}")
 
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")

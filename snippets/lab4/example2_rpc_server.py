@@ -49,6 +49,9 @@ class ServerStub(Server):
                 print('[%s:%d] Close connection' % connection.remote_address)
 
     def __check_authorization(self, request: Request, required_role: Role = Role.ADMIN):
+        """
+        Checks if the request includes a valid token and if the user has the required role.
+        """
         if 'token' not in request.metadata:
             raise ValueError("Authentication required")
 
@@ -73,7 +76,7 @@ class ServerStub(Server):
                 raise ValueError(f"Method {request.name} not found")
 
             # Authorization for sensitive operations
-            sensitive_operations = {'get_user'}
+            sensitive_operations = {'get_user'}  # Example: 'get_user' requires admin access
             if request.name in sensitive_operations:
                 self.__check_authorization(request)
 

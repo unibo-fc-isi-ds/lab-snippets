@@ -7,7 +7,7 @@ from dataclasses import dataclass
 class Request:
     name: str
     args: tuple
-    metadata: dict | None = None
+    metadata: dict | None = None  # Add metadata field to pass the token
 
     def __post_init__(self):
         self.args = tuple(self.args)
