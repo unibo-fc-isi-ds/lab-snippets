@@ -26,15 +26,24 @@ class ServerStub(Server):
         match event:
             case 'message':
                 print('[%s:%d] Open connection' % connection.remote_address)
+                
+                print("payload: ", payload)
                 request = deserialize(payload)
                 assert isinstance(request, Request)
                 print('[%s:%d] Unmarshall request:' % connection.remote_address, request)
-                
-                if request.name == 'get' and not self.__authorization(request.metadata):
-                    response = Response(None, 'Unauthorized')
-                    connection.send(serialize(response))
-                    connection.close()
-                    return
+                # print(f"Request name: {request.name}")
+            
+                if request.name == 'get_user':
+                    print(f"\nChecking authorization with token: {request.metadata}")
+                    # print("Result: ", self.__authorization(request.metadata))
+                    if not self.__authorization(request.metadata):
+                        print("Checking authorization failed\n")
+                        response = Response(None, 'Unauthorized')
+                        connection.send(serialize(response))
+                        connection.close()
+                        return
+                    else:
+                        print("Checking authorization successed\n")
                 
                 response = self.__handle_request(request)
                 connection.send(serialize(response))
@@ -48,18 +57,27 @@ class ServerStub(Server):
     def __handle_request(self, request):
         try:
             method = getattr(self.__user_db, request.name)
-            if method is None:
-                method = getattr(self.__auth_service, request.name)
-            
             result = method(*request.args)
             error = None 
+            return Response(result, error)
+        except Exception as e:
+            pass
+        
+        try:
+            method = getattr(self.__auth_service, request.name)
+            result = method(*request.args)
+            error = None 
+            return Response(result, error)
         except Exception as e:
             result = None
             error = " ".join(e.args)
+        
         return Response(result, error)
     
     def __authorization(self, token):
-        if not self.__auth_service.validate_token(token):
+        if token is None:
+            return False
+        elif not self.__auth_service.validate_token(token):
             return False
         elif not token.user.role == Role.ADMIN:
             return False
