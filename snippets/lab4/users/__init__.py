@@ -2,6 +2,7 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import Protocol
+from functools import wraps
 
 
 class Role(Enum):
@@ -61,15 +62,26 @@ class Token(Datum):
             raise ValueError(f"Expected object of type {datetime.__name__}, got: {self.expiration}")
         if not self.signature:
             raise ValueError("Signature is required")
+
+
+def requires_authorization(method):
+    @wraps(method)
+    def wrapper(*args, **kwargs):
+        return method(*args, **kwargs)
     
+    wrapper.requires_authorization = True
+    return wrapper
+
 
 class UserDatabase(Protocol):
     def add_user(self, user: User):
         ...
     
+    @requires_authorization
     def get_user(self, id: str) -> User:
         ...
     
+    @requires_authorization
     def check_password(self, credentials: Credentials) -> bool:
         ...
 

@@ -39,11 +39,13 @@ class InMemoryUserDatabase(UserDatabase, _Debuggable):
             self.__store_users_to_file()
         self._log(f"Add: {user}")
     
+    @requires_authorization
     def get_user(self, id: str) -> User:
         result = self.__get_user(id).copy(password=None)
         self._log(f"Get user with ID {id}: {result}")
         return result
 
+    @requires_authorization
     def check_password(self, credentials: Credentials) -> bool:
         try:
             user = self.__get_user(credentials.id)

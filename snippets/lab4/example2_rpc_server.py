@@ -14,7 +14,6 @@ class ServerStub(Server):
         self.__auth_service = \
             InMemoryAuthenticationService(self.__user_db) if not debug else \
             InMemoryAuthenticationService(self.__user_db, DefaultSigner(TEST_SECRET))
-        self.__protected_operations = {'get_user', 'check_password'}
 
     def __on_connection_event(self, event, connection, address, error):
         match event:
@@ -47,21 +46,23 @@ class ServerStub(Server):
         try:
             match request.service:
                 case Service.DATABASE:
-                    if request.name in self.__protected_operations:
-                        if request.token is None:
-                            raise Exception('Bad request: protected operation called with no authentication token provided')
-                        is_valid = self.__auth_service.validate_token(token=request.token)
-                        if not is_valid:
-                            raise Exception('Bad request: protected operation called with invalid token provided')
-                        admin_user = self.__user_db.get_user(id=request.token.user.username)
-                        if admin_user.role is not Role.ADMIN:
-                            raise Exception('Bad request: protected operation called by unauthorized user')
                     method = getattr(self.__user_db, request.name)
+                    # checks if method is protected, i.e. it requires authorization (Token + Admin role)
+                    if getattr(method, 'requires_authorization', False):
+                        if request.token is None:
+                            raise Exception('Bad request: protected operation called with no token provided')
+                        
+                        token_is_not_valid = not self.__auth_service.validate_token(token=request.token)
+                        if token_is_not_valid:
+                            raise Exception('Bad request: protected operation called with invalid token provided')
+                        
+                        requester = self.__user_db.get_user(id=request.token.user.username)
+                        if requester.role is not Role.ADMIN:
+                            raise Exception('Bad request: protected operation called by unauthorized user')
                 case Service.AUTHENTICATION:
                     method = getattr(self.__auth_service, request.name)
                 case _:
                     raise Exception('Bad Request: no valid service called')
-                        
             result = method(*request.args)
             error = None
         except Exception as e:
