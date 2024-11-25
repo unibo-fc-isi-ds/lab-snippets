@@ -40,14 +40,21 @@ class ServerStub(Server):
     def __handle_request(self, request):
         try:
             method = getattr(self.__user_db, request.name)
-            if method is None:
-                method = getattr(self.__auth_service, request.name)
-            
             result = method(*request.args)
             error = None 
+            return Response(result, error)
+        except Exception as e:
+            pass
+        
+        try:
+            method = getattr(self.__auth_service, request.name)
+            result = method(*request.args)
+            error = None 
+            return Response(result, error)
         except Exception as e:
             result = None
             error = " ".join(e.args)
+        
         return Response(result, error)
 
 
