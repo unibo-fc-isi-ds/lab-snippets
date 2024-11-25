@@ -17,6 +17,7 @@ if __name__ == '__main__':
         description='RPC client for user database',
         exit_on_error=False,
     )
+    
     parser.add_argument('address', help='Server address in the form ip:port')
     parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check', 'authenticate', 'validate'])
     parser.add_argument('--user', '-u', help='Username')
@@ -24,7 +25,6 @@ if __name__ == '__main__':
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
-    parser.add_argument('--token', '-t', help='Token')
 
     if len(sys.argv) > 1:
         args = parser.parse_args()
@@ -50,7 +50,7 @@ if __name__ == '__main__':
                 print(user_db.add_user(user))
             
             case 'get':
-                print(user_db.get_user(ids[0])) # 
+                print(user_db.get_user(ids[0])) 
             
             case 'check':
                 credentials = Credentials(ids[0], args.password)
@@ -63,9 +63,6 @@ if __name__ == '__main__':
                 auth_service.store_token(auth_service.token)
             
             case 'validate':
-                # token = Token(User(args.user, args.email, args.name, Role[args.role.upper()]), datetime.now(), args.token)
-                # print ("received token: ", args.token)
-                # auth_service.token = args.token
                 print(auth_service.validate_token(auth_service.token)) # send validation request
             
             case _:
