@@ -177,7 +177,26 @@
                 "localhost:8080"
             ],
         },{
-            "name": "L4E4: RPC Client CLI",
+            "name": "L4E4: RPC Client CLI - Add [Admin]",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab4.example4_rpc_client_cli",
+            "args": [
+                "localhost:8080",
+                "add",
+                "-u",
+                "lucia",
+                "-a",
+                "lucia.castellucci@gmail.com",
+                "-n",
+                "Lucia Castellucci",
+                "-r",
+                "admin",
+                "-p",
+                "password"
+            ],
+        },{
+            "name": "L4E4: RPC Client CLI - Add [User]",
             "type": "debugpy",
             "request": "launch",
             "module": "snippets.lab4.example4_rpc_client_cli",
@@ -187,17 +206,55 @@
                 "-u",
                 "luca",
                 "-a",
-                "test@gmail.com",
+                "luca.samore@gmail.com",
                 "-n",
                 "Luca Samore",
                 "-r",
-                "admin",
+                "user",
                 "-p",
                 "password"
             ],
-        },
-        {
-            "name": "L4E4: RPC Client CLI Authenticate",
+        },{
+            "name": "L4E4: RPC Client CLI - Get [From Admin]",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab4.example4_rpc_client_cli",
+            "args": [
+                "localhost:8080",
+                "get",
+                "-a",
+                "lucia",
+                "-u",
+                "luca"
+            ],
+        },{
+            "name": "L4E4: RPC Client CLI - Get [From User]",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab4.example4_rpc_client_cli",
+            "args": [
+                "localhost:8080",
+                "get",
+                "-a",
+                "luca",
+                "-u",
+                "lucia"
+            ],
+        },{
+            "name": "L4E4: RPC Client CLI - Authenticate [Admin]",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab4.example4_rpc_client_cli",
+            "args": [
+                "localhost:8080",
+                "authenticate",
+                "-u",
+                "lucia",
+                "-p",
+                "password"
+            ],
+        },{
+            "name": "L4E4: RPC Client CLI - Authenticate [User]",
             "type": "debugpy",
             "request": "launch",
             "module": "snippets.lab4.example4_rpc_client_cli",
@@ -208,6 +265,39 @@
                 "luca",
                 "-p",
                 "password"
+            ],
+        },{
+            "name": "L4E4: RPC Client CLI - Token [Admin]",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab4.example4_rpc_client_cli",
+            "args": [
+                "localhost:8080",
+                "validate_token",
+                "-u",
+                "lucia"
+            ],
+        },{
+            "name": "L4E4: RPC Client CLI - Token [User]",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab4.example4_rpc_client_cli",
+            "args": [
+                "localhost:8080",
+                "validate_token",
+                "-u",
+                "luca"
+            ],
+        },{
+            "name": "[Deprecated] L4E4: RPC Client CLI - Get",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab4.example4_rpc_client_cli",
+            "args": [
+                "localhost:8080",
+                "get",
+                "-u",
+                "lucia"
             ],
         },
     ]
