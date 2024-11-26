@@ -50,7 +50,7 @@ class RemoteAuthenticationService(ClientStub):
         return self.rpc('authenticate', credentials)
 
     def validate(self, token: Token) -> bool:
-        return self.rpc('validate', token)
+        return self.rpc('validate_token', token)
 
 
 if __name__ == '__main__':
