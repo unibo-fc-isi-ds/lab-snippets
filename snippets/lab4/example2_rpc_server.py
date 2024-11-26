@@ -1,5 +1,5 @@
 from snippets.lab3 import Server
-from snippets.lab4.users.impl import InMemoryUserDatabase
+from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 import traceback
 
@@ -10,6 +10,8 @@ class ServerStub(Server):
         super().__init__(port, self.__on_connection_event)
         # è qui che si svolge tutto l'aspetto di Business Logic (prima fai design di sistema locale, poi quello distribuito dopo)
         self.__user_db = InMemoryUserDatabase() # oggetto normale in Python che funziona da user database (teniamo un riferimento per delegare invocazioni di Client)
+        # gli passo lo UserDatabase che è già stato creato
+        self.__user_authentication = InMemoryAuthenticationService(self.__user_db) 
     
     # settiamo come gestire eventi per nuove connessioni
     def __on_connection_event(self, event, connection, address, error):
@@ -20,7 +22,7 @@ class ServerStub(Server):
                 # quando inizio nuova connessione, server attacca callback on_message_event alla connessione
                 connection.callback = self.__on_message_event 
             case 'error':
-                # quando si verifica errore stampiamo errore e ignoriamo
+                # quando si verifica errore lo stampiamo e lo ignoriamo
                 traceback.print_exception(error)
             case 'stop':
                 # una print per lo stop giusto per essere gentili
@@ -50,12 +52,21 @@ class ServerStub(Server):
             case 'close':
                 print('[%s:%d] Close connection' % connection.remote_address)
     
-    # dentro questo metodo gestiamo la risposta
-    def __handle_request(self, request):
+    # dentro questo metodo gestiamo la richiesta inviata e generiamo la risposta
+    def __handle_request(self, request: Request):
         try:
-            # altro exploit di Python reflections per trovare una funzione adatta in base al tipo passato
-            method = getattr(self.__user_db, request.name)
-            # chiamiamo la funzione trovata passandogli gli argomenti della request
+            # verifico se il servizio richiesto riguarda aggiunte al database oppure se riguarda l'autenticazione
+            match request.serviceType:
+                case 'databaseService':
+                    # altro exploit di Python reflections per trovare una funzione adatta in base al tipo passato
+                    method = getattr(self.__user_db, request.name)
+                    
+                case 'authenticationService':
+                    method = getattr(self.__user_authentication, request.name)
+                    
+                case _:
+                    raise Exception("The requested service is not one of those available by the server!")
+
             result = method(*request.args)
             error = None
         except Exception as e:

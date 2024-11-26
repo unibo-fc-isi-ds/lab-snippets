@@ -9,11 +9,12 @@ class ClientStub:
 
     # creo qua dentro il Client, che contatterà il server di certo indirizzo. Farà
     # poi lui la connessione creando una request passando il nome della funzione e gli argomenti.
-    def rpc(self, name, *args):
+    def rpc(self, name, serviceType, *args):
         client = Client(self.__server_address)
         try:
             print('# Connected to %s:%d' % client.remote_address)
-            request = Request(name, args)
+            # creo qui la Request, specificando il suo nome, il tipo di Servizio e gli argomenti 
+            request = Request(name, serviceType, args)
             # anche qui dopo che il Client ha creato la request, faccio marshall del messaggio
             print('# Marshalling', request, 'towards', "%s:%d" % client.remote_address)
             request = serialize(request)
@@ -38,15 +39,27 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
     def __init__(self, server_address):
         super().__init__(server_address)
 
-    # in questo caso l'implementazione viene fatta usando la funzione rpc passandogli argomenti necessari (nome funzione, argomenti)
+    # in questo caso l'implementazione viene fatta usando la funzione rpc passandogli argomenti necessari (nome funzione, tipo di servizio, argomenti)
     def add_user(self, user: User):
-        return self.rpc('add_user', user)
+        return self.rpc('add_user', 'databaseService',user)
 
     def get_user(self, id: str) -> User:
-        return self.rpc('get_user', id)
+        return self.rpc('get_user', 'databaseService',id)
 
     def check_password(self, credentials: Credentials) -> bool:
-        return self.rpc('check_password', credentials)
+        return self.rpc('check_password', 'databaseService', credentials)
+
+# creo una nuova classe chiamata RemoteAuthenticationService che utilizza un ClientStub e un AuthenticationService
+class RemoteAuthenticationService(ClientStub, AuthenticationService):
+    def __init__(self, server_address):
+        super().__init__(server_address)
+
+    # definisco qui il metodo authenticate e il metodo di validazione del token
+    def authenticate(self, credentials: Credentials, duration: timedelta = None) -> Token:
+        return self.rpc('authenticate', 'authenticationService', credentials, duration)
+
+    def validate_token(self, token: Token) -> bool:
+        return self.rpc('validate_token', 'authenticationService', token)
 
 
 if __name__ == '__main__':

@@ -240,6 +240,49 @@
             "args": [
                 "localhost:8080"
             ],
+        },{
+            "name": "RPC TEST 1: add User",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab4.example4_rpc_client_cli",
+            "args": [
+                "localhost:8080",
+                "add",
+                "-u",
+                "abianchi",
+                "-a",
+                "andBianchi@gmail.com",
+                "-n",
+                "Andrea Bianchi",
+                "-r",
+                "admin",
+                "-p",
+                "beeg boi"
+            ],
+        },{
+            "name": "RPC TEST 2: authenticate User",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab4.example4_rpc_client_cli",
+            "args": [
+                "localhost:8080",
+                "authenticate",
+                "-u",
+                "abianchi",
+                "-p",
+                "beeg boi"
+            ],
+        },{
+            "name": "RPC TEST 3: validate token of User",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab4.example4_rpc_client_cli",
+            "args": [
+                "localhost:8080",
+                "validate_token",
+                "-u",
+                "abianchi",
+            ],
         },
     ]
 }

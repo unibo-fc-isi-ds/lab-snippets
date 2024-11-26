@@ -1,0 +1,21 @@
+{
+  "signature": "1be866f99f0cacd8d0154724def26e31fc3246d02ccfbf032325c38e5b7f3f99",
+  "user": {
+    "username": "abianchi",
+    "emails": [
+      "andBianchi@gmail.it"
+    ],
+    "full_name": "Andrea Bianchi",
+    "role": {
+      "name": "ADMIN",
+      "$type": "Role"
+    },
+    "password": null,
+    "$type": "User"
+  },
+  "expiration": {
+    "datetime": "2024-11-27T13:07:48.098878",
+    "$type": "datetime"
+  },
+  "$type": "Token"
+}
