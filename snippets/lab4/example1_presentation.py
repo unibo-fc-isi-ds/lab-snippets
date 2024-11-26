@@ -77,7 +77,6 @@ class Serializer:
         }
 
     def _datetime_to_ast(self, dt: datetime):
-        # raise NotImplementedError("Missing implementation for datetime serialization")    
         return {'datetime': dt.isoformat()}
 
     def _role_to_ast(self, role: Role):

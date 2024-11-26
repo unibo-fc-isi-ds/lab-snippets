@@ -40,14 +40,25 @@ if __name__ == '__main__':
                 user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
                 print(user_db.add_user(user))
             case 'get':
-                print(user_db.get_user(ids[0]))
+                token = None
+                try:
+                    with open('token.txt') as f:
+                        token = deserialize(f.read())
+                except FileNotFoundError:
+                    raise ValueError("Authentication is required")
+                print(user_db.get_user(ids[0], token))
             case 'check':
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
             case 'auth':
                 credentials = Credentials(ids[0], args.password)
-                print(user_db.authenticate(credentials))
+                token = user_db.authenticate(credentials)
+                with open('token.txt', 'w') as f:
+                    f.write(serialize(token))
+                print(token)
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:
         print(f'[{type(e).__name__}]', *e.args)
+
+

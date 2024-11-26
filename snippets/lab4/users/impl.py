@@ -34,19 +34,21 @@ class InMemoryUserDatabase(UserDatabase, _Debuggable):
             self.__users[id] = user
         self._log(f"Add: {user}")
 
-    def __get_user(self, id: str) -> User:
+    def _get_user(self, id: str) -> User:
         if id not in self.__users:
             raise KeyError(f"User with ID {id} not found")
         return self.__users[id]
     
-    def get_user(self, id: str) -> User:
-        result = self.__get_user(id).copy(password=None)
-        self._log(f"Get user with ID {id}: {result}")
-        return result
+    def get_user(self, id: str, token: Token) -> User:
+        if token.user.role == Role.ADMIN:
+            result = self._get_user(id).copy(password=None)
+            self._log(f"Get user with ID {id}: {result}")
+            return result
+        raise ValueError("Unauthorized")
 
     def check_password(self, credentials: Credentials) -> bool:
         try:
-            user = self.__get_user(credentials.id)
+            user = self._get_user(credentials.id)
             result = user.password == _compute_sha256_hash(credentials.password)
         except KeyError:
             result = False
@@ -69,7 +71,7 @@ class InMemoryAuthenticationService(AuthenticationService, _Debuggable):
             duration = timedelta(days=1)
         if self.__database.check_password(credentials):
             expiration = datetime.now() + duration
-            user = self.__database.get_user(credentials.id)
+            user = self.__database._get_user(credentials.id)
             signature = _compute_sha256_hash(f"{user}{expiration}{self.__secret}")
             result = Token(user, expiration, signature)
             self._log(f"Generate token for user {credentials.id}: {result}")

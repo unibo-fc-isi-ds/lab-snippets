@@ -1,0 +1,21 @@
+{
+  "signature": "a2f5f797ab30ff2948ec7f8d40c9e6b0d50cc18395e3dc2f7b4dbdc51cb43f19",
+  "user": {
+    "username": "gciatto",
+    "emails": [
+      "gciatto@gmail.com"
+    ],
+    "full_name": "Giovanni Ciatto",
+    "role": {
+      "name": "ADMIN",
+      "$type": "Role"
+    },
+    "password": "3bb4e22a6cf476a44c1a42b843d9331d8203bb7a4294e72a04412a9bb97f813e",
+    "$type": "User"
+  },
+  "expiration": {
+    "datetime": "2024-11-27T17:12:46.848491",
+    "$type": "datetime"
+  },
+  "$type": "Token"
+}
