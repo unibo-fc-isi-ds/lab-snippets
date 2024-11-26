@@ -1,4 +1,5 @@
 from snippets.lab3 import Server
+from snippets.lab4.users import Role
 from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 import traceback
@@ -44,6 +45,20 @@ class ServerStub(Server):
                     method = getattr(self.__auth, request.name)
                     result = method(*request.args)
                     error = None
+                case 'get_user' | 'check_password':
+                    if request.token is not None:
+                        token = request.token
+                        if(self.__auth.validate_token(token) and token.user.role == Role.ADMIN):
+                            method = getattr(self.__user_db, request.name)
+                            result = method(*request.args)
+                            error = None
+                        else:
+                            result = None
+                            error = "Request rejected: the token is not valid or role not authorized"
+                    else:
+                        result = None
+                        error = "Request rejected: you're not authenticated yet"
+                
                 case _:
                     method = getattr(self.__user_db, request.name)
                     result = method(*request.args)

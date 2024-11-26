@@ -1,7 +1,39 @@
 from .example3_rpc_client import *
 import argparse
 import sys
+import json
 
+
+def save_token_to_json(token: Token, file_path="tokenDiProva.json"):
+    try:
+        # Se il file esiste, leggi i dati esistenti
+        with open(file_path, "r") as file:
+            raw_file = file.read()
+            data = deserialize(raw_file)
+    except FileNotFoundError:
+        # Se il file non esiste, crea un nuovo dizionario
+        data = serialize(token)
+        
+    # Aggiorna o aggiungi il token
+
+    # Scrivi i dati aggiornati nel file
+    with open(file_path, "w") as file:
+        file.write(data)
+
+    print("Token salvato correttamente.")
+
+def read_token_from_json(file_path="tokenDiProva.json"):
+    try:
+        with open(file_path, "r") as file:
+            raw_file = file.read()
+            print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+            print(raw_file)
+            data = deserialize(raw_file)
+            print(data)
+            return data  # Restituisce il token o None se non esiste
+    except FileNotFoundError:
+        print("File JSON non trovato.")
+        return None
 
 if __name__ == '__main__':
 
@@ -11,7 +43,7 @@ if __name__ == '__main__':
         exit_on_error=False,
     )
     parser.add_argument('address', help='Server address in the form ip:port')
-    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check'])
+    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check', 'login'])
     parser.add_argument('--user', '-u', help='Username')
     parser.add_argument('--email', '--address', '-a', nargs='+', help='Email address')
     parser.add_argument('--name', '-n', help='Full name')
@@ -26,6 +58,8 @@ if __name__ == '__main__':
 
     args.address = address(args.address)
     user_db = RemoteUserDatabase(args.address)
+    user_auth = RemoteAuthtenticationService(args.address)
+    user_auth.token = user_db.token = read_token_from_json()
 
     try :
         ids = (args.email or []) + [args.user]
@@ -44,6 +78,10 @@ if __name__ == '__main__':
             case 'check':
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
+            case 'login':
+                credentials = Credentials(ids[0], args.password)
+                user_db.token = user_auth.token = user_auth.authenticate(credentials)
+                save_token_to_json(user_auth.token)
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:

@@ -1,5 +1,6 @@
 from .users import User, Credentials, Token, Role
 from datetime import datetime
+from typing import Optional
 import json
 from dataclasses import dataclass
 
@@ -12,6 +13,7 @@ class Request:
 
     name: str
     args: tuple
+    token: Optional[Token] = None
 
     def __post_init__(self):
         self.args = tuple(self.args)
@@ -90,7 +92,10 @@ class Serializer:
         return {
             'name': self._to_ast(request.name),
             'args': [self._to_ast(arg) for arg in request.args],
-        }
+            'token': self._token_to_ast(request.token)
+        } if request.token is not None else {   'name': self._to_ast(request.name),
+                                                'args': [self._to_ast(arg) for arg in request.args],
+                                                }
 
     def _response_to_ast(self, response: Response):
         return {
@@ -148,11 +153,18 @@ class Deserializer:
     def _ast_to_role(self, data):
         return Role[self._ast_to_obj(data['name'])]
 
-    def _ast_to_request(self, data):
-        return Request(
-            name=self._ast_to_obj(data['name']),
-            args=tuple(self._ast_to_obj(arg) for arg in data['args']),
-        )
+    def _ast_to_request(self, data: dict):
+        if data.get("token") is not None:
+            return Request(
+                name=self._ast_to_obj(data['name']),
+                args=tuple(self._ast_to_obj(arg) for arg in data['args']),
+                token=self._ast_to_token(data['token'])
+            )
+        else:
+            return Request(
+                name=self._ast_to_obj(data['name']),
+                args=tuple(self._ast_to_obj(arg) for arg in data['args'])
+            )
 
     def _ast_to_response(self, data):
         return Response(

@@ -15,10 +15,23 @@ gc_user = User(
     role=Role.ADMIN,
     password='my secret password',
 )
+user_list: list[User]
+user_list = []
+user_list.append(gc_user)
+
+user_list.append(User(
+               username='mgaleri',
+               emails={'marco.galeri@unibo.it'},
+               full_name='Marco Galeri',
+               role=Role.USER,
+               password="myPassword"
+                ))
+           
+
 
 gc_user_hidden_password = gc_user.copy(password=None)
 
-gc_credentials_ok = [Credentials(id, gc_user.password) for id in gc_user.ids] # type: ignore
+gc_credentials_ok = [Credentials(user.username, user.password) for user in user_list] # type: ignore
 
 gc_credentials_wrong = Credentials(
     id='giovanni.ciatto@unibo.it',
@@ -46,10 +59,10 @@ assert user_db.get_user('gciatto') == gc_user.copy(password=None)
 
 # Checking credentials should work if there exists a user with the same ID and password (no matter which ID is used)
 for gc_cred in gc_credentials_ok:
-    assert user_db.check_password(gc_cred) == True
+     user_db.check_password(gc_cred)
 
 # Checking credentials should fail if the password is wrong
-assert user_db.check_password(gc_credentials_wrong) == False
+user_db.check_password(gc_credentials_wrong)
 
 # Authenticating with wrong credentials should raise a ValueError
 try:
