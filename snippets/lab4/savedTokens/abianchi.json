@@ -1,5 +1,5 @@
 {
-  "signature": "1be866f99f0cacd8d0154724def26e31fc3246d02ccfbf032325c38e5b7f3f99",
+  "signature": "e01ba2b08d63bcbef565af9c2dae2de020d40c0969d1f502f8ea54401cf07f15",
   "user": {
     "username": "abianchi",
     "emails": [
@@ -14,7 +14,7 @@
     "$type": "User"
   },
   "expiration": {
-    "datetime": "2024-11-27T13:07:48.098878",
+    "datetime": "2024-11-27T16:25:26.772923",
     "$type": "datetime"
   },
   "$type": "Token"

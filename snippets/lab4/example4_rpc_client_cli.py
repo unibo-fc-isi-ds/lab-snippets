@@ -3,14 +3,17 @@ from .example1_presentation import Serializer, Deserializer
 import argparse
 import sys
 
+# per indicare la directory specifica dove verranno salvati (e letti) i tokens creati
+TOKEN_DIR = './snippets/lab4/savedTokens'
+
 # creo i metodi di lettura e scrittura su un file dei tokens generati
 def save_token(user, token: Token):
-    with open(f'./snippets/lab4/savedTokens/{user}.json', 'w') as file_write:
+    with open(f'{TOKEN_DIR}/{user}.json', 'w') as file_write:
         serialized_token = Serializer().serialize(token) # serializzo qua il token e lo scrivo poi su file
         file_write.write(serialized_token)
 
 def read_token(user) -> Token:
-    with open(f'./snippets/lab4/savedTokens/{user}.json', 'r') as read_file:
+    with open(f'{TOKEN_DIR}/{user}.json', 'r') as read_file:
         return Deserializer().deserialize(read_file.read())
         #return deserializer.deserialize(f.read())
 
