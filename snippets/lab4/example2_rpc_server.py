@@ -36,18 +36,21 @@ class ServerStub(Server):
                 traceback.print_exception(error)
             case 'close':
                 print('[%s:%d] Close connection' % connection.remote_address)
+    
+    def __requires_auth(self, request_name: str) -> bool:
+        return request_name in ["get_user"]
 
     def __requires_admin(self, request_name: str) -> bool:
         return request_name in ["get_user"]
 
     def __can_perform_request(self, request) -> tuple[bool, str]:
-        if self.__requires_admin(request.name):
+        if self.__requires_auth(request.name):
             token: Token = request.metadata['token']
             if not token:
                 return (False, "A token is required.")
             if not self.__auth.validate_token(token):
                 return (False, "Invalid token.")
-            if token.user.role != Role.ADMIN:
+            if self.__requires_admin(request.name) and token.user.role != Role.ADMIN:
                 return (False, f"User {token.user.username} does not have admin privileges.")
         return (True, "")
 
