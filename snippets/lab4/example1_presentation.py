@@ -1,5 +1,5 @@
 from .users import User, Credentials, Token, Role
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 from dataclasses import dataclass
 
@@ -76,8 +76,18 @@ class Serializer:
             'expiration': self._to_ast(token.expiration),
         }
 
+    def _timedelta_to_ast(self, dt: timedelta):
+        return {
+            "days" : self._to_ast(dt.days),
+            "seconds" : self._to_ast(dt.seconds),
+            "microseconds" : self._to_ast(dt.microseconds)
+        }
+    
+    # Here i use the isoformat instead of year, month, day...
     def _datetime_to_ast(self, dt: datetime):
-        raise NotImplementedError("Missing implementation for datetime serialization")
+        return {
+            "datetime" : self._to_ast(dt.isoformat())
+        }
 
     def _role_to_ast(self, role: Role):
         return {'name': role.name}
@@ -137,8 +147,17 @@ class Deserializer:
             expiration=self._ast_to_obj(data['expiration']),
         )
 
+    def _ast_to_timedelta(self, data):
+        return timedelta(
+            days = self._ast_to_obj(data['days']),
+            seconds = self._ast_to_obj(data['seconds']),
+            microseconds = self._ast_to_obj(data['microseconds']),
+        )
+    
     def _ast_to_datetime(self, data):
-        raise NotImplementedError("Missing implementation for datetime deserialization")
+        return datetime.fromisoformat(
+            self._ast_to_obj(data['datetime'])
+        )
 
     def _ast_to_role(self, data):
         return Role[self._ast_to_obj(data['name'])]
