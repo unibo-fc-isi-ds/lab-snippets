@@ -77,8 +77,8 @@ class Serializer:
         }
 
     def _datetime_to_ast(self, dt: datetime):
-        raise {
-            'datetime':self._to_ast(dt.__str__)
+        return {
+            'datetime': dt.isoformat()
         }
 
     def _role_to_ast(self, role: Role):
@@ -139,9 +139,8 @@ class Deserializer:
             expiration=self._ast_to_obj(data['expiration']),
         )
 
-    def _ast_to_datetime(self, data):
-        #TODO aggiungere un parse al contrario per la data
-        raise NotImplementedError("Missing implementation for datetime deserialization")
+    def _ast_to_datetime(self, data) -> datetime:
+        return datetime.fromisoformat(data['datetime'])
 
     def _ast_to_role(self, data):
         return Role[self._ast_to_obj(data['name'])]

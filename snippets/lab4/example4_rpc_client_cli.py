@@ -2,7 +2,7 @@ from .example3_rpc_client import *
 import argparse
 import sys
 from .users.impl import *
-
+from .example1_presentation import Deserializer, Serializer
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(
@@ -11,13 +11,14 @@ if __name__ == '__main__':
         exit_on_error=False,
     )
     parser.add_argument('address', help='Server address in the form ip:port')
-    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check', 'authenticate'])
+    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check', 'authenticate', 'validate_token'])
     parser.add_argument('--user', '-u', help='Username')
     parser.add_argument('--email', '--address', '-a', nargs='+', help='Email address')
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
-    parser.add_argument('--token', '-t', help='Token')
+    parser.add_argument('--expiration', '-xp', help='Expiration')
+    parser.add_argument('--signature', '-s', help='Signature')
 
     if len(sys.argv) > 1:
         args = parser.parse_args()
@@ -48,6 +49,9 @@ if __name__ == '__main__':
             case 'authenticate':
                 credentials = Credentials(ids[0], args.password)
                 print(auth.authenticate(credentials=credentials))
+            case 'validate_token':
+                token = Deserializer()._ast_to_token(Token(User(args.user, args.email), expiration= Serializer()._datetime_to_ast(args.expiration), signature=args.signature))
+                print(auth.validate_token(token))
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:
