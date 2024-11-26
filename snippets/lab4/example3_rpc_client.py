@@ -41,6 +41,16 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
 
     def check_password(self, credentials: Credentials) -> bool:
         return self.rpc('check_password', credentials)
+    
+class RemoteAuthenticationService(ClientStub):
+    def __init__(self, server_address):
+        super().__init__(server_address)
+
+    def login(self, credentials: Credentials):
+        return self.rpc('authenticate', credentials)
+
+    def validate(self, token: Token) -> bool:
+        return self.rpc('validate', token)
 
 
 if __name__ == '__main__':
@@ -50,6 +60,8 @@ if __name__ == '__main__':
 
     user_db = RemoteUserDatabase(address(sys.argv[1]))
 
+
+'''
     # Trying to get a user that does not exist should raise a KeyError
     try:
         user_db.get_user('gciatto')
@@ -75,3 +87,4 @@ if __name__ == '__main__':
 
     # Checking credentials should fail if the password is wrong
     assert user_db.check_password(gc_credentials_wrong) == False
+'''

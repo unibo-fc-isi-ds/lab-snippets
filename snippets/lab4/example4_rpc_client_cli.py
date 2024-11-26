@@ -7,11 +7,11 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(
         prog=f'python -m snippets -l 4 -e 4',
-        description='RPC client for user database',
+        description='RPC client for user database and authentication',
         exit_on_error=False,
     )
     parser.add_argument('address', help='Server address in the form ip:port')
-    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check'])
+    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check', 'login', 'validate'])
     parser.add_argument('--user', '-u', help='Username')
     parser.add_argument('--email', '--address', '-a', nargs='+', help='Email address')
     parser.add_argument('--name', '-n', help='Full name')
@@ -26,6 +26,7 @@ if __name__ == '__main__':
 
     args.address = address(args.address)
     user_db = RemoteUserDatabase(args.address)
+    auth_service = RemoteAuthenticationService(args.address)
 
     try :
         ids = (args.email or []) + [args.user]
@@ -44,6 +45,12 @@ if __name__ == '__main__':
             case 'check':
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
+            case 'login':
+                credentials = Credentials(ids[0], args.password)
+                if not args.password:
+                    raise ValueError("Password is required")
+                auth_service.login(credentials)
+                print(f"User '{args.user}' logged in successfully.")
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:
