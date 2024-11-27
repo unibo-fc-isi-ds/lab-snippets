@@ -9,7 +9,7 @@ class Request:
     """
     A container for RPC requests: a name of the function to call and its arguments.
     """
-
+    #metadata: dict | None = None
     name: str
     args: tuple
 
@@ -75,10 +75,10 @@ class Serializer:
             'user': self._to_ast(token.user),
             'expiration': self._to_ast(token.expiration),
         }
-
     def _datetime_to_ast(self, dt: datetime):
-        raise NotImplementedError("Missing implementation for datetime serialization")
-
+        #raise NotImplementedError("Missing implementation for datetime serialization")
+        return {'datetime':dt.isoformat()}
+    
     def _role_to_ast(self, role: Role):
         return {'name': role.name}
 
@@ -110,7 +110,7 @@ class Deserializer:
             method_name = f'_ast_to_{data["$type"].lower()}'
             if hasattr(self, method_name):
                 return getattr(self, method_name)(data)
-            raise ValueError(f"Unsupported type {data['type']}")
+            raise ValueError(f"Unsupported type {data['$type']}")
         if isinstance(data, list):
             return [self._ast_to_obj(item) for item in data]
         return data
@@ -138,8 +138,8 @@ class Deserializer:
         )
 
     def _ast_to_datetime(self, data):
-        raise NotImplementedError("Missing implementation for datetime deserialization")
-
+        #raise NotImplementedError("Missing implementation for datetime deserialization")
+        return datetime.fromisoformat(data['datetime'])
     def _ast_to_role(self, data):
         return Role[self._ast_to_obj(data['name'])]
 

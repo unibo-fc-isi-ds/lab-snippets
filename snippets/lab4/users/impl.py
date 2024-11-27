@@ -69,6 +69,7 @@ class InMemoryAuthenticationService(AuthenticationService, _Debuggable):
             duration = timedelta(days=1)
         if self.__database.check_password(credentials):
             expiration = datetime.now() + duration
+            print(datetime.now())
             user = self.__database.get_user(credentials.id)
             signature = _compute_sha256_hash(f"{user}{expiration}{self.__secret}")
             result = Token(user, expiration, signature)
