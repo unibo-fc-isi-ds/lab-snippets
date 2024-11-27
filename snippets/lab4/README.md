@@ -45,7 +45,7 @@ Both files contain two `@classmethod` methods. These are:
 - `def setUpClass`: before starting tests, the `ServerStub` is created, along with its `RemoteUserDatabase` and `RemoteAuthenticationService`. A new `user` is then added into the database;
 - `def tearDownClass`: after finishing every test contained in the class, the server is gracefully closed.
 
-The newly test files are:
+The new test files are:
 
 - **FILE `test_authentication`**: In this file we focus on testing both how the RPC structure interacts in cases of both correct and wrong authentication. The file contains these 3 test functions:
     - `def test_authentication_successful`: A new `testCredentials` is created giving it the correct `username` and `password` of the one added into the database. Using `authenticate` function of the authentication service, we check whether the `returnedToken` is an actual instance of `Token` class (and not `None`);
