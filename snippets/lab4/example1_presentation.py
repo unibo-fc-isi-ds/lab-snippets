@@ -77,7 +77,9 @@ class Serializer:
         }
 
     def _datetime_to_ast(self, dt: datetime):
-        raise NotImplementedError("Missing implementation for datetime serialization")
+        return {
+            'date': self._to_ast(dt.strftime('%Y-%m-%d %H:%M:%S.%f'))
+        }
 
     def _role_to_ast(self, role: Role):
         return {'name': role.name}
@@ -138,7 +140,7 @@ class Deserializer:
         )
 
     def _ast_to_datetime(self, data):
-        raise NotImplementedError("Missing implementation for datetime deserialization")
+        return self._ast_to_obj(datetime.strptime(data['date'], '%Y-%m-%d %H:%M:%S.%f'))
 
     def _ast_to_role(self, data):
         return Role[self._ast_to_obj(data['name'])]

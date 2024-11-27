@@ -53,6 +53,14 @@ class InMemoryUserDatabase(UserDatabase, _Debuggable):
         self._log(f"Checking {credentials}: {'correct' if result else 'incorrect'}")
         return result
     
+    def authenticate(self, credentials: Credentials) -> User:
+        self._log("Authentication user:", credentials)
+        authService = InMemoryAuthenticationService(self, debug=True)
+        token = authService.authenticate(credentials)
+        if authService.validate_token(token):
+            return token
+        raise ValueError("Invalid credentials")
+    
 
 class InMemoryAuthenticationService(AuthenticationService, _Debuggable):
     def __init__(self, database: UserDatabase, secret: str = None, debug: bool = True):
