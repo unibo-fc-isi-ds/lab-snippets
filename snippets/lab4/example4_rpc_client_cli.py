@@ -1,4 +1,6 @@
 from .example3_rpc_client import *
+from datetime import timedelta, datetime
+#from snippets.lab4.users import _compute_sha256_hash
 import argparse
 import sys
 
@@ -11,12 +13,14 @@ if __name__ == '__main__':
         exit_on_error=False,
     )
     parser.add_argument('address', help='Server address in the form ip:port')
-    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check'])
+    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check','authenticate','validate'])
     parser.add_argument('--user', '-u', help='Username')
     parser.add_argument('--email', '--address', '-a', nargs='+', help='Email address')
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
+    parser.add_argument('--token','-t', help='Token String')
+    parser.add_argument('--duration', '-d', help='Token duration in seconds', type=int)
 
     if len(sys.argv) > 1:
         args = parser.parse_args()
@@ -26,11 +30,13 @@ if __name__ == '__main__':
 
     args.address = address(args.address)
     user_db = RemoteUserDatabase(args.address)
+    auth_service = RemoteAuthenticationService(args.address)
 
     try :
         ids = (args.email or []) + [args.user]
         if len(ids) == 0:
             raise ValueError("Username or email address is required")
+        
         match args.command:
             case 'add':
                 if not args.password:
@@ -44,6 +50,21 @@ if __name__ == '__main__':
             case 'check':
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
+            
+            # for excercise 4-01
+            case 'authenticate':
+                if not args.password:
+                    raise ValueError("Password is required")
+                credentials = Credentials(ids[0], args.password)
+                duration = timedelta(seconds=args.duration) if args.duration else timedelta(days=1)
+                print(auth_service.authenticate(credentials, duration))
+            
+            case 'validate':
+                if not args.token:
+                    raise ValueError("Token is required for validation")
+                token = Token.deserialize(args.token)
+                print(auth_service.validate_token(token))
+
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:
