@@ -37,7 +37,7 @@ If the given `args` are correct, a new token will be generated (and the client C
 poetry run python -m snippets -l 4 -e 4 localhost:8080 validate_token -u abianchi
 ```
 
-The client CLI will send a `Your token is valid` message to confirm that it has succeeded, otherwise it will either capture an exception or send a `Your token has expired` message if the token's expiration date is overdue.
+The client CLI will send a `Your token is valid` message to confirm that it has succeeded, otherwise it will either capture an exception or send a `Your token is not valid. Generate a new one!` message if the token's not correct (due to having expired, not having the proper signature...)
 
 ### Unit Tests
 Two new testing files have been created in order to check and test different scenarios and features.
