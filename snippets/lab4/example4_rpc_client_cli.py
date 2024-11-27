@@ -65,7 +65,9 @@ if __name__ == '__main__':
                 user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
                 print(user_db.add_user(user))
             case 'get':
-                token = read_token_from_file(ids[0])
+                if not args.admin:
+                    raise ValueError("Admin username is required")
+                token = read_token_from_file(args.admin)
                 user_db.set_token(token)
                 print(user_db.get_user(ids[0]))
             case 'check': 
