@@ -72,9 +72,6 @@ class UserDatabase(Protocol):
     
     def check_password(self, credentials: Credentials) -> bool:
         ...
-        
-    def auth_user(self, credentials: Credentials) -> User:
-        ...
 
 
 class AuthenticationService(Protocol):
