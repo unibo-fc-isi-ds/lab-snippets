@@ -1,6 +1,7 @@
 from snippets.lab3 import Server
 from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
+from snippets.lab4.users import Role
 import traceback
 
 
@@ -44,11 +45,21 @@ class ServerStub(Server):
                 method = getattr(self.__auth_service, request.name)
             else:
                 method = getattr(self.__user_db, request.name)
+                if request.token:
+                    if not self.__auth_service.validate_token(request.token):
+                        error = 'Token expired or invalid'
+                        return Response(None, error)
+                    if not request.token.user.role == Role.ADMIN:
+                        error = 'Unauthorized operation, insufficient privileges'
+                        return Response(None, error)
+    
             result = method(*request.args)
             error = None
         except Exception as e:
+            import traceback
             result = None
-            error = " ".join(e.args)
+            error = traceback.format_exc()
+            error += " ".join(e.args)
         return Response(result, error)
 
 

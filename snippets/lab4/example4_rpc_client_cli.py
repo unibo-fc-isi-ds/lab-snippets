@@ -44,8 +44,10 @@ if __name__ == '__main__':
                 try:
                     with open('token.txt') as f:
                         token = deserialize(f.read())
+                        if not isinstance(token, Token):
+                            raise ValueError("Invalid token")
                 except FileNotFoundError:
-                    raise ValueError("Authentication is required")
+                    raise ValueError("Missing Token, authentication is required")
                 print(user_db.get_user(ids[0], token))
             case 'check':
                 credentials = Credentials(ids[0], args.password)

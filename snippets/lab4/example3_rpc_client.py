@@ -7,11 +7,11 @@ class ClientStub:
     def __init__(self, server_address: tuple[str, int]):
         self.__server_address = address(*server_address)
 
-    def rpc(self, name, *args):
+    def rpc(self, name, *args, token):
         client = Client(self.__server_address)
         try:
             print('# Connected to %s:%d' % client.remote_address)
-            request = Request(name, args)
+            request = Request(name, args, token)
             print('# Marshalling', request, 'towards', "%s:%d" % client.remote_address)
             request = serialize(request)
             print('# Sending message:', request.replace('\n', '\n# '))
@@ -34,16 +34,16 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
         super().__init__(server_address)
 
     def add_user(self, user: User):
-        return self.rpc('add_user', user)
+        return self.rpc('add_user', user, token=None)
 
     def get_user(self, id: str, token: Token) -> User:
-        return self.rpc('get_user', id, token)
+        return self.rpc('get_user', id, token=token)
 
     def check_password(self, credentials: Credentials) -> bool:
-        return self.rpc('check_password', credentials)
+        return self.rpc('check_password', credentials, token=None)
 
     def authenticate(self, credentials: Credentials) -> Token:
-        return self.rpc('authenticate', credentials)
+        return self.rpc('authenticate', credentials, token=None)
 
 if __name__ == '__main__':
     from snippets.lab4.example0_users import gc_user, gc_credentials_ok, gc_credentials_wrong
