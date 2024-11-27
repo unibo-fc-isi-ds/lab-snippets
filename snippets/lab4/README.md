@@ -1,20 +1,15 @@
-# Exercise: RPC-based Authentication Service
+# Exercise: Secure RPC-based Authentication Service
 
 ## Introduction
-This project is a JSON-based RPC Authentication Service, enabling user authentication and token validation. Users can be authenticated only if pre-registered in the database, with all interactions handled via a command-line interface.
-
-## Assumptions and Limitations
-- All users must be inserted into the database before authentication
+This project extends the JSON-based RPC Authentication Service by adding access control features. More specifically, users can read from the database only if they are authenticated and if their role is admin. 
 
 ## High Level Design
-The provided structure of the RPC Client and Server has been adhered to, with the following additions:
-- Serialization and deserialization of the expiration datetime of the token
-- Implementation of the ClientStub code for the authentication service to handle `authenticate` and `validate_token` requests
-- Inclusion of the `service` field in the `Request` class to direct requests to the appropriate service (i.e. UserDatabase or AuthenticationService)
-- Addition of token saving in JSON files (formatted as `<username>.json`) after authentication. All these files are stored in the `./snippets/lab4/tokens/` directory
-- Addition of user saving in a JSON file (located in `./snippets/lab4/database.json`) after users are inserted to the database. This file is read at server start-up to retrieve users added in previous sessions
-- Extraction of the signature creation logic to a separate class (`DefaultSigner`), allowing testing of the token validation feature
-
+The existing structure of the RPC-based Authentication Service has been adhered to, with the following additions:
+- Inclusion of the `token` field in the `Request` class and update the corresponding (de)serialization logic
+- Extension of the command-line interface by adding a new command to specify the requester of the operation
+- Addition of the (optional) token in `ClientStub` 
+- Distinction between protected and public operations via `@requires_authorization` decorator
+- Update `ServerStub` to check for the presence and validity of the token and the user's role
 
 ### Example
 Run server on port 8080:
@@ -22,9 +17,11 @@ Run server on port 8080:
 poetry run python -m snippets -l 4 -e 2 8080
 ```
 
-Add a new user to the database:
+Add new users to the database:
 ```
-poetry run python -m snippets -l 4 -e 4 localhost:8080 add --user luca --email test@gmail.com --name "Luca Samore" -r admin -p "tell_nobody"
+poetry run python -m snippets -l 4 -e 4 localhost:8080 add --user luca --email luca@gmail.com --name "Luca Samorè" -r admin -p "tell_nobody"
+
+poetry run python -m snippets -l 4 -e 4 localhost:8080 add --user lucia --email lucia@gmail.com --name "Lucia Castellucci" -r user -p "tell_nobody"
 ```
 
 Authenticate a user:
@@ -32,21 +29,29 @@ Authenticate a user:
 poetry run python -m snippets -l 4 -e 4 localhost:8080 authenticate -u luca -p "tell_nobody"
 ```
 
-Validate user token:
+Get a user:
 ```
-poetry run python -m snippets -l 4 -e 4 localhost:8080 validate_token -u luca
+poetry run python -m snippets -l 4 -e 4 localhost:8080 get -d luca -u lucia
+```
+
+Check password:
+```
+poetry run python -m snippets -l 4 -e 4 localhost:8080 check -u luca
 ```
 
 ## Testing
-The system has been tested in the following scenarios:
-- **Authentication is successful scenario**: a new user is added to the database and attempts to authenticate. The goal is to ensure that the authentication process is successful. To verify this, the authentication service is invoked using valid credentials. The test expects the response to be a `Token`
-- **Authentication is unsuccessful scenario**: the authentication service is invoked using invalid credentials (i.e. id and/or password), with no user in the database having that id. The goal is to ensure that the authentication process fails. The test expects a `RuntimeError`
-- **Token is valid scenario**: assuming the user is already authenticated, the authentication service is invoked by passing the user's token. The service verifies whether the token is valid, i.e., it is not expired and its signature is correct. The test expects a return value of `True`
-- **Token is invalid scenario**: the authentication service is invoked by passing a bad token, i.e.
-    - an expired token
-    - a token with an invalid signature
+**Happy Paths**:
+- Authenticated admin user requests get on existing user
+- Authenticated admin user requests password check
 
-    The test expects a return value of `False`
+**Wrong Paths**:
+- Authenticated non-admin user requests get on existing user
+- Authenticated non-admin user requests password check
+- Authenticated admin user requests get on non-existing user
+- Admin user without token requests get on user
+- Admin user without token requests password check
+- Admin user with expired token requests get on user
+- Admin user with expired token requests password check
 
 To run all the tests, you may exploit the following command:
 
@@ -57,13 +62,11 @@ poetry run poe test
 Or simply run a specific test with:
 
 ```
-poetry run python -m unittest discover -s tests -p "test_auth_successful.py"
+poetry run python -m unittest discover -s tests -p "test_authenticated_admin.py"
 
-poetry run python -m unittest discover -s tests -p "test_auth_unsuccessful.py"
+poetry run python -m unittest discover -s tests -p "test_authenticated_user.py"
 
-poetry run python -m unittest discover -s tests -p "test_token_is_valid.py"
-
-poetry run python -m unittest discover -s tests -p "test_token_is_invalid.py"
+poetry run python -m unittest discover -s tests -p "test_unauthenticated_admin.py"
 ```
 
 The system has been tested on macOS, although Github Actions were used to ensure proper functionality on both Windows and Linux environments.
