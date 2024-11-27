@@ -52,16 +52,16 @@ if __name__ == '__main__':
         match args.command:
             case 'add':
                 if not args.password:
-                    raise ValueError("Password is required")
+                    raise ValueError("Password is required!")
                 if not args.name:
-                    raise ValueError("Full name is required")
+                    raise ValueError("Full name is required!")
                 user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
                 print(user_db.add_user(user))
             # sono aggiunti qua i modi per gestire da comando richieste di autenticazione e validazione del token
             # nel caso di richiesta di autenticazione, devo passare sia l'ID (username), sia la password
             case 'authenticate':
                 if not args.password:
-                    raise ValueError("Password is required")
+                    raise ValueError("Password is required!")
                 credentials = Credentials(ids[0], args.password)
                 # stampo qui il risultato del servizio di autenticazione
                 token = authentication_service.authenticate(credentials)
@@ -69,6 +69,8 @@ if __name__ == '__main__':
                 save_token(args.user, token)
             # nel caso di validazione del token, leggo prima di tutto dal file il token
             case 'validate_token':
+                if not args.user:
+                    raise ValueError("Username is required!")
                 userToken = read_token(args.user)
                 if authentication_service.validate_token(userToken):
                     print("Your token is valid!")
