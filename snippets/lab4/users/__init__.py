@@ -34,6 +34,12 @@ class User(Datum):
     @property
     def ids(self):
         return {self.username} | self.emails
+    
+    def __eq__(self, other):
+        if not isinstance(other, User):
+            return False
+        return self.username == other.username and \
+               self.emails == other.emails
 
 
 @dataclass
