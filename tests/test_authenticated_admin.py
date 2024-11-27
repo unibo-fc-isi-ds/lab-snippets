@@ -1,5 +1,5 @@
 from snippets.lab4.example3_rpc_client import RemoteUserDatabase
-from snippets.lab4.users import User, Role, Token
+from snippets.lab4.users import User, Role, Token, Credentials
 from snippets.lab4.users.cryptography import DefaultSigner
 from snippets.lab4.example2_rpc_server import ServerStub, TEST_SECRET
 from datetime import datetime, timedelta
@@ -24,7 +24,7 @@ USER = User(
     password='password'
 )
 
-class TestAuthenticatedAdminGetUser(unittest.TestCase):
+class TestAuthenticatedAdmin(unittest.TestCase):
     
     @classmethod
     def setUpClass(cls):
@@ -54,6 +54,10 @@ class TestAuthenticatedAdminGetUser(unittest.TestCase):
         )
         with self.assertRaises(RuntimeError):
             self.database.get_user(fake_user.username)
+
+    def test_authenticated_admin_check_password(self):
+        credentials = Credentials(ADMIN.username, ADMIN.password)
+        self.assertTrue(self.database.check_password(credentials))
 
     @classmethod
     def tearDownClass(cls):

@@ -1,5 +1,5 @@
 from snippets.lab4.example3_rpc_client import RemoteUserDatabase
-from snippets.lab4.users import User, Role, Token
+from snippets.lab4.users import User, Role, Token, Credentials
 from snippets.lab4.users.cryptography import DefaultSigner
 from snippets.lab4.example2_rpc_server import ServerStub, TEST_SECRET
 from datetime import datetime, timedelta
@@ -24,29 +24,37 @@ USER = User(
     password='password'
 )
 
-class TestAuthenticatedUserGetUser(unittest.TestCase):
+class TestAuthenticatedUser(unittest.TestCase):
     
-    def setUp(self):
-        self.server = ServerStub(SERVER_PORT, debug=True)
+    @classmethod
+    def setUpClass(cls):
+        cls.server = ServerStub(SERVER_PORT, debug=True)
         time.sleep(3)
-        self.database = RemoteUserDatabase(('localhost', SERVER_PORT))
+        cls.database = RemoteUserDatabase(('localhost', SERVER_PORT))
         time.sleep(3)
 
-        self.database.add_user(REQUESTER)
-        self.database.add_user(USER)
+        cls.database.add_user(REQUESTER)
+        cls.database.add_user(USER)
 
-        token = self.__create_valid_token()
-        self.database.set_token(token)
+        token = cls.__create_valid_token()
+        cls.database.set_token(token)
     
     def test_authenticated_user_get_user(self):
         with self.assertRaises(RuntimeError):
             self.database.get_user(USER.username)
 
-    def tearDown(self):
-        self.server.close()
+    def test_authenticated_user_check_password(self):
+        credentials = Credentials(USER.username, USER.password)
+        with self.assertRaises(RuntimeError):
+            self.database.check_password(credentials)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.server.close()
         time.sleep(3)
         
-    def __create_valid_token(self) -> Token:
+    @classmethod
+    def __create_valid_token(cls) -> Token:
         signer = DefaultSigner(TEST_SECRET)
         expiration = datetime.now() + timedelta(days=1)
         signature = signer.sign(REQUESTER, expiration)
