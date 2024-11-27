@@ -6,13 +6,13 @@ from datetime import datetime, timedelta
 import unittest
 import time
 
-SERVER_PORT = 9092
+SERVER_PORT = 9093
 
-ADMIN = User(
+REQUESTER = User(
     username='luca',
     emails={'luca@gmail.com'},
     full_name="Luca Samore",
-    role=Role.ADMIN,
+    role=Role.USER,
     password='password'
 )
 
@@ -24,7 +24,7 @@ USER = User(
     password='password'
 )
 
-class TestAuthenticatedAdminGetsExistingUser(unittest.TestCase):
+class TestAuthenticatedUserGetUser(unittest.TestCase):
     
     def setUp(self):
         self.server = ServerStub(SERVER_PORT, debug=True)
@@ -32,23 +32,22 @@ class TestAuthenticatedAdminGetsExistingUser(unittest.TestCase):
         self.database = RemoteUserDatabase(('localhost', SERVER_PORT))
         time.sleep(3)
 
-        self.database.add_user(ADMIN)
+        self.database.add_user(REQUESTER)
         self.database.add_user(USER)
 
-        token = self.__create_valid_token_for_admin()
+        token = self.__create_valid_token()
         self.database.set_token(token)
     
-    def test_authenticated_admin_gets_existing_user(self):
-        response = self.database.get_user(USER.username)
-        # two users are the same if they have exactly the same ids (username and email addresses)
-        self.assertEqual(USER, response)
+    def test_authenticated_user_get_user(self):
+        with self.assertRaises(RuntimeError):
+            self.database.get_user(USER.username)
 
     def tearDown(self):
         self.server.close()
         time.sleep(3)
         
-    def __create_valid_token_for_admin(self) -> Token:
+    def __create_valid_token(self) -> Token:
         signer = DefaultSigner(TEST_SECRET)
         expiration = datetime.now() + timedelta(days=1)
-        signature = signer.sign(ADMIN, expiration)
-        return Token(ADMIN, expiration, signature)
+        signature = signer.sign(REQUESTER, expiration)
+        return Token(REQUESTER, expiration, signature)
