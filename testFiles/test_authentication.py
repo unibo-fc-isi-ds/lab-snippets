@@ -15,7 +15,8 @@ TESTUSER = User(
 
 class TestAuthentication(unittest.TestCase):
     
-    def setUp(self):
+    @classmethod
+    def setUpClass(self):
         # creazione di server di test, database e servizio di autenticazione
         self.testServer = ServerStub(SERVER_PORT)
         time.sleep(3)
@@ -25,7 +26,13 @@ class TestAuthentication(unittest.TestCase):
         time.sleep(3)
         # aggiungo prima un utente
         self.testDatabase.add_user(TESTUSER)
-        return super().setUp()
+        return super().setUpClass()
+    
+    @classmethod
+    def tearDownClass(self) -> None:
+        print("Closing Server")
+        self.testServer.close()
+        return super().tearDownClass()
     
     # test per verificare corretta autenticazione
     def test_authentication_successful(self):
@@ -44,8 +51,3 @@ class TestAuthentication(unittest.TestCase):
         testFailCredentials = Credentials('user', 'my_password')
         with self.assertRaises(RuntimeError):
             self.testAuthenticationService.authenticate(testFailCredentials)
-
-    def tearDown(self):
-        # devo chiudere il server
-        self.testServer.close()
-        return super().tearDown()

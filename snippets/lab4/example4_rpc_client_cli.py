@@ -73,7 +73,7 @@ if __name__ == '__main__':
                 if authentication_service.validate_token(userToken):
                     print("Your token is valid!")
                 else:
-                    print("Your token has expired! Generate a new one!")
+                    print("Your token is not valid (may be expired or has the wrong signature). Generate a new one!")
             case 'get':
                 print(user_db.get_user(ids[0]))
             case 'check':

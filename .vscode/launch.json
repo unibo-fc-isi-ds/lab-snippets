@@ -241,6 +241,14 @@
                 "localhost:8080"
             ],
         },{
+            "name": "RPC TEST 0: start Server",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab4.example2_rpc_server",
+            "args": [
+                "8080",
+            ],
+        },{
             "name": "RPC TEST 1: add User",
             "type": "debugpy",
             "request": "launch",
