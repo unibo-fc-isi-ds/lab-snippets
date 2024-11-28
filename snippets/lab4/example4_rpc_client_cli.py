@@ -2,20 +2,26 @@ from .example3_rpc_client import *
 from .example1_presentation import Serializer, Deserializer
 import argparse
 import sys
+import os
 
 # per indicare la directory specifica dove verranno salvati (e letti) i tokens creati
-TOKEN_DIR = './snippets/lab4/savedTokens'
+SAVED_TOKENS_DIR = './snippets/lab4/savedTokens'
 
 # creo i metodi di lettura e scrittura su un file dei tokens generati
 def save_token(user, token: Token):
-    with open(f'{TOKEN_DIR}/{user}.json', 'w') as file_write:
+    # creo in caso la directory se non esiste
+    if not os.path.exists(SAVED_TOKENS_DIR):
+        os.makedirs(SAVED_TOKENS_DIR)
+    # poi scrivo il token
+    with open(f'{SAVED_TOKENS_DIR}/{user}.json', 'w') as file_write:
         serialized_token = Serializer().serialize(token) # serializzo qua il token e lo scrivo poi su file
         file_write.write(serialized_token)
 
 def read_token(user) -> Token | None:
-    with open(f'{TOKEN_DIR}/{user}.json', 'r') as read_file:
+    if not os.path.exists(SAVED_TOKENS_DIR):
+        return None
+    with open(f'{SAVED_TOKENS_DIR}/{user}.json', 'r') as read_file:
         return Deserializer().deserialize(read_file.read())
-        #return deserializer.deserialize(f.read())
 
 # questa è l'interfaccia command-line creata per l'utente, che si basa su utente per performare invocazioni su Server
 # (ovviamente ognuno può fare la propria Interfaccia differente, tipo una GUI)
@@ -31,7 +37,7 @@ if __name__ == '__main__':
     parser.add_argument('command', help='Method to call', choices=['add', 'get', 'authenticate', 'validate_token', 'check'])
     parser.add_argument('--user', '-u', help='Username')
     # aggiunto qui un ulteriore comando per mettere i nomi specifici di admin
-    #parser.add_argument('--adminUser', '-k', help='Username for Admin') 
+    parser.add_argument('--adminUser', '-k', help='Username for Admin') 
     parser.add_argument('--email', '--address', '-a', nargs='+', help='Email address')
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
@@ -83,9 +89,9 @@ if __name__ == '__main__':
             case 'get':
                 # per rendere il sistema sicuro, devo recuperare il token
                 # faccio in modo che solo l'admin possa avere accesso alla funzione get
-                #if not args.adminUser:
-                #    raise ValueError("Admin username is required")
-                retrievedToken = read_token(ids[0]) # recupero il token e lo setto per il ClientStub
+                if not args.adminUser:
+                    raise ValueError("Admin username is required")
+                retrievedToken = read_token(args.adminUser) # recupero il token e lo setto per il ClientStub
                 user_db.token = retrievedToken
                 print(user_db.get_user(ids[0]))
             case 'check':

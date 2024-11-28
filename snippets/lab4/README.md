@@ -39,6 +39,77 @@ poetry run python -m snippets -l 4 -e 4 localhost:8080 validate_token -u abianch
 
 The client CLI will send a `Your token is valid` message to confirm that it has succeeded, otherwise it will either capture an exception or send a `Your token is not valid. Generate a new one!` message if the token's not correct (due to having expired, not having the proper signature...)
 
+### Debug Tests With Launch.json
+Four new launch configurations were added into the `launch.json` file, each one focused on studying and debugging the newly added functions. These are:
+- Start of the server
+```
+{
+    "name": "RPC TEST 0: start Server",
+    "type": "debugpy",
+    "request": "launch",
+    "module": "snippets.lab4.example2_rpc_server",
+    "args": [
+        "8080",
+    ],
+}
+```
+- Addition of a new user into the database
+```
+{
+    "name": "RPC TEST 1: add User",
+    "type": "debugpy",
+    "request": "launch",
+    "module": "snippets.lab4.example4_rpc_client_cli",
+    "args": [
+        "localhost:8080",
+        "add",
+        "-u",
+        "abianchi",
+        "-a",
+        "andBianchi@gmail.com",
+        "-n",
+        "Andrea Bianchi",
+        "-r",
+        "admin",
+        "-p",
+        ""
+    ],
+}
+```
+- Authentication of new user:
+```
+{
+    "name": "RPC TEST 2: authenticate User",
+    "type": "debugpy",
+    "request": "launch",
+    "module": "snippets.lab4.example4_rpc_client_cli",
+    "args": [
+        "localhost:8080",
+        "authenticate",
+        "-u",
+        "abianchi",
+        "-p",
+        "good_password"
+    ],
+}
+```
+- Validation of new token
+```
+{
+    "name": "RPC TEST 3: validate token of User",
+    "type": "debugpy",
+    "request": "launch",
+    "module": "snippets.lab4.example4_rpc_client_cli",
+    "args": [
+        "localhost:8080",
+        "validate_token",
+        "-u",
+        "abianchi",
+    ],
+}
+```
+Starting each of these launch configurations in the following order will showcase the success of every implemented method.
+
 ### Unit Tests
 Two new testing files have been created in order to check and test different scenarios and features.
 Both files contain two `@classmethod` methods. These are:

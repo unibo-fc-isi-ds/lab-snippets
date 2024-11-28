@@ -265,7 +265,7 @@
                 "-r",
                 "admin",
                 "-p",
-                "beeg boi"
+                "good_password"
             ],
         },{
             "name": "RPC TEST 2: authenticate User",
@@ -278,7 +278,7 @@
                 "-u",
                 "abianchi",
                 "-p",
-                "beeg boi"
+                "good_password"
             ],
         },{
             "name": "RPC TEST 3: validate token of User",

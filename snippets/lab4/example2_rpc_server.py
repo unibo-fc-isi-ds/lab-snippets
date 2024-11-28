@@ -13,7 +13,6 @@ class ServerStub(Server):
         self.__user_db = InMemoryUserDatabase() # oggetto normale in Python che funziona da user database (teniamo un riferimento per delegare invocazioni di Client)
         # gli passo lo UserDatabase che è già stato creato
         self.__user_authentication = InMemoryAuthenticationService(self.__user_db)
-        self.protected_methods = {'get_user', 'check_password'}
     
     # settiamo come gestire eventi per nuove connessioni
     def __on_connection_event(self, event, connection, address, error):
@@ -60,14 +59,13 @@ class ServerStub(Server):
             # verifico se il servizio richiesto riguarda aggiunte al database oppure se riguarda l'autenticazione
             match request.serviceType:
                 case 'databaseService':
-                    if request.name in self.protected_methods:
+                    if request.name == 'get_user':
                         # controllo che sia stato inserito un token valido
                         if request.token is None or not self.__user_authentication.validate_token(request.token):
                             raise Exception('Error: no token or invalid token provided for the protected method!')
                         admin_user = self.__user_db.get_user(id=request.token.user.username) # recupero lo username e verifico che sia un ADMIN
                         if admin_user.role is not Role.ADMIN:
                             raise Exception('Error: unauthorized user!')
-                        print("user is an ADMIN and is called ", admin_user)
                     # altro exploit di Python reflections per trovare una funzione adatta in base al tipo passato
                     method = getattr(self.__user_db, request.name)
                     
