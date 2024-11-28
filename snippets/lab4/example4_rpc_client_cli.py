@@ -1,4 +1,4 @@
-from example3_rpc_client import *
+from snippets.lab4.example3_rpc_client import *
 import argparse
 import sys
 
@@ -7,10 +7,10 @@ TEST_EMAIL = "carlo@carlo.it"
 TEST_FULL_NAME = "CarloCarlo"
 TEST_CORRECT_PASS = "carlo"
 TEST_FAKE_PASS = "carlone"
-SERVER_PORT = 8080
+TEST_SERVER_PORT = 8080
 
 def test_add_user():
-    user_db_auth = RemoteUserDatabaseAndAuthentication(address(port=SERVER_PORT))
+    user_db_auth = RemoteUserDatabaseAndAuthentication(address(port=TEST_SERVER_PORT))
     user = User(TEST_USERNAME, TEST_EMAIL, TEST_FULL_NAME,
                 Role.USER, TEST_CORRECT_PASS)
     user_without_pass = User(TEST_USERNAME, TEST_EMAIL, TEST_FULL_NAME,
@@ -20,17 +20,17 @@ def test_add_user():
     assert obtained_user == user_without_pass
 
 def test_check_pass_correct_user():
-    user_db_auth = RemoteUserDatabaseAndAuthentication(address(port=SERVER_PORT))
+    user_db_auth = RemoteUserDatabaseAndAuthentication(address(port=TEST_SERVER_PORT))
     credentials = Credentials(TEST_USERNAME, TEST_CORRECT_PASS)
     assert user_db_auth.check_password(credentials=credentials)
 
 def test_check_pass_fake_user():
-    user_db_auth = RemoteUserDatabaseAndAuthentication(address(port=SERVER_PORT))
+    user_db_auth = RemoteUserDatabaseAndAuthentication(address(port=TEST_SERVER_PORT))
     credentials = Credentials(TEST_USERNAME, TEST_FAKE_PASS)
     assert not user_db_auth.check_password(credentials=credentials)
 
 def test_authenticate_user():
-    user_db_auth = RemoteUserDatabaseAndAuthentication(address(port=SERVER_PORT))
+    user_db_auth = RemoteUserDatabaseAndAuthentication(address(port=TEST_SERVER_PORT))
     credentials = Credentials(TEST_USERNAME, TEST_CORRECT_PASS)
     token = user_db_auth.authenticate(credentials=credentials, 
                                       duration=timedelta(days=1))
