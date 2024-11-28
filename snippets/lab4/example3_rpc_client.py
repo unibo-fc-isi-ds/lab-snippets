@@ -29,7 +29,7 @@ class ClientStub:
             print('# Disconnected from %s:%d' % client.remote_address)
 
 
-class RemoteUserDatabase(ClientStub, UserDatabase, AuthenticationService):
+class RemoteUserDatabase(ClientStub, UserDatabase):
     def __init__(self, server_address):
         super().__init__(server_address)
 
