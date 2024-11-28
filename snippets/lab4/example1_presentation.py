@@ -12,7 +12,9 @@ class Request:
     """
 
     # ho aggiunto serviceType per distinguere il tipo di servizio (lavoro su database o lavoro di autenticazione)
+    # per l'estensione del secondo esercizio, ho aggiunto anche il Token all'interno della request
     name: str
+    token: Token
     serviceType: str
     args: tuple
 
@@ -88,7 +90,7 @@ class Serializer:
 
     # trasforma i dati di tipo token in dati AST trasformabili poi in stringhe
     def _token_to_ast(self, token: Token):
-        return {
+        return None if token is None else{
             'signature': self._to_ast(token.signature),
             'user': self._to_ast(token.user),
             'expiration': self._to_ast(token.expiration),
@@ -106,6 +108,7 @@ class Serializer:
     def _request_to_ast(self, request: Request):
         return {
             'name': self._to_ast(request.name),
+            'token': self._to_ast(request.token),
             'serviceType': self._to_ast(request.serviceType),
             'args': [self._to_ast(arg) for arg in request.args],
         }
@@ -168,7 +171,7 @@ class Deserializer:
 
     # trasforma dato AST in oggetto Token
     def _ast_to_token(self, data):
-        return Token(
+        return None if data is None else Token(
             signature=self._ast_to_obj(data['signature']),
             user=self._ast_to_obj(data['user']),
             expiration=self._ast_to_obj(data['expiration']),
@@ -186,6 +189,7 @@ class Deserializer:
     def _ast_to_request(self, data):
         return Request(
             name=self._ast_to_obj(data['name']),
+            token=self._ast_to_obj(data['token']),
             serviceType=self._ast_to_obj(data['serviceType']),
             args=tuple(self._ast_to_obj(arg) for arg in data['args']),
         )

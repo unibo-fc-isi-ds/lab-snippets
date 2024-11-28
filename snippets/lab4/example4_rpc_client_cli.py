@@ -23,13 +23,15 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(
         prog=f'python -m snippets -l 4 -e 4',
-        description='RPC client for user database',
+        description='RPC client for user database and authentication services',
         exit_on_error=False,
     )
     parser.add_argument('address', help='Server address in the form ip:port')
     # aggiunti i comandi di autenticazione e di validazione del token
     parser.add_argument('command', help='Method to call', choices=['add', 'get', 'authenticate', 'validate_token', 'check'])
     parser.add_argument('--user', '-u', help='Username')
+    # aggiunto qui un ulteriore comando per mettere i nomi specifici di admin
+    #parser.add_argument('--adminUser', '-k', help='Username for Admin') 
     parser.add_argument('--email', '--address', '-a', nargs='+', help='Email address')
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
@@ -72,13 +74,24 @@ if __name__ == '__main__':
                 if not args.user:
                     raise ValueError("Username is required!")
                 userToken = read_token(args.user)
+                if userToken is None:
+                    raise ValueError("User in not authenticated")
                 if authentication_service.validate_token(userToken):
                     print("Your token is valid!")
                 else:
                     print("Your token is not valid (may be expired or has the wrong signature). Generate a new one!")
             case 'get':
+                # per rendere il sistema sicuro, devo recuperare il token
+                # faccio in modo che solo l'admin possa avere accesso alla funzione get
+                #if not args.adminUser:
+                #    raise ValueError("Admin username is required")
+                retrievedToken = read_token(ids[0]) # recupero il token e lo setto per il ClientStub
+                user_db.token = retrievedToken
                 print(user_db.get_user(ids[0]))
             case 'check':
+                # per rendere il sistema sicuro, devo recuperare il token
+                retrievedToken = read_token(ids[0]) # recupero il token e lo setto per il ClientStub
+                user_db.token = retrievedToken
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
             case _:

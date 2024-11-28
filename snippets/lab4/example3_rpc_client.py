@@ -6,6 +6,16 @@ from snippets.lab4.example1_presentation import serialize, deserialize, Request,
 class ClientStub:
     def __init__(self, server_address: tuple[str, int]):
         self.__server_address = address(*server_address)
+        self.__token: Token | None = None # ho aggiunto al ClientStub il token che viene generato quando richiama l'authenticate
+    
+    # qui sfrutto property per introdurre getter e setter del token
+    @property
+    def token(self) -> Token | None:
+        return self.__token
+    
+    @token.setter
+    def token(self, token : Token):
+        self.__token = token
 
     # creo qua dentro il Client, che contatterà il server di certo indirizzo. Farà
     # poi lui la connessione creando una request passando il nome della funzione e gli argomenti.
@@ -14,7 +24,7 @@ class ClientStub:
         try:
             print('# Connected to %s:%d' % client.remote_address)
             # creo qui la Request, specificando il suo nome, il tipo di Servizio e gli argomenti 
-            request = Request(name, serviceType, args)
+            request = Request(name, self.__token, serviceType, args)
             # anche qui dopo che il Client ha creato la request, faccio marshall del messaggio
             print('# Marshalling', request, 'towards', "%s:%d" % client.remote_address)
             request = serialize(request)
