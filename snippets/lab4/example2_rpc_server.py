@@ -7,7 +7,7 @@ import traceback
 class ServerStub(Server):
     def __init__(self, port):
         super().__init__(port, self.__on_connection_event)
-        self.__user_db = InMemoryUserDatabase()
+        self.__user_db = InMemoryUserDatabase(True)
     
     def __on_connection_event(self, event, connection, address, error):
         match event:
@@ -39,7 +39,11 @@ class ServerStub(Server):
     def __handle_request(self, request):
         try:
             method = getattr(self.__user_db, request.name)
-            result = method(*request.args)
+            result = None
+            if (request.metadata == None):
+                result = method(*request.args)
+            else:
+                result = method(*request.args, request.metadata)
             error = None
         except Exception as e:
             result = None

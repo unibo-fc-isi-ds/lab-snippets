@@ -21,6 +21,7 @@ class InMemoryUserDatabase(UserDatabase, _Debuggable):
     def __init__(self, debug: bool = True):
         _Debuggable.__init__(self, debug)
         self.__users: dict[str, User] = {}
+        self.__authService = InMemoryAuthenticationService(self, debug)
         self._log("User database initialized with empty users")
     
     def add_user(self, user: User):
@@ -39,7 +40,9 @@ class InMemoryUserDatabase(UserDatabase, _Debuggable):
             raise KeyError(f"User with ID {id} not found")
         return self.__users[id]
     
-    def get_user(self, id: str) -> User:
+    def get_user(self, id: str, token: Token) -> User:
+        if token == None or token.user.role != Role.ADMIN or not self.__authService.validate_token(token):
+            raise ValueError("Invalid token")
         result = self.__get_user(id).copy(password=None)
         self._log(f"Get user with ID {id}: {result}")
         return result
@@ -55,9 +58,8 @@ class InMemoryUserDatabase(UserDatabase, _Debuggable):
     
     def authenticate(self, credentials: Credentials) -> User:
         self._log("Authentication user:", credentials)
-        authService = InMemoryAuthenticationService(self, debug=True)
-        token = authService.authenticate(credentials)
-        if authService.validate_token(token):
+        token = self.__authService.authenticate(credentials)
+        if self.__authService.validate_token(token):
             return token
         raise ValueError("Invalid credentials")
     
@@ -76,10 +78,16 @@ class InMemoryAuthenticationService(AuthenticationService, _Debuggable):
         if duration is None:
             duration = timedelta(days=1)
         if self.__database.check_password(credentials):
-            expiration = datetime.now() + duration
-            user = self.__database.get_user(credentials.id)
-            signature = _compute_sha256_hash(f"{user}{expiration}{self.__secret}")
-            result = Token(user, expiration, signature)
+            exp = datetime.now() + duration
+            authUser = User("authServer", [""], role=Role.ADMIN)
+            authToken = Token(
+                user = authUser,
+                expiration = exp,
+                signature = _compute_sha256_hash(f"{authUser}{exp}{self.__secret}")
+            )
+            user = self.__database.get_user(credentials.id, authToken)
+            signature = _compute_sha256_hash(f"{user}{exp}{self.__secret}")
+            result = Token(user, exp, signature)
             self._log(f"Generate token for user {credentials.id}: {result}")
             return result
         raise ValueError("Invalid credentials")
