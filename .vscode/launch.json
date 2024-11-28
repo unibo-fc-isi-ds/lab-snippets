@@ -291,6 +291,38 @@
                 "-u",
                 "abianchi",
             ],
+        },{
+            "name": "RPC TEST 4: Add Normal User (NOT ADMIN)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab4.example4_rpc_client_cli",
+            "args": [
+                "localhost:8080",
+                "add",
+                "-u",
+                "frank",
+                "-a",
+                "frankBianchi@gmail.com",
+                "-n",
+                "Francesco Bianchi",
+                "-r",
+                "user",
+                "-p",
+                "password"
+            ],
+        },{
+            "name": "RPC TEST 5: Secure Get User",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab4.example4_rpc_client_cli",
+            "args": [
+                "localhost:8080",
+                "get",
+                "-k",
+                "abianchi",
+                "-u",
+                "frank"
+            ],
         },
     ]
 }
