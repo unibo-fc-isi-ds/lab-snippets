@@ -41,6 +41,9 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
 
     def check_password(self, credentials: Credentials) -> bool:
         return self.rpc('check_password', credentials)
+    
+    def authenticate(self, credentials: Credentials) -> Token:
+        return self.rpc('authenticate', credentials)
 
 
 if __name__ == '__main__':
