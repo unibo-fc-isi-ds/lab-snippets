@@ -17,7 +17,6 @@ if __name__ == '__main__':
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
-    parser.add_argument('--token', '-t', help='Authentication token')
 
     if len(sys.argv) > 1:
         args = parser.parse_args()
