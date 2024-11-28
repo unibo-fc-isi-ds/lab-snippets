@@ -12,7 +12,7 @@ def save_token(user, token: Token):
         serialized_token = Serializer().serialize(token) # serializzo qua il token e lo scrivo poi su file
         file_write.write(serialized_token)
 
-def read_token(user) -> Token:
+def read_token(user) -> Token | None:
     with open(f'{TOKEN_DIR}/{user}.json', 'r') as read_file:
         return Deserializer().deserialize(read_file.read())
         #return deserializer.deserialize(f.read())
