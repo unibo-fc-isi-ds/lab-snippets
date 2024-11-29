@@ -3,6 +3,7 @@ from snippets.lab4.users.impl import InMemoryUserDatabase
 from snippets.lab4.users.impl import InMemoryAuthenticationService
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 import traceback
+from snippets.lab4.users import *
 
 
 class ServerStub(Server):
@@ -40,9 +41,18 @@ class ServerStub(Server):
     
     def __handle_request(self, request):
         try:
+            if (isinstance(request.metadata[0], Token)):
+                token: Token = request.metadata[0]
+                auth = self.__user_auth.validate_token(token)
+                auth = auth and (token.user.role == Role.ADMIN)
+            else:
+                auth = False
+        except PermissionError:
+            auth = False
+        try:
             if (hasattr(self.__user_db, request.name)):
                 method = getattr(self.__user_db, request.name)
-                result = method(*request.args)
+                result = method(*request.args, auth)
             elif (hasattr(self.__user_auth, request.name)):
                 method = getattr(self.__user_auth, request.name)
                 result = method(*request.args)

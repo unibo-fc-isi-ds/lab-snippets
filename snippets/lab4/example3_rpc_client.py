@@ -7,11 +7,12 @@ class ClientStub:
     def __init__(self, server_address: tuple[str, int]):
         self.__server_address = address(*server_address)
 
-    def rpc(self, name, *args):
+    def rpc(self, name, *args, **kwargs):
         client = Client(self.__server_address)
         try:
             print('# Connected to %s:%d' % client.remote_address)
-            request = Request(name, args)
+            metadata = kwargs.get("metadata", [])
+            request = Request(name, args, metadata=metadata)
             print('# Marshalling', request, 'towards', "%s:%d" % client.remote_address)
             request = serialize(request)
             print('# Sending message:', request.replace('\n', '\n# '))
@@ -42,15 +43,26 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
     def check_password(self, credentials: Credentials) -> bool:
         return self.rpc('check_password', credentials)
     
-class RemoteUserDatabaseAndAuthentication(RemoteUserDatabase, AuthenticationService):
-    def __init__(self, server_address):
+class RemoteUserDatabaseAndAuthentication(ClientStub, UserDatabase, AuthenticationService):
+    def __init__(self, server_address, token):
         super().__init__(server_address)
+        self.__token = token
 
+    # Every time send metadata (None metadata if Token is not obtained)
     def authenticate(self, credentials, duration = None):
-        return self.rpc('authenticate', credentials, duration)
+        return self.rpc('authenticate', credentials, duration, metadata=[self.__token])
     
     def validate_token(self, token):
-        return self.rpc('validate_token', token)
+        return self.rpc('validate_token', token, metadata=[self.__token])
+    
+    def add_user(self, user: User):
+        return self.rpc('add_user', user, metadata=[self.__token])
+
+    def get_user(self, id: str) -> User:
+        return self.rpc('get_user', id, metadata=[self.__token])
+
+    def check_password(self, credentials: Credentials) -> bool:
+        return self.rpc('check_password', credentials, metadata=[self.__token])
 
 
 if __name__ == '__main__':
