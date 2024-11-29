@@ -1,6 +1,7 @@
 from snippets.lab4.example3_rpc_client import *
 import argparse
 import sys
+from snippets.lab4.example1_presentation import serialize, deserialize
 
 TEST_USERNAME = "Carlo"
 TEST_EMAIL = "carlo@carlo.it"
@@ -37,6 +38,40 @@ def test_authenticate_user():
     assert user_db_auth.validate_token(token)
     
 
+def checkInstanceToken(token: Token):
+    if (isinstance(token, Token)):
+        return
+    else:
+        print("Invalid token file")
+        sys.exit(1)
+
+def retrieveTokenFile(fileName: str = "token.json") -> Token:
+    if (not fileName):
+        fileName = "token.json"
+    try:
+        f = open(fileName, "r")
+    except OSError as e:
+        print("Cannot open token file: {e}")
+        sys.exit(1)
+    with f:
+        tokenFile = f.read()
+    token = deserialize(tokenFile)
+    checkInstanceToken(token)
+    return token
+
+def saveTokenFile(token: Token, fileName: str = "token.json"):
+    if (not fileName):
+        fileName = "token.json"
+    checkInstanceToken(token)
+    try:
+        f = open(fileName, "w")
+    except OSError as e:
+        print("Cannot create token file: {e}")
+        sys.exit(1)
+    with f:
+        f.write(serialize(token))
+    
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(
@@ -51,8 +86,7 @@ if __name__ == '__main__':
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
-    parser.add_argument('--token', '-t', help='Token')
-    parser.add_argument('--expiration', help='Expiration date token')
+    parser.add_argument('--filename', '-f', help='File Name')
 
     if len(sys.argv) > 1:
         args = parser.parse_args()
@@ -82,15 +116,11 @@ if __name__ == '__main__':
                 print(user_db_auth.check_password(credentials))
             case 'authenticate':
                 credentials = Credentials(ids[0], args.password)
-                print(user_db_auth.authenticate(credentials))
+                token = user_db_auth.authenticate(credentials)
+                saveTokenFile(token, args.filename)
+                print(token)
             case 'validate_token':
-                if not args.password:
-                    raise ValueError("Password is required")
-                if not args.name:
-                    raise ValueError("Full name is required")
-                user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
-                token = Token(user, datetime.fromisoformat(args.expiration), 
-                              args.token)
+                token = retrieveTokenFile(args.filename)
                 print(user_db_auth.validate_token(token))
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
