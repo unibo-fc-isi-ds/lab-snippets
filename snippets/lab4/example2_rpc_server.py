@@ -41,6 +41,14 @@ class ServerStub(Server):
     
     def __handle_request(self, request):
         try:
+            if request.name == 'get_user':
+                token = request.metadata
+                if not token or not self.__auth_service.validate_token(token):
+                    error = "Unauthorized: Token missing or invalid"
+                    return Response(None, error)
+                if token.user.role.name != "ADMIN":
+                    error = "Forbidden: Admin access required"
+                    return Response(None, error)
             if hasattr(self.__auth_service, request.name):
                 method = getattr(self.__auth_service, request.name)
             elif hasattr(self.__user_db, request.name):
