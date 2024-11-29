@@ -32,7 +32,7 @@ class TestAuthentication(unittest.TestCase):
         time.sleep(3)
         self.testAuthenticationService = RemoteAuthenticationService(('localhost', SERVER_PORT))
         time.sleep(3)
-        # aggiungo prima utente e adming
+        # aggiungo prima utente e admin
         self.testDatabase.add_user(TESTADMIN)
         self.testDatabase.add_user(TESTUSER)
         return super().setUpClass()
