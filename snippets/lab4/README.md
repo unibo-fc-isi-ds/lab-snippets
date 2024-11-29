@@ -13,7 +13,7 @@ The current additions to the architecture are:
 - Implementation of a token saving feature in JSON files and token reading feature from JSON files. After completing the authentication, a new method `save_token` is called to store in the `./snippets/lab4/savedTokens/` directory the newly created token, which is formatted as `<username>.json`. When starting validation of token, method `read_token` is called to retrieve from directory a JSON file with the given `<username>`;
 
 ## Testing
-Testing of current solution was done using both Command-Line and a new series of Test files which are stored in `testFiles` directory.
+Testing of current solution was done using both Command-Line, newly added launch configurations in `launch.json` and a new series of Test files which are stored in `testFiles` directory.
 
 ### Command-Line Testing
 First we run the server on port `8080` using this command on a terminal:
@@ -37,7 +37,7 @@ If the given `args` are correct, a new token will be generated (and the client C
 poetry run python -m snippets -l 4 -e 4 localhost:8080 validate_token -u abianchi
 ```
 
-The client CLI will send a `Your token is valid` message to confirm that it has succeeded, otherwise it will either capture an exception or send a `Your token is not valid. Generate a new one!` message if the token's not correct (due to having expired, not having the proper signature...)
+The client CLI will send a `Your token is valid` message to confirm that it has succeeded, otherwise it will either capture an exception or send a `Your token is not valid. Generate a new one!` message if the token's not correct (due to having expired, it may not have been generated a token for that user...)
 
 ### Debug Tests With Launch.json
 Four new launch configurations were added into the `launch.json` file, each one focused on studying and debugging the newly added functions. These are:
@@ -108,7 +108,7 @@ Four new launch configurations were added into the `launch.json` file, each one 
     ],
 }
 ```
-Starting each of these launch configurations in the following order will showcase the success of every implemented method.
+Starting each of these launch configurations in the specific order that you see above will showcase the success of every implemented method.
 
 ### Unit Tests
 Two new testing files have been created in order to check and test different scenarios and features.
