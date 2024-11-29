@@ -1,14 +1,19 @@
 from snippets.lab3 import Server
-from snippets.lab4.users.impl import InMemoryUserDatabase
-from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
+from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService
+from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response, Service
+from snippets.lab4.users.cryptography import DefaultSigner
 import traceback
 
+TEST_SECRET = 'secret'
 
 class ServerStub(Server):
-    def __init__(self, port):
+    def __init__(self, port, debug=False):
         super().__init__(port, self.__on_connection_event)
-        self.__user_db = InMemoryUserDatabase()
-    
+        self.__user_db = InMemoryUserDatabase(debug)
+        self.__auth_service = \
+            InMemoryAuthenticationService(self.__user_db) if not debug else \
+            InMemoryAuthenticationService(self.__user_db, DefaultSigner(TEST_SECRET))
+
     def __on_connection_event(self, event, connection, address, error):
         match event:
             case 'listen':
@@ -36,9 +41,15 @@ class ServerStub(Server):
             case 'close':
                 print('[%s:%d] Close connection' % connection.remote_address)
     
-    def __handle_request(self, request):
+    def __handle_request(self, request: Request):
         try:
-            method = getattr(self.__user_db, request.name)
+            if request.service is Service.DATABASE:
+                method = getattr(self.__user_db, request.name)
+            elif request.service is Service.AUTHENTICATION:
+                method = getattr(self.__auth_service, request.name)
+            else:
+                raise Exception("Bad Request: no valid service called")
+            
             result = method(*request.args)
             error = None
         except Exception as e:
