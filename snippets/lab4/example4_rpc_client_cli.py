@@ -2,7 +2,9 @@ from .example3_rpc_client import *
 import argparse
 import sys
 from datetime import timedelta
+import os
 
+TOKEN_FILE_PATH = os.path.join(os.path.expanduser('~'),'token.json')
 
 if __name__ == '__main__':
 
@@ -18,8 +20,8 @@ if __name__ == '__main__':
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
-    parser.add_argument('--tokenexpiration', '-x', help='Token expiration')
-    parser.add_argument('--tokensign', '-s', help='Token signature')
+    parser.add_argument('--tokenpath', '-t', help='The path from home directory where the token will be saved')
+    parser.add_argument('--tokenduration', '-d', help='The duration of the token expressed in hours (floating value is accepted)')
 
     if len(sys.argv) > 1:
         args = parser.parse_args()
@@ -41,7 +43,10 @@ if __name__ == '__main__':
                     raise ValueError("Password is required")
                 if not args.name:
                     raise ValueError("Full name is required")
-                user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
+                if not args.role:
+                    user = User(args.user, args.email, args.name, password=args.password)
+                else:
+                    user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
                 print(user_db.add_user(user))
             case 'get':
                 print(user_db.get_user(ids[0]))
@@ -50,15 +55,19 @@ if __name__ == '__main__':
                 print(user_db.check_password(credentials))
             case 'authenticate':
                 credentials = Credentials(ids[0], args.password)
-                token = auth_service.authenticate(credentials)
-                print(f"Token expiration: '{token.expiration.isoformat()}', token signature: '{token.signature}'")
+                if args.tokenduration:
+                    duration = timedelta(hours=float(args.tokenduration))
+                    token = auth_service.authenticate(credentials, duration)
+                else:
+                    token = auth_service.authenticate(credentials)
+                # save the token in a json file
+                with open(TOKEN_FILE_PATH if not args.tokenpath else os.path.join(os.path.expanduser('~'), args.tokenpath), 'w') as file:
+                    file.write(serialize(token))
+                    print(token) # print the token
             case 'validate':
-                if not args.tokenexpiration:
-                    raise ValueError("Token expiration is required")
-                if not args.tokensign:
-                    raise ValueError("Token signature is required")
-                token = Token(user_db.get_user(ids[0]), datetime.fromisoformat(args.tokenexpiration), args.tokensign)
-                print(auth_service.validate_token(token))
+                with open(TOKEN_FILE_PATH if not args.tokenpath else os.path.join(os.path.expanduser('~'), args.tokenpath), 'r') as file:
+                    token = deserialize(file.read())
+                    print(auth_service.validate_token(token))
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:
