@@ -1,3 +1,5 @@
+from snippets.lab4.example1_presentation import TYPE_AUTH, deserialize, serialize
+from snippets.lab4.example3_rpc_client import ClientStub
 from ..users import *
 import hashlib
 
@@ -83,3 +85,39 @@ class InMemoryAuthenticationService(AuthenticationService, _Debuggable):
         result = token.expiration > datetime.now() and self.__validate_token_signature(token)
         self._log(f"{token} is " + ('valid' if result else 'invalid'))
         return result
+
+class RemoteAuthenticationService(ClientStub, AuthenticationService):
+    def __init__(self, server_address):
+        super().__init__(server_address)
+    
+    def authenticate(self, credentials: Credentials, duration: timedelta = None) -> Token:
+        return self.rpc('authenticate', TYPE_AUTH, credentials, duration)
+    
+    def validate_token(self, token: Token) -> bool:
+        return self.rpc('validate_token', TYPE_AUTH, token)
+    
+
+TOKENS_DIR = 'tokens'
+
+class TokenStorage():
+    def __init__(self, directory: str = TOKENS_DIR):
+        self.__directory = directory
+        import os
+        os.makedirs(directory, exist_ok=True)
+    
+    def store(self, token: Token):
+        with open(f"{self.__directory}/{token.user.username}.json", 'w') as file:
+            serialized = serialize(token)
+            file.write(serialized)
+    
+    def load(self, username: str) -> Token:
+        with open(f"{self.__directory}/{username}.json", 'r') as file:
+            return deserialize(file.read())
+    
+    def remove(self, id: str):
+        import os
+        os.remove(f"{self.__directory}/{id}.json")
+    
+    def __contains__(self, id: str) -> bool:
+        import os
+        return os.path.isfile(f"{self.__directory}/{id}.token")

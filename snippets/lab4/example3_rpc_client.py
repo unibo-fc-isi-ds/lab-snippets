@@ -1,17 +1,17 @@
 from snippets.lab3 import Client, address
 from snippets.lab4.users import *
-from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
+from snippets.lab4.example1_presentation import TYPE_DB, serialize, deserialize, Request, Response
 
 
 class ClientStub:
     def __init__(self, server_address: tuple[str, int]):
         self.__server_address = address(*server_address)
 
-    def rpc(self, name, *args):
+    def rpc(self, name, service, *args):
         client = Client(self.__server_address)
         try:
             print('# Connected to %s:%d' % client.remote_address)
-            request = Request(name, args)
+            request = Request(name, service, args)
             print('# Marshalling', request, 'towards', "%s:%d" % client.remote_address)
             request = serialize(request)
             print('# Sending message:', request.replace('\n', '\n# '))
@@ -34,13 +34,13 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
         super().__init__(server_address)
 
     def add_user(self, user: User):
-        return self.rpc('add_user', user)
+        return self.rpc('add_user', TYPE_DB, user)
 
     def get_user(self, id: str) -> User:
-        return self.rpc('get_user', id)
+        return self.rpc('get_user', TYPE_DB, id)
 
     def check_password(self, credentials: Credentials) -> bool:
-        return self.rpc('check_password', credentials)
+        return self.rpc('check_password', TYPE_DB, credentials)
 
 
 if __name__ == '__main__':
