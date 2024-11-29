@@ -56,12 +56,12 @@ class Serializer:
 
     def _user_to_ast(self, user: User):
         return {
-            'username': self._to_ast(user.username),
-            'emails': [self._to_ast(email) for email in user.emails],
-            'full_name': self._to_ast(user.full_name),
-            'role': self._to_ast(user.role),
-            'password': self._to_ast(user.password),
-        }
+            'username': user.username,
+            'emails': list(user.emails),  # Convert set to list
+            'full_name': user.full_name,
+            'role': user.role.name,  # Serialize role as a string
+            'password': user.password,
+    }
 
     def _credentials_to_ast(self, credentials: Credentials):
         return {
@@ -71,10 +71,11 @@ class Serializer:
 
     def _token_to_ast(self, token: Token):
         return {
-            'signature': self._to_ast(token.signature),
-            'user': self._to_ast(token.user),
-            'expiration': self._to_ast(token.expiration),
-        }
+        'user': self._to_ast(token.user),
+        'expiration': token.expiration.isoformat(),
+        'signature': token.signature,
+        '$type': 'Token'  # Add the $type field
+    }
 
     def _datetime_to_ast(self, dt: datetime):
         raise NotImplementedError("Missing implementation for datetime serialization")
@@ -104,25 +105,34 @@ class Deserializer:
 
     def _ast_to_obj(self, data):
         if isinstance(data, dict):
-            if '$type' not in data:
-                return {key: self._ast_to_obj(value) for key, value in data.items()}
-            # selects the appropriate method to convert the AST to object via reflection
-            method_name = f'_ast_to_{data["$type"].lower()}'
-            if hasattr(self, method_name):
-                return getattr(self, method_name)(data)
-            raise ValueError(f"Unsupported type {data['type']}")
-        if isinstance(data, list):
-            return [self._ast_to_obj(item) for item in data]
+        # Check for the $type field to determine the object's type
+            if '$type' in data:
+                method_name = f'_ast_to_{data["$type"].lower()}'
+                if hasattr(self, method_name):
+                    return getattr(self, method_name)(data)
+                raise ValueError(f"Unsupported type: {data['$type']}")
+                # If no $type, process as a regular dictionary
+            return {key: self._ast_to_obj(value) for key, value in data.items()}
+        elif isinstance(data, list):
+             return [self._ast_to_obj(item) for item in data]
         return data
+
+    def _ast_to_token(self, data):
+        return Token(
+            user=self._ast_to_obj(data['user']),
+            expiration=datetime.fromisoformat(data['expiration']),
+            signature=data['signature'],
+    )
 
     def _ast_to_user(self, data):
         return User(
-            username=self._ast_to_obj(data['username']),
-            emails=set(self._ast_to_obj(data['emails'])),
-            full_name=self._ast_to_obj(data['full_name']),
-            role=self._ast_to_obj(data['role']),
-            password=self._ast_to_obj(data['password']),
-        )
+            username=data['username'],
+            emails=set(data['emails']),
+            full_name=data['full_name'],
+            role=Role[data['role']],
+            password=data['password'],  # Extract 'USER' or 'ADMIN' from '<Role.USER: 2>'
+    )
+
 
     def _ast_to_credentials(self, data):
         return Credentials(
@@ -130,12 +140,14 @@ class Deserializer:
             password=self._ast_to_obj(data['password']),
         )
 
-    def _ast_to_token(self, data):
-        return Token(
-            signature=self._ast_to_obj(data['signature']),
-            user=self._ast_to_obj(data['user']),
-            expiration=self._ast_to_obj(data['expiration']),
-        )
+    def _ast_to_user(self, data):
+         return User(
+             username=data['username'],
+            emails=set(data['emails']),
+            full_name=data['full_name'],
+            role=Role[data['role'][6:-1]],  # Extract 'USER' or 'ADMIN' from '<Role.USER: 2>'
+    )
+
 
     def _ast_to_datetime(self, data):
         raise NotImplementedError("Missing implementation for datetime deserialization")

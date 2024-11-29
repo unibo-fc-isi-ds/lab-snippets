@@ -1,4 +1,8 @@
-from .example3_rpc_client import *
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+
+from snippets.lab4.example3_rpc_client import *
 import argparse
 import sys
 
@@ -11,7 +15,7 @@ if __name__ == '__main__':
         exit_on_error=False,
     )
     parser.add_argument('address', help='Server address in the form ip:port')
-    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check'])
+    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check','auth','validate'])
     parser.add_argument('--user', '-u', help='Username')
     parser.add_argument('--email', '--address', '-a', nargs='+', help='Email address')
     parser.add_argument('--name', '-n', help='Full name')
@@ -37,14 +41,34 @@ if __name__ == '__main__':
                     raise ValueError("Password is required")
                 if not args.name:
                     raise ValueError("Full name is required")
-                user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
+                user = User(
+                    username=args.user,
+                    emails=set(args.email),  # Convert list to set
+                    full_name=args.name,
+                    role=Role[args.role.upper()],  # Convert role to enum
+                    password=args.password
+                )
                 print(user_db.add_user(user))
             case 'get':
                 print(user_db.get_user(ids[0]))
             case 'check':
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
+            case 'auth' :
+                credentials=Credentials(args.user, args.password)
+                auth_service=RemoteAuthenticationService(args.address)
+                Token=auth_service.authenticate(credentials,duration=None)
+                print(Token)
+            case 'validate' :
+                serialized_token = input("Enter serialized token: ")
+                auth_token = deserialize(serialized_token)
+                print(f"Deserialized token: {auth_token}")  # Debugging line
+                if not isinstance(auth_token, Token):
+                    raise ValueError(f"Deserialization failed: Expected Token, got {type(auth_token)}")
+                auth_service = RemoteAuthenticationService(args.address)
+                print(auth_service.validate_token(auth_token))
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
+            
     except RuntimeError as e:
         print(f'[{type(e).__name__}]', *e.args)
