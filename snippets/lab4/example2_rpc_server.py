@@ -31,12 +31,10 @@ class ServerStub(Server):
                 print('[%s:%d] Unmarshall request:' % connection.remote_address, request)
                 token = request.metadata
                 if request.name == 'get_user':
-                    if token is None:
-                        response = Response(None, 'Access denied')
                     if not self.__auth_service.validate_token(token):
-                        response = Response(None, 'Access denied')
-                    if not token.user.role == Role.ADMIN:
-                        response = Response(None, 'Access denied')
+                        response = Response(None, 'Access denied: Your authentication token is expired')
+                    elif not token.user.role == Role.ADMIN:
+                        response = Response(None, 'Access denied: Your role does not allow this operation')
                     else:
                         response = self.__handle_request(request)
                 else:
