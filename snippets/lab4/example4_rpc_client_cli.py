@@ -43,11 +43,15 @@ if __name__ == '__main__':
                 user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
                 print(user_db.add_user(user))
             case 'get':
+                if args.token and args.path:
+                    raise ValueError("Provide either a token or a path, not both")
+                if args.token:
+                    token = args.token
                 if args.path:
                     with open(args.path, 'r') as file:
                         token = file.read().strip()
                 else:
-                    raise ValueError("Token is required")
+                    raise ValueError("Either a token or a path to a token file is required")
                 print(user_db.get_user(ids[0], deserialize(token)))
             case 'check':
                 credentials = Credentials(ids[0], args.password)
