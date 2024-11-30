@@ -53,3 +53,23 @@ class Test(unittest.TestCase):
         fail = Credentials('gio', 'wrong')
         with self.assertRaises(RuntimeError):
             self.auth.authenticate(fail)
+
+    def test_authenticated_get(self):
+        credentials = Credentials('gio', 'psw')
+        token = self.auth.authenticate(credentials)
+        self.auth.check_privileges(self.db, credentials, token)
+        self.assertEqual('gio', self.db.get_user('gio').username)
+
+    def test_authenticated_get_fail(self):
+        user2 = User(
+            'gio2',
+            emails={'gio2@test.com'},
+            full_name='Giorgio Garofalo',
+            role=Role.USER,
+            password='psw'
+        )
+        self.db.add_user(user2)
+        credentials = Credentials('gio2', 'psw')
+        token = self.auth.authenticate(credentials)
+        with self.assertRaises(ValueError):
+            self.auth.check_privileges(self.db, credentials, token)

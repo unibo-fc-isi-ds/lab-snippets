@@ -96,6 +96,16 @@ class RemoteAuthenticationService(ClientStub, AuthenticationService):
     def validate_token(self, token: Token) -> bool:
         return self.rpc('validate_token', TYPE_AUTH, token)
     
+    def check_privileges(self, db: UserDatabase, credentials: Credentials, token: Token) -> bool:
+        if not db.check_password(credentials):
+            raise ValueError("Invalid credentials")
+
+        if not self.validate_token(token):
+            raise ValueError("Invalid token")
+                
+        if token.user.role != Role.ADMIN:
+            raise ValueError("Insufficient privileges")
+    
 
 TOKENS_DIR = 'tokens'
 

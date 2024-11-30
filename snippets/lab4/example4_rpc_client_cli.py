@@ -18,6 +18,8 @@ if __name__ == '__main__':
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
+    parser.add_argument('--auth-user', help='Username for authentication')
+    parser.add_argument('--auth-password', help='Password for authentication')
 
     if len(sys.argv) > 1:
         args = parser.parse_args()
@@ -42,6 +44,9 @@ if __name__ == '__main__':
                 user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
                 print(user_db.add_user(user))
             case 'get':
+                credentials = Credentials(args.auth_user, args.auth_password)
+                token = TokenStorage().load(credentials.id)
+                auth.check_privileges(user_db, credentials)
                 print(user_db.get_user(ids[0]))
             case 'check':
                 credentials = Credentials(ids[0], args.password)
