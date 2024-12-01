@@ -2,7 +2,7 @@ from .example3_rpc_client import *
 import argparse
 import sys
 from .users.impl import *
-from .example1_presentation import Deserializer, Serializer
+import os
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(
@@ -11,7 +11,7 @@ if __name__ == '__main__':
         exit_on_error=False,
     )
     parser.add_argument('address', help='Server address in the form ip:port')
-    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check', 'authenticate',])
+    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check', 'authenticate', 'validate_token'])
     parser.add_argument('--user', '-u', help='Username')
     parser.add_argument('--email', '--address', '-a', nargs='+', help='Email address')
     parser.add_argument('--name', '-n', help='Full name')
@@ -50,7 +50,21 @@ if __name__ == '__main__':
                 if not args.password:
                     raise ValueError("Password is required")
                 credentials = Credentials(args.user, args.password)
-                print(auth.authenticate(credentials=credentials))
+                response = auth.authenticate(credentials=credentials)
+                if isinstance(response, Token):
+                    with open(str(args.user) + ".txt", 'w') as f:
+                        f.write(serialize(response))
+                        f.close()
+                print(response)
+            case 'validate_token':
+                if not args.user:
+                    raise ValueError("Username is required")
+                try:
+                    with open(str(args.user) + ".txt", 'rt') as f:
+                        token : Token = f.read()
+                        print(auth.validate_token(deserialize(token)))
+                except FileNotFoundError as e:
+                    raise ValueError("Token not found")
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:
