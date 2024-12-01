@@ -87,11 +87,15 @@ class ServerStub(Server):
                         #the token is not valid
                         result=None
                         error="Missing token, please authenticate"
+                case _:
+                    print(request.name)
+                    result=None
+                    error="Unknown command"
 
         except Exception as e: # if an error occurs:
             result = None # no result in case of an error
             error = " ".join(e.args) # store the error message
-            return Response(result, error) # return a Response object with the result and the error message
+        return Response(result, error) # return a Response object with the result and the error message
 
 
 if __name__ == '__main__':
