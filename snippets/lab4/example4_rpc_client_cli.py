@@ -30,6 +30,7 @@ if __name__ == '__main__':
 
     args.address = address(args.address)
     user_db = RemoteUserDatabase(args.address)
+    auth_service = RemoteAuthenticationService(args.address)
 
     try :
         ids = (args.email or []) + [args.user]
@@ -50,15 +51,18 @@ if __name__ == '__main__':
                 )
                 print(user_db.add_user(user))
             case 'get':
-                print(user_db.get_user(ids[0]))
+                if not auth_service.token:
+                    print("Authentication required. Use the 'auth' command first.")
+                    sys.exit(1)
+                print(user_db.get_user(args.user))
             case 'check':
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
             case 'auth' :
-                credentials=Credentials(args.user, args.password)
-                auth_service=RemoteAuthenticationService(args.address)
-                Token=auth_service.authenticate(credentials,duration=None)
-                print(Token)
+                credentials = Credentials(args.user, args.password)
+                token = auth_service.authenticate(credentials)
+                print(f"Authenticated. Token: {token}")
+                auth_service.token = serialize(token)  # Save the token
             case 'validate' :
                 serialized_token = input("Enter serialized token: ")
                 auth_token = deserialize(serialized_token)

@@ -1,5 +1,7 @@
 import sys
 import os
+
+from snippets.lab4.users import Role
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
 
@@ -49,19 +51,32 @@ class ServerStub(Server):
     def __handle_request(self, request):
         try:
             print(f"Handling request: {request.name}")
-            print(f"Deserialized request: {request}")
-            print(f"Request args: {request.args}")
+            print(f"Arguments before method call: {request.args}")
+            print(f"Metadata: {request.metadata}")
 
-        # Determine the service based on the request name
+        # Check if the operation requires authentication
+            if request.name in ['get_user']:  # Add other admin-only methods here
+                if not request.metadata or 'token' not in request.metadata:
+                    raise ValueError("Authentication required")
+            
+                token = self.__auth_service.deserialize_token(request.metadata['token'])
+                if not self.__auth_service.validate_token(token):
+                    raise ValueError("Invalid or expired token")
+
+            # Ensure the user has the admin role
+                if token.user.role != Role.ADMIN:
+                    raise PermissionError("Unauthorized access: Admin role required")
+
+        # Determine the appropriate service
             service = self.__user_db if hasattr(self.__user_db, request.name) else self.__auth_service
             method = getattr(service, request.name)
 
-        # Call the method
+        # Call the method and get the result
             result = method(*request.args)
             print(f"Result of {request.name}: {result}")
             return Response(result, None)
         except Exception as e:
-            error = f"Error processing request {request.name}: {e}"
+            error = f"Exception occurred: {e}"
             print(error)
             return Response(None, error)
 

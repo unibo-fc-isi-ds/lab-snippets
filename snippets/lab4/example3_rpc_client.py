@@ -12,35 +12,29 @@ from snippets.lab4.example1_presentation import serialize, deserialize, Request,
 class ClientStub:
     def __init__(self, server_address: tuple[str, int]):
         self.__server_address = address(*server_address)
+        self.token = None  # Store the token after authentication
 
     def rpc(self, name, *args):
         client = Client(self.__server_address)
         try:
-            print(f"# Connected to {self.__server_address}")
-            request = Request(name=name, args=args)
-            print("# Marshalling request:", request)
+            metadata = {'token': self.token} if self.token else None  # Include the token in metadata
+            request = Request(name=name, args=args, metadata=metadata)
             serialized_request = serialize(request)
-            print("# Sending serialized request:", serialized_request)
             client.send(serialized_request)
-            
-            # Wait for the server's response
             response = client.receive()
-            if response is None:
-                raise RuntimeError("No response received from server")
-            print("# Received serialized response:", response)
-            deserialized_response = deserialize(response)
-            print("# Deserialized response:", deserialized_response)
-            
-            if deserialized_response.error:
-                raise RuntimeError(deserialized_response.error)
-            return deserialized_response.result
+            response = deserialize(response)
+            if response.error:
+                raise RuntimeError(response.error)
+            return response.result
         finally:
             client.close()
-            print("# Disconnected from", self.__server_address)
+    
 
 class RemoteAuthenticationService(ClientStub, AuthenticationService):
-    def authenticate(self, credentials: Credentials, duration: timedelta = None):
-        return self.rpc('authenticate', credentials, duration)
+    def authenticate(self, credentials: Credentials) -> Token:
+        token = self.rpc('authenticate', credentials)
+        self.token = serialize(token)  # Save the token for future requests
+        return token
 
 
     def validate_token(self, token: Token) -> bool:
