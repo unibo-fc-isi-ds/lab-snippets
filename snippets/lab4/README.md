@@ -23,7 +23,7 @@ python -m snippets -l 4 -e 4 SERVER_IP:PORT auth -u name -p password [-tp] [--to
 
 Token validation command:
 ```bash
-python -m snippets -l 4 -e 4 SERVER_IP:PORT validate -u name -p password [-tp] [--tokenPath filepath]
+python -m snippets -l 4 -e 4 SERVER_IP:PORT validate -tp filepath
 ```
 where:
 * SERVER_IP (e.g. localhost) is the IP address of the server;
