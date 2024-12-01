@@ -1,5 +1,6 @@
 from snippets.lab3 import Server
-from snippets.lab4.users.impl import InMemoryUserDatabase
+from snippets.lab4.users import Role
+from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 import traceback
 
@@ -8,6 +9,7 @@ class ServerStub(Server):
     def __init__(self, port):
         super().__init__(port, self.__on_connection_event)
         self.__user_db = InMemoryUserDatabase()
+        self.__auth_service = InMemoryAuthenticationService(self.__user_db)
     
     def __on_connection_event(self, event, connection, address, error):
         match event:
@@ -27,7 +29,12 @@ class ServerStub(Server):
                 request = deserialize(payload)
                 assert isinstance(request, Request)
                 print('[%s:%d] Unmarshall request:' % connection.remote_address, request)
-                response = self.__handle_request(request)
+                
+                if not self.__is_authenticated(request):
+                    response = Response(None, "Authorization required")
+                else:
+                    response = self.__handle_request(request)
+
                 connection.send(serialize(response))
                 print('[%s:%d] Marshall response:' % connection.remote_address, response)
                 connection.close()
@@ -35,10 +42,32 @@ class ServerStub(Server):
                 traceback.print_exception(error)
             case 'close':
                 print('[%s:%d] Close connection' % connection.remote_address)
+
+    def __is_authenticated(self, request):
+        if request.name not in ['get_user']:  
+            return True 
+
+        token = request.metadata['token']
+        if not token or not self.__auth_service.validate_token(token):
+            return False
+        
+        user = token.user
+        if (user.username == request.args[0]):
+            return True
+        else:
+            return user.role == Role.ADMIN
+        
+        
     
     def __handle_request(self, request):
         try:
-            method = getattr(self.__user_db, request.name)
+            target = (
+                self.__user_db
+                if hasattr(self.__user_db, request.name)
+                else self.__auth_service
+            )
+
+            method = getattr(target, request.name)
             result = method(*request.args)
             error = None
         except Exception as e:
