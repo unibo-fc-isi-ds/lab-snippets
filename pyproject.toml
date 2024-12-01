@@ -17,7 +17,7 @@ psutil = "^6.0.0"
 [tool.poetry.group.dev.dependencies]
 coverage = "^7.4.0"
 mypy = "^1.10.1"
-poethepoet = "^0.30.0"
+poethepoet = "^0.31.0"
 poetry = "^1.8.3"
 pytest = "^8.2.2"
 
