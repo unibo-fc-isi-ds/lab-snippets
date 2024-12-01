@@ -31,7 +31,9 @@ class ClientStub:
             
     def store_token(self, token: Token):
         self.__token = token
-
+        
+    def get_token(self):
+        return self.__token.copy()
 
 class RemoteUserDatabase(ClientStub, UserDatabase):
     def __init__(self, server_address, token: Token = None):
