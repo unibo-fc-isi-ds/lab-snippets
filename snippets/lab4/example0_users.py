@@ -13,7 +13,7 @@ gc_user = User(
     emails={'giovanni.ciatto@unibo.it', 'giovanni.ciatto@gmail.com'},
     full_name='Giovanni Ciatto',
     role=Role.ADMIN,
-    password='my secret password',
+    password='password',
 )
 
 gc_user_hidden_password = gc_user.copy(password=None)

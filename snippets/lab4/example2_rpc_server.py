@@ -1,13 +1,21 @@
 from snippets.lab3 import Server
+from snippets.lab4.users import Role, User
 from snippets.lab4.users.impl import InMemoryUserDatabase
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
+from snippets.lab4.users.impl import InMemoryAuthenticationService
 import traceback
 
+ENABLE_DEBUG = True
 
 class ServerStub(Server):
+    
+    DEFAULT_ADMIN = User('admin', ["admin@localhost"], 'Admin', Role.ADMIN, 'admin')
+    
     def __init__(self, port):
         super().__init__(port, self.__on_connection_event)
         self.__user_db = InMemoryUserDatabase()
+        self.__auth_service = InMemoryAuthenticationService(self.__user_db, debug=ENABLE_DEBUG)
+        self.__user_db.add_user(self.DEFAULT_ADMIN)
     
     def __on_connection_event(self, event, connection, address, error):
         match event:
@@ -38,7 +46,17 @@ class ServerStub(Server):
     
     def __handle_request(self, request):
         try:
-            method = getattr(self.__user_db, request.name)
+            if request.name == 'authenticate':
+                # If the request is for the authentication service, call it
+                method = getattr(self.__auth_service, request.name)
+            else:
+                # If the request is for the user database, check the authentication token
+                if not request.metadata.get('token'):
+                    raise ValueError("Authentication token is required")
+                elif not self.__auth_service.validate_token(request.metadata['token']):
+                    raise ValueError("Invalid authentication token")
+                else:
+                    method = getattr(self.__user_db, request.name)
             result = method(*request.args)
             error = None
         except Exception as e:
@@ -48,6 +66,7 @@ class ServerStub(Server):
 
 
 if __name__ == '__main__':
+    # Run on port 8080 with "poetry run python -m snippets -l 4 -e 2 8080"
     import sys
     server = ServerStub(int(sys.argv[1]))
     while True:
