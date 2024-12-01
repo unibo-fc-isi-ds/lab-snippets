@@ -26,7 +26,15 @@ def init_user_data():
         password='my secret password',
     )
 
-    yield user_1
+    user_2 = User(
+        username='sguidi',
+        emails = {'stefano.guidi10@studio.unibo.it'},
+        full_name='Stefano Guidi',
+        role=Role.USER,
+        password='the password',
+    )
+
+    yield user_1, user_2
 
 
 
@@ -40,7 +48,8 @@ def test_state(init_server, init_user_data):
 
 
     yield {
-        "user_data": init_user_data,
+        "admin_user": init_user_data[0],
+        "standard_user": init_user_data[1],
         "server": init_server,
         "user_db": user_db,
         "user_auth_service": user_auth_service
@@ -57,27 +66,56 @@ def test_state(init_server, init_user_data):
 
 def test_user_get(test_state):
 
-    user = test_state["user_data"]
+    admin = test_state["admin_user"]
+    standard = test_state["standard_user"]
 
 
-    with pytest.raises(RuntimeError, match="User with ID gciatto not found"):
-        test_state["user_db"].get_user('gciatto')
+    test_state["user_db"].add_user(admin)
+
+
+    token = test_state["user_auth_service"].authenticate(Credentials(admin.username, admin.password), timedelta(days=1))
+
+
+
+    with pytest.raises(RuntimeError, match="User with ID " + standard.username + " not found"):
+        test_state["user_db"].get_user(standard.username, token = token)
 
     
+    test_state["user_db"].add_user(standard)
 
-    test_state["user_db"].add_user(user)
-
-    assert test_state["user_db"].get_user('gciatto') == user.copy(password=None)
-
+    assert test_state["user_db"].get_user(standard.username, token) == standard.copy(password=None)
 
 
+
+def test_user_get_no_admin(test_state):
+
+    standard = test_state["standard_user"]
+
+
+    test_state["user_db"].add_user(standard)
+
+
+    token = test_state["user_auth_service"].authenticate(Credentials(standard.username, standard.password), timedelta(days=1))
+
+    with pytest.raises(RuntimeError, match="Unauthorized request: get_user"):
+        test_state["user_db"].get_user(standard.username, token = token)
+
+
+def test_user_get_no_token(test_state):
+    admin = test_state["admin_user"]
+
+    test_state["user_db"].add_user(admin)
+
+    with pytest.raises(RuntimeError, match="Unauthorized request: get_user"):
+        test_state["user_db"].get_user(admin.username)
+    
 
 
 
 def test_user_add(test_state):
 
 
-    user = test_state["user_data"]
+    user = test_state["admin_user"]
 
     #
     expected_errors = [
@@ -100,7 +138,7 @@ def test_user_add(test_state):
 
 
 def test_user_check_password(test_state): 
-    user = test_state["user_data"]
+    user = test_state["admin_user"]
 
     test_state["user_db"].add_user(user)
 
@@ -116,7 +154,7 @@ def test_user_check_password(test_state):
 
 def test_token_expiration(test_state):
 
-        user = test_state["user_data"]
+        user = test_state["admin_user"]
     
         test_state["user_db"].add_user(user)
     
@@ -137,7 +175,7 @@ def test_token_expiration(test_state):
 
 def test_token_authentication(test_state):
     
-        user = test_state["user_data"]
+        user = test_state["admin_user"]
     
         test_state["user_db"].add_user(user)
     
