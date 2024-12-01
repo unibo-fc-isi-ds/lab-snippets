@@ -40,6 +40,14 @@ class ServerStub(Server):
     
     def __handle_request(self, request):
         try:
+            if request.name == 'get_user':
+                token = request.metadata
+                if not token or not self.__auth_service.validate_token(token):
+                    error = "Access denied: Missing or invalid token."
+                    return Response(None, error)
+                if token.user.role.name.upper() != "ADMIN":
+                    error = "Access denied: Admin privileges required."
+                    return Response(None, error)
             if hasattr(self.__auth_service, request.name):
                 method = getattr(self.__auth_service, request.name)
             elif hasattr(self.__user_db, request.name):

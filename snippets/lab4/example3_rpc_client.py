@@ -6,12 +6,12 @@ from snippets.lab4.example1_presentation import serialize, deserialize, Request,
 class ClientStub:
     def __init__(self, server_address: tuple[str, int]):
         self.__server_address = address(*server_address)
-
+        self.token = None
     def rpc(self, name, *args):
         client = Client(self.__server_address)
         try:
             print('# Connected to %s:%d' % client.remote_address)
-            request = Request(name, args)
+            request = Request(name, args, self.token)
             print('# Marshalling', request, 'towards', "%s:%d" % client.remote_address)
             request = serialize(request)
             print('# Sending message:', request.replace('\n', '\n# '))
@@ -36,7 +36,8 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
     def add_user(self, user: User):
         return self.rpc('add_user', user)
 
-    def get_user(self, id: str) -> User:
+    def get_user(self, id: str, token: Token) -> User:
+        self.token = token
         return self.rpc('get_user', id)
 
     def check_password(self, credentials: Credentials) -> bool:
