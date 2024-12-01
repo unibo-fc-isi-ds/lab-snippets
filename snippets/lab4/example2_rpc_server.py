@@ -2,6 +2,7 @@ from snippets.lab3 import Server
 from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 import traceback
+from snippets.lab4.example0_users import Token, Role
 
 
 class ServerStub(Server):
@@ -9,6 +10,7 @@ class ServerStub(Server):
         super().__init__(port, self.__on_connection_event)
         self.auth_service = InMemoryAuthenticationService(InMemoryUserDatabase())
         self.auth_request_names = ["authenticate", "validate_token"]
+        self.admin_auth_requests = {"get_user"}
         self.suppress_error_log = suppress_error_log
     
     def __on_connection_event(self, event, connection, address, error):
@@ -41,6 +43,10 @@ class ServerStub(Server):
     
     def __handle_request(self, request):
         try:
+                
+            if not self.is_authorized(request):
+                raise PermissionError(f"Unauthorized request: {request.name}")
+
             if request.name not in self.auth_request_names:  
                 method = getattr(self.auth_service.user_db, request.name)
             else:
@@ -52,6 +58,35 @@ class ServerStub(Server):
             result = None
             error = " ".join(e.args)
         return Response(result, error)
+    
+
+    def is_authorized(self, request: Request) -> bool:
+        try:
+            return request.name not in self.admin_auth_requests or self._is_authorized(request)
+        except Exception as e:
+            print(f"Authorization for {request.name} failed: {e}")
+            return False
+
+    def _is_authorized(self, request: Request) -> bool:
+
+
+        if request.metadata is None or not isinstance(request.metadata, Token):
+            raise PermissionError(f"For {request.name} requests, an authentication token is required")
+        
+        
+        token: Token = request.metadata
+
+        
+        if not self.auth_service.validate_token(token):
+            return False
+        
+        if token.user.role != Role.ADMIN:
+            raise PermissionError(f"Only admin users can perform {request.name} operations")
+        
+        
+        return True
+        
+
 
 def main():
     import sys
