@@ -42,9 +42,19 @@ class ServerStub(Server):
             case 'close':
                 print('[%s:%d] Close connection' % connection.remote_address)
     
-    def __handle_request(self, request):
+    def __handle_request(self, request: Request):
         try:
-            method = getattr(self.__user_db, request.name)
+            if hasattr(self.__auth_service, request.name): # Checks if the method exists in the authentication service
+                method = getattr(self.__auth_service, request.name)
+            elif hasattr(self.__user_db, request.name) and 'token' in request.metadata: # Checks if the method exists in the user database and if the token is present
+                if request.metadata['token'] is None:
+                    raise ValueError("Token is required")
+                elif self.__auth_service.validate_token(request.metadata['token']): # Checks if the token is valid
+                    method = getattr(self.__user_db, request.name)
+                else:
+                    raise ValueError("Invalid token")
+            else:
+                raise ValueError(f"Unsupported method {request.name}") 
             result = method(*request.args)
             error = None
         except Exception as e:
