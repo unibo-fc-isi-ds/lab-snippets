@@ -7,12 +7,12 @@ import traceback
 
 
 class ServerStub(Server):
-    def __init__(self, port, admins: List[User] = []):
+    def __init__(self, port, users: List[User] = []):
         super().__init__(port, self.__on_connection_event)
         self.__user_db = InMemoryUserDatabase()
         self.__auth_service = InMemoryAuthenticationService(self.__user_db, debug=True)
-        for admin in admins:
-            self.__user_db.add_user(admin)
+        for user in users:
+            self.__user_db.add_user(user)
         
     
     def __on_connection_event(self, event, connection, address, error):
@@ -50,6 +50,10 @@ class ServerStub(Server):
                 if request.metadata['token'] is None:
                     raise ValueError("Token is required")
                 elif self.__auth_service.validate_token(request.metadata['token']): # Checks if the token is valid
+                    if request.name in ["get_user", "check_password"] and request.metadata['token'].user.role != Role.ADMIN:
+                        raise ValueError("Only admins can get user information")
+                    elif request.name in ["add_user"] and (request.metadata['token'].user.role != Role.ADMIN and request.args[0].role == Role.ADMIN):
+                        raise ValueError("Only admins can add other admins")
                     method = getattr(self.__user_db, request.name)
                 else:
                     raise ValueError("Invalid token")
