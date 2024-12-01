@@ -43,3 +43,6 @@ no_implicit_optional = false
 
 [tool.poetry.scripts]
 exercise-chat = "snippets.lab3.exercise_tcp_group_chat:main"
+
+server_stub = "snippets.lab4.example2_rpc_server:main"
+client_cli = "snippets.lab4.example4_rpc_client_cli:main"

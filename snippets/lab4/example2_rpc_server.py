@@ -53,8 +53,7 @@ class ServerStub(Server):
             error = " ".join(e.args)
         return Response(result, error)
 
-
-if __name__ == '__main__':
+def main():
     import sys
     server = ServerStub(int(sys.argv[1]))
     while True:
@@ -63,3 +62,8 @@ if __name__ == '__main__':
         except (EOFError, KeyboardInterrupt):
             break
     server.close()
+
+#poetry scripts needs an entrypoint, this way the module can be run both as script and as module
+if __name__ == '__main__':
+    main()
+    
