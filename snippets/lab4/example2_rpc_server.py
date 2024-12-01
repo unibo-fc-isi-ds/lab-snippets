@@ -31,7 +31,7 @@ class ServerStub(Server):
                 print('[%s:%d] Unmarshall request:' % connection.remote_address, request)
                 
                 if not self.__is_authenticated(request):
-                    response = Response(None, "Authentication required")
+                    response = Response(None, "Authorization required")
                 else:
                     response = self.__handle_request(request)
 
@@ -52,7 +52,12 @@ class ServerStub(Server):
             return False
         
         user = token.user
-        return user.role == Role.ADMIN
+        if (user.username == request.args[0]):
+            return True
+        else:
+            return user.role == Role.ADMIN
+        
+        
     
     def __handle_request(self, request):
         try:
