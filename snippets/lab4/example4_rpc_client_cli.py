@@ -18,7 +18,6 @@ if __name__ == '__main__':
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
     parser.add_argument('--token', '-t', help='Token')
-    parser.add_argument('--expiration', '-e', help='Token expiration')
     parser.add_argument('--no-save', '-ns', help='Do not save token')
 
     if len(sys.argv) > 1:
