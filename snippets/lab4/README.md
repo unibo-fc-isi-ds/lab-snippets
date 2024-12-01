@@ -9,7 +9,8 @@ The files present in snippets/lab4 were modified to implement both authenticatio
 ### ServerStub
 - The `ServerStub` was extended with a `InMemoryAuthenticationService` that will handle the requests of authentication and validation from a client
 - The `ServerStub` now can be initialized with a list of users. This list is necessary to perform operations on the server, as adding other users now requires authentication. In this case a single admin user is passed to the server
-- The `__handle_request` method has been modified so that only requests which contain a valid token can perform actions on the database. This means that when starting the server there must be already at least one user registered. Also only admin users can use the `get` and `check` methods, so that normal users cannot get the credentials of other users. Only admins can add other admins. 
+- The `__handle_request` method has been modified so that only requests which contain a valid token can perform actions on the database. This means that when starting the server there must be already at least one user registered. 
+- The method `__is_authorized` has been implemented to determine if a request can be fulfilled based on the role of the user making the request. Only admins can use the `get` and `check` methods and new admin users can only be added by other admins
 
 ### ClientStub
 - The `ClientStub` now has a `token` field which will be set to **None** if the user has not yet authenticated. This field will be used in the `metadata` field of every new `Request`

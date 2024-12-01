@@ -50,11 +50,8 @@ class ServerStub(Server):
                 if request.metadata['token'] is None:
                     raise ValueError("Token is required")
                 elif self.__auth_service.validate_token(request.metadata['token']): # Checks if the token is valid
-                    if request.name in ["get_user", "check_password"] and request.metadata['token'].user.role != Role.ADMIN:
-                        raise ValueError("Only admins can get user information")
-                    elif request.name in ["add_user"] and (request.metadata['token'].user.role != Role.ADMIN and request.args[0].role == Role.ADMIN):
-                        raise ValueError("Only admins can add other admins")
-                    method = getattr(self.__user_db, request.name)
+                    if self.__is_authorized(request):
+                        method = getattr(self.__user_db, request.name)
                 else:
                     raise ValueError("Invalid token")
             else:
@@ -66,6 +63,12 @@ class ServerStub(Server):
             error = " ".join(e.args)
         return Response(result, error)
 
+    def __is_authorized(self, request):
+        if request.name in ["get_user", "check_password"] and request.metadata['token'].user.role != Role.ADMIN:
+            raise ValueError("Only admins can get user information")
+        elif request.name in ["add_user"] and (request.metadata['token'].user.role != Role.ADMIN and request.args[0].role == Role.ADMIN):
+            raise ValueError("Only admins can add other admins")
+        return True 
 
 if __name__ == '__main__':
     import sys
