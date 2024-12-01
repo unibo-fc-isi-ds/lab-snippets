@@ -46,11 +46,16 @@ class Serializer:
             return [self._to_ast(item) for item in obj]
         if isinstance(obj, dict):
             return {key: self._to_ast(value) for key, value in obj.items()}
+        
+        if hasattr(obj, '_to_ast'):
+            return obj._to_ast()
+
         # selects the appropriate method to convert the object to AST via reflection
         method_name = f'_{type(obj).__name__.lower()}_to_ast'
         if hasattr(self, method_name):
             data = getattr(self, method_name)(obj)
-            data['$type'] = type(obj).__name__
+            if isinstance(data, dict): 
+                data['$type'] = type(obj).__name__
             return data
         raise ValueError(f"Unsupported type {type(obj)}")
 
@@ -77,7 +82,7 @@ class Serializer:
         }
 
     def _datetime_to_ast(self, dt: datetime):
-        raise NotImplementedError("Missing implementation for datetime serialization")
+        return dt.isoformat()
 
     def _role_to_ast(self, role: Role):
         return {'name': role.name}
@@ -131,14 +136,18 @@ class Deserializer:
         )
 
     def _ast_to_token(self, data):
+        expiration_data = data['expiration']
+        # Converti la stringa della data in un oggetto datetime
+        expiration = datetime.fromisoformat(expiration_data) if expiration_data else None
+
         return Token(
             signature=self._ast_to_obj(data['signature']),
             user=self._ast_to_obj(data['user']),
-            expiration=self._ast_to_obj(data['expiration']),
+            expiration=expiration,
         )
 
     def _ast_to_datetime(self, data):
-        raise NotImplementedError("Missing implementation for datetime deserialization")
+        return datetime.fromisoformat(data)
 
     def _ast_to_role(self, data):
         return Role[self._ast_to_obj(data['name'])]
