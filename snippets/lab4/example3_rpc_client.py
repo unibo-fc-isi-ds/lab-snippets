@@ -1,6 +1,7 @@
 from snippets.lab3 import Client, address
 from snippets.lab4.users import *
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
+import os
 
 FILEAUTH="auth.json"
 
@@ -51,6 +52,14 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
     def authenticate(self, credentials: Credentials):
         t=self.rpc('authenticate', None, credentials)
         writeFile(t)
+    
+    def logout(self):
+        if os.path.exists(FILEAUTH):
+            os.remove(FILEAUTH)
+            return "User logged out correctly"
+        else:
+            return "Error while logging out"
+
 
 
 if __name__ == '__main__':
