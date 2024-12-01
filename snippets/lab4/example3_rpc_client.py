@@ -11,7 +11,7 @@ class ClientStub:
         client = Client(self.__server_address)
         try:
             print('# Connected to %s:%d' % client.remote_address)
-            request = Request(name=name, args=args, metadata=token)
+            request = Request(name=name, args=args, metadata={ "token": token })
             print('# Marshalling', request, 'towards', "%s:%d" % client.remote_address)
             request = serialize(request)
             print('# Sending message:', request.replace('\n', '\n# '))

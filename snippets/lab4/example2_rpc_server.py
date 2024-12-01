@@ -47,7 +47,7 @@ class ServerStub(Server):
         if request.name not in ['get_user']:  
             return True 
 
-        token = request.metadata
+        token = request.metadata['token']
         if not token or not self.__auth_service.validate_token(token):
             return False
         

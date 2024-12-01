@@ -1,8 +1,8 @@
 from .users import User, Credentials, Token, Role
 from datetime import datetime
 import json
-from dataclasses import dataclass
-from typing import Optional
+from dataclasses import dataclass, field
+from typing import Dict, Any
 
 
 @dataclass
@@ -13,7 +13,7 @@ class Request:
 
     name: str
     args: tuple
-    metadata: Optional[str] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
         self.args = tuple(self.args)
