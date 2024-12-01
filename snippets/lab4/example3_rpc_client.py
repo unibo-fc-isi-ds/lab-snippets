@@ -32,6 +32,7 @@ class ClientStub:
 class RemoteUserDatabase(ClientStub, UserDatabase):
     def __init__(self, server_address):
         super().__init__(server_address)
+        self.token = None
 
     def add_user(self, user: User):
         return self.rpc('add_user', user)
@@ -41,6 +42,14 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
 
     def check_password(self, credentials: Credentials) -> bool:
         return self.rpc('check_password', credentials)
+    
+    def authenticate(self, credentials: Credentials) -> User:
+        response = self.rpc('authenticate', credentials)
+        self.token = response
+        return response
+    
+    def validate_token(self, token: Token) -> bool:
+        return self.rpc('validate_token', token)
 
 
 if __name__ == '__main__':

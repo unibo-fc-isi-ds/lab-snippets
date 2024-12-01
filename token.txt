@@ -1,0 +1,21 @@
+{
+  "signature": "93620e888bca570b47ce0581698931e1a8719502ada2626b8b2bc42268df3bdd",
+  "user": {
+    "username": "denn",
+    "emails": [
+      "den@den"
+    ],
+    "full_name": "den",
+    "role": {
+      "name": "ADMIN",
+      "$type": "Role"
+    },
+    "password": null,
+    "$type": "User"
+  },
+  "expiration": {
+    "datetime": "2024-12-02T16:03:09.101906",
+    "$type": "datetime"
+  },
+  "$type": "Token"
+}
