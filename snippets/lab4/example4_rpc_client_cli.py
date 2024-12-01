@@ -17,6 +17,7 @@ if __name__ == '__main__':
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
+    parser.add_argument('--token', '-t', help='Token Path')
 
     if len(sys.argv) > 1:
         args = parser.parse_args()
@@ -25,7 +26,21 @@ if __name__ == '__main__':
         sys.exit(0)
 
     args.address = address(args.address)
-    user_db = RemoteUserDatabase(args.address)
+    
+    token_path = args.token or './token.json'
+        
+    try:
+        with open(token_path) as f:
+            token = deserialize(f.read())
+            if not isinstance(token, Token):
+                print("Token is corrupted")
+                token = None
+    except FileNotFoundError:
+        token = None
+        print("Token file not provided\n")
+    
+    user_db = RemoteUserDatabase(args.address, token)
+    user_auth = RemoteAuthenticationService(args.address, token)
 
     try :
         ids = (args.email or []) + [args.user]
