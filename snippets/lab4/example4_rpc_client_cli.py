@@ -23,7 +23,7 @@ def parse_timedelta(value):
 
 def main():
         
-        print("CIAO")
+
         parser = argparse.ArgumentParser(
             prog=f'python -m snippets -l 4 -e 4',
             description='RPC client for user database',
@@ -41,7 +41,6 @@ def main():
         parser.add_argument('--save_token_path', '-s', default="./snippets/lab4/gen_token/", help="Path to save token json file")
         parser.add_argument('--load_token_path', '-t', default="./snippets/lab4/gen_token/token.json", help="Path to load token json file")
 
-        print("CIAO")
 
         if len(sys.argv) > 1:
             args = parser.parse_args()
