@@ -3,6 +3,18 @@ import argparse
 import os
 import sys
 
+# Ensures that the token filepath is a json file
+def ensure_json_file(filepath):
+    if not filepath.endswith('.json'):
+        if '.' in os.path.basename(filepath):
+            filepath = os.path.splitext(filepath)[0] + '.json'
+        else:
+            filepath = os.path.join(filepath, 'token.json')
+    if not os.path.exists(os.path.dirname(filepath)):
+        print(f"Directory {os.path.dirname(filepath)} does not exist")
+        print("Using the current directory instead")
+        filepath = os.path.basename(filepath)
+    return filepath
 
 if __name__ == '__main__':
 
@@ -28,8 +40,8 @@ if __name__ == '__main__':
 
     args.address = address(args.address)
     
-    token_path = args.token or './token.json'
-        
+    token_path = ensure_json_file(args.token or './')
+    
     try:
         with open(token_path) as f:
             token = deserialize(f.read())
@@ -74,6 +86,7 @@ if __name__ == '__main__':
             case 'validate':
                 print("Given token is valid" if user_auth.validate_token(token) else "Given token is invalid")
             case 'delete_token':
+                # Deletes only the token file because the ClientStub gets generated at every execution
                 if os.path.exists(token_path):
                     os.remove(token_path)
                 else:
