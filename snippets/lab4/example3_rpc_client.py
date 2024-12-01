@@ -105,12 +105,15 @@ def writeFile(t:Token):
             print('# Authentication token saved')
 
 def readFile()->Token:
-    # Opening JSON file
-    with open(FILEAUTH, 'r') as openfile:
-    # Reading from json file
-        json_string = openfile.read() #string containing Token is read
-        json_object=deserialize(json_string) #token is parsed into a Token object
-        if isinstance(json_object, Token):
-            print('# Authentication token read')
-            return json_object
+    if os.path.exists(FILEAUTH):
+        # Opening JSON file
+        with open(FILEAUTH, 'r') as openfile:
+        # Reading from json file
+            json_string = openfile.read() #string containing Token is read
+            json_object=deserialize(json_string) #token is parsed into a Token object
+            if isinstance(json_object, Token):
+                print('# Authentication token read')
+                return json_object
+    else:
+        return None
         
