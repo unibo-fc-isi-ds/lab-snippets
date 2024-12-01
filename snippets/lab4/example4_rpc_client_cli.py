@@ -11,8 +11,9 @@ if __name__ == '__main__':
         exit_on_error=False,
     )
     parser.add_argument('address', help='Server address in the form ip:port')
-    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check'])
+    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check','auth', 'validate'])
     parser.add_argument('--user', '-u', help='Username')
+    parser.add_argument('--tokenPath', '-tP', help='tokenPath')
     parser.add_argument('--email', '--address', '-a', nargs='+', help='Email address')
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
@@ -26,6 +27,8 @@ if __name__ == '__main__':
 
     args.address = address(args.address)
     user_db = RemoteUserDatabase(args.address)
+    auth_srvc = RemoteAuthService(args.address)
+    token:Token
 
     try :
         ids = (args.email or []) + [args.user]
@@ -39,6 +42,23 @@ if __name__ == '__main__':
                     raise ValueError("Full name is required")
                 user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
                 print(user_db.add_user(user))
+            case 'auth':
+                file = args.tokenPath
+                if not args.tokenPath:
+                    file = "token.txt"
+                credentials = Credentials(ids[0], args.password)
+                token = auth_srvc.authenticate(credentials)
+                print(token)
+                f = open(file, "w")
+                f.write(serialize(token))
+                f.close()
+            case 'validate':
+                if not args.tokenPath:
+                    raise ValueError("Token file path is required")
+                f = open(args.tokenPath)
+                token = deserialize(f.read())
+                f.close()
+                print(auth_srvc.validate_token(token))
             case 'get':
                 print(user_db.get_user(ids[0]))
             case 'check':
