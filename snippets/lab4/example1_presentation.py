@@ -2,6 +2,7 @@ from .users import User, Credentials, Token, Role
 from datetime import datetime
 import json
 from dataclasses import dataclass
+from typing import Optional
 
 
 @dataclass
@@ -12,6 +13,7 @@ class Request:
 
     name: str
     args: tuple
+    metadata: Optional[str] = None
 
     def __post_init__(self):
         self.args = tuple(self.args)
@@ -91,6 +93,7 @@ class Serializer:
         return {
             'name': self._to_ast(request.name),
             'args': [self._to_ast(arg) for arg in request.args],
+            'metadata': self._to_ast(request.metadata),
         }
 
     def _response_to_ast(self, response: Response):
@@ -111,7 +114,6 @@ class Deserializer:
         if isinstance(data, dict):
             if '$type' not in data:
                 return {key: self._ast_to_obj(value) for key, value in data.items()}
-            # selects the appropriate method to convert the AST to object via reflection
             method_name = f'_ast_to_{data["$type"].lower()}'
             if hasattr(self, method_name):
                 return getattr(self, method_name)(data)
@@ -137,7 +139,6 @@ class Deserializer:
 
     def _ast_to_token(self, data):
         expiration_data = data['expiration']
-        # Converti la stringa della data in un oggetto datetime
         expiration = datetime.fromisoformat(expiration_data) if expiration_data else None
 
         return Token(
@@ -156,6 +157,7 @@ class Deserializer:
         return Request(
             name=self._ast_to_obj(data['name']),
             args=tuple(self._ast_to_obj(arg) for arg in data['args']),
+            metadata=self._ast_to_obj(data['metadata']),
         )
 
     def _ast_to_response(self, data):

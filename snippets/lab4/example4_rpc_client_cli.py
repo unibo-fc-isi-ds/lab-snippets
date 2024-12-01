@@ -1,3 +1,4 @@
+from snippets.lab4.example1_presentation import Deserializer, Serializer
 from .example3_rpc_client import *
 import argparse
 import sys
@@ -12,34 +13,23 @@ os.makedirs(subdir, exist_ok=True)
 TOKEN_FILE = os.path.join(subdir, "tokens.json")
 
 
-
-def save_token(username, token):
+def save_token(token):
     try:
-        if os.path.exists(TOKEN_FILE):
-            with open(TOKEN_FILE, "r") as f:
-                tokens = json.load(f)
-        else:
-            tokens = {}
-        tokens[username] = {
-            "expiration": token.expiration.isoformat(),
-            "signature": token.signature,
-        }
+        token_data = serialize(token)
+
         with open(TOKEN_FILE, "w") as f:
-            json.dump(tokens, f, indent=4)
+            f.write(token_data)
     except Exception as e:
         print(f"Error saving token: {e}")
 
-def load_token(username):
+def load_token():
     if not os.path.exists(TOKEN_FILE):
         raise ValueError("No token file found")
     with open(TOKEN_FILE, "r") as f:
-        tokens = json.load(f)
-    if username not in tokens:
-        raise ValueError(f"No token found for user '{username}'")
-    data = tokens[username]
-    expiration = datetime.fromisoformat(data["expiration"])
-    signature = data["signature"]
-    return expiration, signature
+        token_data = f.read()
+
+    token = deserialize(token_data)
+    return token
 
 
 
@@ -81,7 +71,8 @@ if __name__ == '__main__':
                 user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
                 print(user_db.add_user(user))
             case 'get':
-                print(user_db.get_user(ids[0]))
+                token = load_token()
+                print(user_db.get_user(ids[0], token))
             case 'check':
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
@@ -91,11 +82,9 @@ if __name__ == '__main__':
                 credentials = Credentials(ids[0], args.password)
                 token = auth_service.authenticate(credentials)
                 print("Token generated:", token)
-                save_token(ids[0], token)
+                save_token(token)
             case 'validate':
-                expiration, signature = load_token(ids[0])
-                user = user_db.get_user(ids[0])
-                token = Token(user=user, expiration=expiration, signature=signature)
+                token = load_token()
                 print(auth_service.validate(token))
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
