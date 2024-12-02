@@ -1,3 +1,4 @@
+import os
 from .example3_rpc_client import *
 import argparse
 import sys
@@ -19,7 +20,7 @@ if __name__ == '__main__':
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
-    parser.add_argument('--token', '-t', help='Authentication token')
+    parser.add_argument('--token-file', '-t', help='Authentication token file')
 
     if len(sys.argv) > 1:
         args = parser.parse_args()
@@ -34,6 +35,20 @@ if __name__ == '__main__':
         ids = (args.email or []) + [args.user]
         if len(ids) == 0:
             raise ValueError("Username or email address is required")
+        token_file = args.token_file or 'token.txt'
+        if os.path.exists(token_file):
+            # Se il file esiste, leggi il token
+            with open(token_file) as f:
+                try:
+                    token = deserialize(f.read())
+                    if not isinstance(token, Token):
+                        raise ValueError("Invalid token")
+                except Exception as e:
+                    print(f'[{type(e).__name__}]', *e.args)
+                    token = None
+        else:
+            # Altrimenti, inizializza il token a None
+            token = None
         match args.command:
             case 'add':
                 if not args.password:
@@ -41,15 +56,18 @@ if __name__ == '__main__':
                 if not args.name:
                     raise ValueError("Full name is required")
                 user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
-                print(user_db.add_user(user))
+                print(user_db.add_user(user, token))
             case 'get':
-                print(user_db.get_user(ids[0]))
+                print(user_db.get_user(ids[0], token))
             case 'check':
                 credentials = Credentials(ids[0], args.password)
-                print(user_db.check_password(credentials))
+                print(user_db.check_password(credentials, token))
             case 'authenticate':
                 credentials = Credentials(args.user, args.password)
-                print(user_db.authenticate(credentials))
+                token = user_db.authenticate(credentials)
+                with open(token_file, 'w') as f:
+                    f.write(serialize(token))
+                print("Token saved to", token_file)
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:
