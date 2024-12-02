@@ -4,8 +4,6 @@ import sys
 import os
 
 
-
-TOKEN_DIR  = os.getcwd()
 TOKEN_DEFAULT_FILE = "token_file.json"
 
 def write_token(token:Token, token_file = TOKEN_DEFAULT_FILE):
@@ -15,6 +13,8 @@ def write_token(token:Token, token_file = TOKEN_DEFAULT_FILE):
     file.close()
 
 def read_token(token_file = TOKEN_DEFAULT_FILE):
+    if not os.path.exists(token_file):
+        raise ValueError("The file does not exist.")
     file = open(token_file, "r")
     read_file = file.read()
     deserialized_token = deserialize(read_file)
@@ -51,8 +51,6 @@ if __name__ == '__main__':
     try :
         ids = (args.email or []) + [args.user]
 
-
-
         file_name = TOKEN_DEFAULT_FILE
 
         if args.token_file_path:
@@ -81,7 +79,6 @@ if __name__ == '__main__':
                 print("Authentication successful")
             case 'validate':
                 if not args.token_file_path:
-                    print(Hello)
                     raise ValueError("Unspecified file")
                 token = read_token(file_name)
                 if authentication_service.validate_token(token):
