@@ -100,10 +100,10 @@ class Serializer:
 
 class Deserializer:
     def deserialize(self, string):
-        return self._ast_to_obj(self._ast_to_string(string))
+        return self._ast_to_obj(self._string_to_ast(string))
 
-    def _ast_to_string(self, data):
-        return json.loads(data)
+    def _string_to_ast(self, string):
+        return json.loads(string)
 
     def _ast_to_obj(self, data):
         if isinstance(data, dict):
