@@ -1,10 +1,11 @@
-# Exercise: RPC-based Authentication Service
-Goal: extend the exemplified RPC infrastructure to support an authentication service
-* The server now has an 'InMemoryAuthenticationService' instance as an attribute to delegate any authentication or token validation requests to.
-* A new class 'RemoteAuthService' is provided that extends the 'ClientStub' and 'AuthenticationService' classes. This is the class responsible for sending requests to invoke the user authentication and token validation procedures.
-* The client command line interface has been extended with the 'auth' and 'validate' commands. The 'auth' command requires the user's id and password parameters and accepts an additional parameter indicating the path and name of the file in which to store the token. The 'validate' command only requires the parameter indicating the path to the token file. 
-* The Serializer's '_datetime_to_ast' method and the Deserializer's '_ast_to_datetime' method have been implemented to serialize and deserialize, respectively, a datetime object.
-
+# Exercise: RPC-based Authentication Service 2
+Goal: extend the exemplified RPC infrastructure to support authorization
+* The Request class has been updated with a new field, metadata, which is a tuple that can be left empty.
+* The server now validates the user's authentication before handling the get_user procedure. Specifically:
+    * If no authentication token is provided, the server responds with an error: "Missing authentication token."
+    * If the provided token is invalid, the server returns an error: "Request not allowed. Authentication required."
+    * If the user is not an admin, the server responds with: "Request not allowed. User is not authorized."
+* The client stores the authentication token received during login and includes it in subsequent get_user requests to the server.
 
 ## Running the server
 
@@ -16,18 +17,13 @@ where PORT is the port number the server will listen to, e.g. 8080
 
 ## Running the client
 
-Authentication command:
+Command to get the info of a user:
 ```bash
-python -m snippets -l 4 -e 4 SERVER_IP:PORT auth -u name -p password [-tp] [--tokenPath filepath]
+python -m snippets -l 4 -e 4 SERVER_IP:PORT get -u name -tp filepath
 ```
 
-Token validation command:
-```bash
-python -m snippets -l 4 -e 4 SERVER_IP:PORT validate -tp filepath
-```
 where:
 * SERVER_IP (e.g. localhost) is the IP address of the server;
 * PORT is the port number the server is listening to (e.g. 8080);
-* name is the user's id;
-* password is the user's password;
-* filepath is the path of the file to store the token into. 
+* name is the id of the user to get details of;
+* filepath is the path of the file where the token is stored into. 
