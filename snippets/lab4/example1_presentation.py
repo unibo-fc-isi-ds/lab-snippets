@@ -12,7 +12,7 @@ class Request:
 
     name: str
     args: tuple
-    metadata: dict
+    #metadata: dict = None
 
     def __post_init__(self):
         self.args = tuple(self.args)
@@ -51,7 +51,8 @@ class Serializer:
         method_name = f'_{type(obj).__name__.lower()}_to_ast'
         if hasattr(self, method_name):
             data = getattr(self, method_name)(obj)
-            data['$type'] = type(obj).__name__
+            if (isinstance(data, dict)):
+                data['$type'] = type(obj).__name__
             return data
         raise ValueError(f"Unsupported type {type(obj)}")
 
@@ -88,7 +89,7 @@ class Serializer:
         return {
             'name': self._to_ast(request.name),
             'args': [self._to_ast(arg) for arg in request.args],
-            'metadata': self._to_ast(request.metadata),
+            #'metadata': self._to_ast(request.metadata),
         }
 
     def _response_to_ast(self, response: Response):
@@ -137,7 +138,7 @@ class Deserializer:
         return Token(
             signature=self._ast_to_obj(data['signature']),
             user=self._ast_to_obj(data['user']),
-            expiration=self._ast_to_obj(data['expiration']),
+            expiration=self._ast_to_datetime(data['expiration']),
         )
 
     def _ast_to_datetime(self, data):

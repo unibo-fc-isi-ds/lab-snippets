@@ -3,6 +3,10 @@ import argparse
 import sys
 
 
+def __check_password_provided(args):
+    if not args.password:
+        raise ValueError("Password is required")
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(
@@ -11,12 +15,14 @@ if __name__ == '__main__':
         exit_on_error=False,
     )
     parser.add_argument('address', help='Server address in the form ip:port')
-    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check'])
+    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check', 'authenticate', 'validate'])
     parser.add_argument('--user', '-u', help='Username')
     parser.add_argument('--email', '--address', '-a', nargs='+', help='Email address')
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
+    parser.add_argument('--token', '-t', help='Token')
+    parser.add_argument('--path', '-th', help='Token path')
 
     if len(sys.argv) > 1:
         args = parser.parse_args()
@@ -26,6 +32,7 @@ if __name__ == '__main__':
 
     args.address = address(args.address)
     user_db = RemoteUserDatabase(args.address)
+    auth = RemoteAuthenticationService(args.address)
 
     try :
         ids = (args.email or []) + [args.user]
@@ -33,8 +40,7 @@ if __name__ == '__main__':
             raise ValueError("Username or email address is required")
         match args.command:
             case 'add':
-                if not args.password:
-                    raise ValueError("Password is required")
+                __check_password_provided(args)
                 if not args.name:
                     raise ValueError("Full name is required")
                 user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
@@ -44,6 +50,29 @@ if __name__ == '__main__':
             case 'check':
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
+
+            case 'authenticate':
+                credentials = Credentials(ids[0], args.password)
+                __check_password_provided(args)
+                token = auth.authenticate(credentials)
+                print("User logged in")
+                if args.path:
+                    with open(args.path, 'w') as f:
+                        f.write(serialize(token))
+                print(token)
+
+            case 'validate':
+                if args.token and args.path:
+                    raise ValueError("Provide a token or a path")
+                elif args.token:
+                    token = args.token
+                elif args.path:
+                    with open(args.path, 'r') as file:
+                        token = file.read().strip()
+                else:
+                    raise ValueError("A token or a path is required")
+                print(auth.validate(deserialize(token)))
+                
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:

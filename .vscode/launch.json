@@ -182,20 +182,20 @@
             "request": "launch",
             "module": "snippets.lab4.example4_rpc_client_cli",
             "args": 
-                /*[
+                [
                     "localhost:8080",
                     "add",
                     "-u", "ciao",
                     "-a", "ab@gmail.com",
                     "-n", "Lory T",
-                    "-r", "admin",
+                    "-r", "user",
                     "-p", "1234", 
-                ],*/
-                [
+                ],
+                /*[
                     "localhost:8080",
                     "get",
                     "-u", "ciao"
-                ]
+                ]*/
         },
     ]
 }
