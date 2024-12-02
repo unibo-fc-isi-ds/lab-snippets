@@ -11,7 +11,7 @@ if __name__ == '__main__':
         exit_on_error=False,
     )
     parser.add_argument('address', help='Server address in the form ip:port')
-    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check'])
+    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check', 'authenticate', 'validate'])
     parser.add_argument('--user', '-u', help='Username')
     parser.add_argument('--email', '--address', '-a', nargs='+', help='Email address')
     parser.add_argument('--name', '-n', help='Full name')
@@ -26,6 +26,8 @@ if __name__ == '__main__':
 
     args.address = address(args.address)
     user_db = RemoteUserDatabase(args.address)
+    user_auth = RemoteAuthenticationService(args.address)
+    token : Token
 
     try :
         ids = (args.email or []) + [args.user]
@@ -44,6 +46,12 @@ if __name__ == '__main__':
             case 'check':
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
+            case 'authenticate':
+                credentials = Credentials(ids[0], args.password)
+                token = user_auth.authenticate(credentials)
+                save(credentials.id, token)
+            case 'validate':
+                user_auth.validate_token(ids[0])
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:

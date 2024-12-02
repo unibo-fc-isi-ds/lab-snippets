@@ -1,13 +1,31 @@
+import os
+from snippets.lab4.example1_presentation import Deserializer, Serializer
 from ..users import *
 import hashlib
-
 
 def _compute_sha256_hash(input: str) -> str:
     sha256_hash = hashlib.sha256()
     sha256_hash.update(input.encode('utf-8'))
     return sha256_hash.hexdigest()
 
+token_root = './snippets/lab4/token'
 
+def save(id, token):
+    if not os.path.exists(token_root):
+        os.makedirs(token_root)
+    with open(f'{token_root}/{id}.json', 'w') as file_write:
+        token_ser = Serializer().serialize(token)
+        file_write.write(token_ser)
+
+def load(id):
+    try:
+        if not os.path.exists(token_root):
+            return None
+        with open(f'{token_root}/{id}.json', 'r') as read_file:
+            return Deserializer().deserialize(read_file.read())
+    except:
+        return None
+    
 class _Debuggable:
     def __init__(self, debug: bool = True):
         self.__debug = debug
@@ -80,6 +98,10 @@ class InMemoryAuthenticationService(AuthenticationService, _Debuggable):
         return token.signature == _compute_sha256_hash(f"{token.user}{token.expiration}{self.__secret}")
 
     def validate_token(self, token: Token) -> bool:
-        result = token.expiration > datetime.now() and self.__validate_token_signature(token)
-        self._log(f"{token} is " + ('valid' if result else 'invalid'))
+        try:
+            result = token.expiration > datetime.now() and self.__validate_token_signature(token)
+            self._log(f"{token} is " + ('valid' if result else 'invalid'))
+        except:
+            return False
         return result
+

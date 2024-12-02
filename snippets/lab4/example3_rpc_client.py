@@ -1,6 +1,8 @@
+import time
 from snippets.lab3 import Client, address
 from snippets.lab4.users import *
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
+from snippets.lab4.users.impl import load, save
 
 
 class ClientStub:
@@ -42,6 +44,15 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
     def check_password(self, credentials: Credentials) -> bool:
         return self.rpc('check_password', credentials)
 
+class RemoteAuthenticationService(ClientStub, AuthenticationService):
+    def __init__(self, server_address):
+        super().__init__(server_address)
+
+    def authenticate(self, credentials: Credentials):
+        return self.rpc('authenticate', credentials)
+    
+    def validate_token(self, id: str):
+        return self.rpc('validate_token', load(id))
 
 if __name__ == '__main__':
     from snippets.lab4.example0_users import gc_user, gc_credentials_ok, gc_credentials_wrong
