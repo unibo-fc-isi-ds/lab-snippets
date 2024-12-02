@@ -1,0 +1,21 @@
+{
+  "signature": "863e51cd4bfa4be49a404d150c18e480424ebc1c8bc0695a95ea2f119d545d0b",
+  "user": {
+    "username": "guojia",
+    "emails": [
+      "jiahao.g@studio.unibo.it"
+    ],
+    "full_name": "Jia uo",
+    "role": {
+      "name": "ADMIN",
+      "$type": "Role"
+    },
+    "password": null,
+    "$type": "User"
+  },
+  "expiration": {
+    "datetime": "2024-12-03T15:29:40.362537",
+    "$type": "datetime"
+  },
+  "$type": "Token"
+}

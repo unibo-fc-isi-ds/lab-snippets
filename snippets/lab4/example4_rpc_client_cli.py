@@ -3,17 +3,29 @@ import os
 from snippets.lab4.example1_presentation import serialize, deserialize
 from .example3_rpc_client import *
 import argparse
+
 import sys
+
+DIRECTORY = os.path.dirname("./lab-snippets/userTokens/")
 @staticmethod
-def save_tokenToPath(token :Token, path:str):
-    with open(path, 'w') as f:
+def save_tokenToPath(token: Token, path: str):
+    if not os.path.exists(DIRECTORY):
+        os.makedirs(DIRECTORY)
+    filename = os.path.join(DIRECTORY, f"{path}.json")
+    with open(filename, 'w') as f:
         f.write(serialize(token))
 
-@staticmethod
-def read_tokenFromPath(path : str):
-    with open(path, 'r') as f:
-        return deserialize(f.read())
+ 
     
+@staticmethod
+def read_tokenFromPath(path: str):
+    filename = os.path.join(DIRECTORY, f"{path}.json")
+    if not os.path.exists(DIRECTORY):
+        raise FileNotFoundError(f"Directory '{DIRECTORY}' does not exist")
+    if not os.path.exists(filename):
+        raise FileNotFoundError(f"File '{filename}' does not exist in the specified directory")
+    with open(filename, 'r') as f:
+        return deserialize(f.read())
 
 if __name__ == '__main__':
 
@@ -29,8 +41,8 @@ if __name__ == '__main__':
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
-    parser.add_argument('--token', '-t',type=str ,help='Token')
-    parser.add_argument('--path', '-pt', help='Path of token file')
+    parser.add_argument('--token', '-t', type=str ,help='Token')
+    parser.add_argument('--path', '-pt', help='Path of token file(the token filename)')
   
     if len(sys.argv) > 1:
         args = parser.parse_args()
@@ -55,23 +67,29 @@ if __name__ == '__main__':
                 user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
                 print(user_db.add_user(user))
             case 'get':
+                # In path prendo il token dal file 
+                if not args.path:
+                    raise ValueError("Path of token file(the token filename)")
+                user_auth.__token = user_db.token = token = read_tokenFromPath(args.path)
                 print(user_db.get_user(ids[0]))
             case 'check':
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
             case 'authenticate':
                 if not args.path:
-                    raise ValueError("Path to token file is required")
+                    raise ValueError("Path of token file(the token filename) is required")
                 credentials = Credentials(ids[0], args.password)
-                token = user_auth.authenticate(credentials)
-                print(token)
+                # Ottengo il token dopo login
+                user_auth.__token = user_db.token = token = user_auth.authenticate(credentials)
+                # salvo il token nel file per usare dopo in get_user
                 save_tokenToPath(token, args.path)
+                print(user_db.get_user(ids[0]))
             case 'validate':
                 if not args.token and not args.path:
-                    raise ValueError("Token or path is required")
-                if args.path and os.path.exists(args.path):
+                    raise ValueError("Token or Path of token file(the token filename) is required")
+                if args.path:
                     token = read_tokenFromPath(args.path)
-                elif args.token:
+                else:
                     token = deserialize(args.token)
                 print(user_auth.validate_token(token))
             case _:

@@ -9,12 +9,13 @@ class Request:
     """
     A container for RPC requests: a name of the function to call and its arguments.
     """
-    #metadata: dict | None = None
     name: str
     args: tuple
-
+    metadata: dict | None = None
+    
     def __post_init__(self):
         self.args = tuple(self.args)
+        
 
 
 @dataclass
@@ -86,6 +87,7 @@ class Serializer:
         return {
             'name': self._to_ast(request.name),
             'args': [self._to_ast(arg) for arg in request.args],
+            'metadata' : self._to_ast(request.metadata) if request.metadata is not None else None,
         }
 
     def _response_to_ast(self, response: Response):
@@ -145,15 +147,16 @@ class Deserializer:
 
     def _ast_to_request(self, data):
         return Request(
-            name=self._ast_to_obj(data['name']),
-            args=tuple(self._ast_to_obj(arg) for arg in data['args']),
-        )
+            name = self._ast_to_obj(data['name']),
+            args = tuple(self._ast_to_obj(arg) for arg in data['args']),
+            metadata = self._ast_to_obj(data['metadata']) # assuming 'token' field is optional in the request structure
+        ) if data.get('metadata') is not None else Request( name = self._ast_to_obj(data['name']),
+            args = tuple(self._ast_to_obj(arg) for arg in data['args']),)
 
     def _ast_to_response(self, data):
         return Response(
-            result=self._ast_to_obj(data['result']) if data['result'] is not None else None,
-            error=self._ast_to_obj(data['error']),
-        )
+            result = self._ast_to_obj(data['result']) if data['result'] is not None else None,
+            error = self._ast_to_obj(data['error']),)
 
 
 DEFAULT_SERIALIZER = Serializer()
