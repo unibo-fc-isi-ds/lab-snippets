@@ -1,12 +1,14 @@
+from datetime import timedelta
 from snippets.lab3 import Client, address
 from snippets.lab4.users import *
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
+from snippets.lab4.users import Credentials, Token
 
 
 class ClientStub:
     def __init__(self, server_address: tuple[str, int]):
         self.__server_address = address(*server_address)
-
+        
     def rpc(self, name, *args):
         client = Client(self.__server_address)
         try:
@@ -35,12 +37,23 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
 
     def add_user(self, user: User):
         return self.rpc('add_user', user)
-
+    
     def get_user(self, id: str) -> User:
         return self.rpc('get_user', id)
-
+    
     def check_password(self, credentials: Credentials) -> bool:
         return self.rpc('check_password', credentials)
+    
+class RemoteAuthenticathion(ClientStub, AuthenticationService):
+    def __init__(self, server_address):
+        super().__init__(server_address)
+
+    def authenticate(self, credentials: Credentials) -> Token:
+        return self.rpc('authenticate',credentials)
+    
+    def validate_token(self, token: Token) -> bool:
+        return self.rpc('validate_token',token)
+    
 
 
 if __name__ == '__main__':
