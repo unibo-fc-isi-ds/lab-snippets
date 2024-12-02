@@ -56,6 +56,8 @@ class ServerStub(Server):
                 elif not self.__auth_service.validate_token(request.metadata['token']):
                     raise ValueError("Invalid authentication token")
                 else:
+                    if request.metadata['token'].user.role != Role.ADMIN:
+                        raise ValueError("Insufficient privileges")                    
                     method = getattr(self.__user_db, request.name)
             result = method(*request.args)
             error = None
