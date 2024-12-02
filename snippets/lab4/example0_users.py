@@ -16,6 +16,14 @@ gc_user = User(
     password='my secret password',
 )
 
+gc_user2 = User(
+    username='denisenanni',
+    emails={'denise.nanni@studio.unibo.it'},
+    full_name='Denise Nanni',
+    role=Role.USER,
+    password='supersecret',
+)
+
 gc_user_hidden_password = gc_user.copy(password=None)
 
 gc_credentials_ok = [Credentials(id, gc_user.password) for id in gc_user.ids] # type: ignore

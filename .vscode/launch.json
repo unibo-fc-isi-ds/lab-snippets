@@ -4,6 +4,7 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+
         {
             "name": "L1E1: Game Loop",
             "type": "debugpy",
@@ -176,6 +177,8 @@
             "args": [
                 "localhost:8080"
             ],
-        },
+            "stopOnEntry": true,
+            "justMyCode": true
+        }
     ]
 }

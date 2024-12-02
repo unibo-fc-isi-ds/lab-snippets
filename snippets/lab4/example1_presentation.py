@@ -1,17 +1,19 @@
 from .users import User, Credentials, Token, Role
 from datetime import datetime
-import json
+import json, os
 from dataclasses import dataclass
 
+TOKENS_FOLDER = 'tokens' + os.sep
 
 @dataclass
 class Request:
     """
     A container for RPC requests: a name of the function to call and its arguments.
     """
-
+    
     name: str
     args: tuple
+    metadata: Token | None
 
     def __post_init__(self):
         self.args = tuple(self.args)
@@ -84,6 +86,7 @@ class Serializer:
 
     def _request_to_ast(self, request: Request):
         return {
+            'metadata': self._to_ast(request.metadata) if request.metadata is not None else None,
             'name': self._to_ast(request.name),
             'args': [self._to_ast(arg) for arg in request.args],
         }
@@ -145,6 +148,7 @@ class Deserializer:
 
     def _ast_to_request(self, data):
         return Request(
+            metadata=self._ast_to_obj(data['metadata']) if data['metadata'] is not None else None,
             name=self._ast_to_obj(data['name']),
             args=tuple(self._ast_to_obj(arg) for arg in data['args']),
         )
@@ -186,3 +190,26 @@ if __name__ == '__main__':
     deserialized = deserialize(serialized)
     print("Deserialized", "=", deserialized)
     assert request == deserialized
+
+class TokenHandler:
+
+    @staticmethod
+    def store(token: Token, file_path: str = None):
+        try:
+            file_path = file_path or f"{TOKENS_FOLDER}{token.user.username}.token"
+            with open(file_path, 'w') as file:
+                file.write(serialize(token))
+        except Exception as e:
+            raise ValueError(f"Error saving token: {e}")
+        
+    @staticmethod
+    def load(file_path: str) -> Token:
+        try:
+            with open(file_path, 'r') as file:
+                return deserialize(file.read())
+        except Exception as e:
+            return None
+    
+    @staticmethod
+    def load_user_token(username: str) -> Token:
+        return TokenHandler.load(f"{TOKENS_FOLDER}{username}.token")
