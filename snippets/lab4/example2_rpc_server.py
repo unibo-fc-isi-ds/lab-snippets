@@ -2,6 +2,7 @@ from snippets.lab3 import Server
 from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 import traceback
+from .users import Token, Role
 
 
 class ServerStub(Server):
@@ -42,6 +43,20 @@ class ServerStub(Server):
         error = ""
         auth_error = ""
         user_db_error = ""
+
+        if request.name == "get_user":
+            try:
+                isinstance(*request.metadata, Token)
+            except Exception as e:
+                result = None
+                return Response(result, "Missing authentication token.")
+            if not self.__auth_srvc.validate_token(*request.metadata):
+                result = None
+                return Response(result, "Request not allowed. Authentication required.")
+            user = self.__user_db.get_user((request.metadata[0]).user.username)
+            if user.role != Role.ADMIN:
+                result = None
+                return Response(result, "Request not allowed. User is not authorized.")
         
         try:
             method = getattr(self.__auth_srvc, request.name)
