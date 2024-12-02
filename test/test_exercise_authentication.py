@@ -6,7 +6,7 @@ from snippets.lab4.example2_rpc_server import ServerStub
 from snippets.lab4.example3_rpc_client import RemoteUserDatabase
 from snippets.lab4.users import Credentials, Role, User
 
-class TestMultiTCPChatPeer(unittest.TestCase):
+class TestAuthenticationRemoteDB(unittest.TestCase):
     TIMEOUT = 5
     PORT = 12345
     ADMIN_CREDS = Credentials('admin', 'admin')
@@ -79,6 +79,3 @@ class TestMultiTCPChatPeer(unittest.TestCase):
         token = self.client.authenticate(Credentials('test', 'test'))
         self.assertIsNotNone(token, "Token is None")
         self.assertRaises(RuntimeError, self.client.get_user, 'admin', token)
-        
-        
-    
