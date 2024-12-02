@@ -28,7 +28,7 @@ if __name__ == '__main__':
     args.address = address(args.address)
     user_db = RemoteUserDatabase(args.address)
     auth_srvc = RemoteAuthService(args.address)
-    token:Token
+    token:Token = None
 
     try :
         ids = (args.email or []) + [args.user]
@@ -60,7 +60,12 @@ if __name__ == '__main__':
                 f.close()
                 print(auth_srvc.validate_token(token))
             case 'get':
-                print(user_db.get_user(ids[0]))
+                if not args.tokenPath:
+                    raise ValueError("Token file path is required")
+                f = open(args.tokenPath)
+                token = deserialize(f.read())
+                f.close()
+                print(user_db.get_user(ids[0], token))
             case 'check':
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
