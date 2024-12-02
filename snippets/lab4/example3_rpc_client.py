@@ -4,6 +4,8 @@ from snippets.lab4.example1_presentation import serialize, deserialize, Request,
 import os
 
 FILEAUTH="auth.json"
+LOGOUT_FAIL="Error while logging out"
+LOGOUT_SUCCESS="User logged out correctly"
 
 class ClientStub:
     def __init__(self, server_address: tuple[str, int]):
@@ -56,9 +58,9 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
     def logout(self):
         if os.path.exists(FILEAUTH):
             os.remove(FILEAUTH)
-            return "User logged out correctly"
+            return LOGOUT_SUCCESS
         else:
-            return "Error while logging out"
+            return LOGOUT_FAIL
 
 
 
