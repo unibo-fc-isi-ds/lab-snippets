@@ -1,13 +1,14 @@
 from snippets.lab3 import Server
-from snippets.lab4.users.impl import InMemoryUserDatabase
+from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 import traceback
-
 
 class ServerStub(Server):
     def __init__(self, port):
         super().__init__(port, self.__on_connection_event)
         self.__user_db = InMemoryUserDatabase()
+        self.__auth_service = InMemoryAuthenticationService(self.__user_db)
+
     
     def __on_connection_event(self, event, connection, address, error):
         match event:
@@ -37,13 +38,34 @@ class ServerStub(Server):
                 print('[%s:%d] Close connection' % connection.remote_address)
     
     def __handle_request(self, request):
+        message_db_error   = ""
+        message_auth_error = ""
+        error = ""
+
         try:
             method = getattr(self.__user_db, request.name)
             result = method(*request.args)
             error = None
+        except AttributeError as e:
+            message_db_error = " ".join(e.args)
         except Exception as e:
             result = None
             error = " ".join(e.args)
+
+        try:
+            method = getattr(self.__auth_service, request.name)
+            result = method(*request.args)
+            error = None
+        except AttributeError as e:
+            message_auth_error = " ".join(e.args)
+        except Exception as e:
+            result = None
+            error = " ".join(e.args)
+
+        #if message_db_error and message_auth_error:
+            error = "db:"+ message_db_error + "\nauth:" + message_auth_error
+
+
         return Response(result, error)
 
 
