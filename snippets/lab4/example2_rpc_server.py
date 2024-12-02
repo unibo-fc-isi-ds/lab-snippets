@@ -40,8 +40,8 @@ class ServerStub(Server):
     
     def __handle_request(self, request):
         try:
-            if hasattr(self.__auth_service, request.name):
-                method = getattr(self.__auth_service, request.name)
+            if hasattr(self.__auth, request.name):
+                method = getattr(self.__auth, request.name)
             elif hasattr(self.__user_db, request.name):
                 method = getattr(self.__user_db, request.name)
             result = method(*request.args)
