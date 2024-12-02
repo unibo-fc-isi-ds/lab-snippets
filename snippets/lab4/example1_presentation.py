@@ -12,11 +12,10 @@ class Request:
 
     name: str
     args: tuple
-    metadata: dict = None
+    metadata: dict
 
     def __post_init__(self):
         self.args = tuple(self.args)
-        self.metadata = self.metadata or {}
 
 
 @dataclass
