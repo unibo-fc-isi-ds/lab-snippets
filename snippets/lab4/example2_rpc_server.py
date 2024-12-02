@@ -1,13 +1,15 @@
 from snippets.lab3 import Server
-from snippets.lab4.users.impl import InMemoryUserDatabase
+from snippets.lab4.users.impl import *
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 import traceback
 
+_PRINT_LOGS = __name__ == '__main__'
 
 class ServerStub(Server):
     def __init__(self, port):
         super().__init__(port, self.__on_connection_event)
-        self.__user_db = InMemoryUserDatabase()
+        self.__user_db_real = InMemoryUserDatabase()
+        self.__user_db = InMemoryAuthenticationService(self.__user_db_real, debug=_PRINT_LOGS)
     
     def __on_connection_event(self, event, connection, address, error):
         match event:
