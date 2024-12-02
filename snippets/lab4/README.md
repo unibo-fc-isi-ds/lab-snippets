@@ -8,7 +8,7 @@ The existing structure of the RPC-based Authentication Service has been adhered 
 - Inclusion of the `token` field in the `Request` class and update the corresponding (de)serialization logic
 - Extension of the command-line interface by adding a new command to specify the requester of the operation
 - Addition of the (optional) token in `ClientStub` 
-- Distinction between protected and public operations via `@requires_authorization` decorator
+- Distinction between protected and public operations
 - Update `ServerStub` to check for the presence and validity of the token and the user's role
 
 ### Example
