@@ -62,7 +62,7 @@ class ServerStub(Server):
             result = None
             error = " ".join(e.args)
 
-        #if message_db_error and message_auth_error:
+        if message_db_error and message_auth_error:
             error = "db:"+ message_db_error + "\nauth:" + message_auth_error
 
 
