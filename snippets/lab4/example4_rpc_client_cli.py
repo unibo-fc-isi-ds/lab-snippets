@@ -49,28 +49,17 @@ if __name__ == '__main__':
             case 'authenticate':
                 credentials = Credentials(ids[0], args.password)
                 result = user_auth.authenticate(credentials)
-                try:
-                    with open(f'{ids[0]}.txt', "w") as f:
-                        f.write(serialize(result))
-                except Exception as e:
-                    print(e)
-                print(result)
             case 'validate':
                 if not args.password:
                     raise ValueError("Password is required")
                 if not args.user:
                     raise ValueError("Username is required")
-                token_file = f'{ids[0]}.txt'
-                if not os.path.exists(token_file):
-                    print(False)
-                else:
-                    try:
-                        with open(token_file, "r") as f:
-                            token_content = f.read()
-                        token = deserialize(token_content)
-                        print(user_auth.validate_token(token))
-                    except Exception as e:
-                        print(e)
+                print(user_auth.validate_token(
+                    user_auth.authenticate(
+                            Credentials(ids[0], args.password)
+                        )
+                    )
+                )
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:
