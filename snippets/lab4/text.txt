@@ -1,0 +1,31 @@
+solution 
+
+this solution creates and saves a token file in the file sistem. 
+
+example1_presentation.py: implemented serialization and deserialization of the datetime object 
+example2_rpc_server.py: modified the __handle_request method: the "get_user" request can only
+    be executed if the user is an admin, authenticated and the token is valid. also added an authentication service
+exmple3_rpc_client.py: added a remote authentication service class, added a token field to the clientstub class and modified
+    the get_user method to use the token and to check if the user is an admin
+example4_rpc_client_cli.py: add the path argument to the argument line, this rapresents the path of the token file,
+    added authenticate and validate cases, modified the get case to use the token file 
+
+test:
+
+# L4E2: RPC Server
+run the server: python -m snippets -l 4 -e 2 *port*
+
+# L4E4: RPC Client cli (add user)
+add user: python -m snippets -l 4 -e 4 localhost:8080 add -u ciao -a ab@gmail.com -n "Lory T" -r user -p 1234
+
+# L4E4: RPC Client cli (get user)
+get user: python -m snippets -l 4 -e 4 localhost:8080 get -u admin -th token.json
+
+# L4E4: RPC Client cli (authenticate)
+authenticate: python -m snippets -l 4 -e 4 localhost:8080 authenticate -u admin -p password -th token.json
+
+# L4E4: RPC Client cli (validate token)
+validate token: python -m snippets -l 4 -e 4 localhost:8080 validate -u admin -th token.json
+
+# L4E4: RPC Client cli (add admin)
+add user admin: python -m snippets -l 4 -e 4 localhost:8080 add -u admin -a admin@gmail.com -n io -r admin -p password
