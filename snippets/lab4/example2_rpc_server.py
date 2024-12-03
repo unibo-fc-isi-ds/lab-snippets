@@ -46,8 +46,10 @@ class ServerStub(Server):
             if request.name == 'get_user':
                 if not request.metadata:
                     error = "Missing metadata(token). You must be authenticated to use this method"
-                elif not self.Auth.validate_token(request.metadata) or request.metadata.user.role != Role.ADMIN:
-                    error = "You are not authenticated or you don't have admin role"
+                elif not self.Auth.validate_token(request.metadata):
+                    error = "You are not authenticated"
+                elif request.metadata.user.role != Role.ADMIN:
+                     error = "You don't have admin role"
                 else:
                     result = self.__user_db.get_user(*request.args)
             elif request.name in ['authenticate', 'validate_token']:

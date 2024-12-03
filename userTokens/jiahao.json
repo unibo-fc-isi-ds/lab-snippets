@@ -1,5 +1,5 @@
 {
-  "signature": "06a6a4c97c9729c624d91cfa1c4eb857dfcb15fe8a8a63584eb84225b8dc7c0c",
+  "signature": "f8fd07844cbfa221d403890b0a8edbda6289895b5d2613038096c902b1303864",
   "user": {
     "username": "guojiaha",
     "emails": [
@@ -7,14 +7,14 @@
     ],
     "full_name": "Jia uo",
     "role": {
-      "name": "ADMIN",
+      "name": "USER",
       "$type": "Role"
     },
     "password": null,
     "$type": "User"
   },
   "expiration": {
-    "datetime": "2024-12-04T18:14:51.221329",
+    "datetime": "2024-12-04T22:57:59.144891",
     "$type": "datetime"
   },
   "$type": "Token"

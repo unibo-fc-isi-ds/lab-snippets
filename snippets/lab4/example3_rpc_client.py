@@ -3,8 +3,11 @@ from snippets.lab3 import Client, address
 from snippets.lab4.users import *
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 
-DIRECTORY = os.path.dirname("./lab-snippets/userTokens/")
-@staticmethod
+# Get the directory of the current script
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Define DIRECTORY relative to the current script location
+DIRECTORY = os.path.join(CURRENT_DIR, "..", "..", "userTokens")
 def save_tokenToPath(token: Token, path: str):
     if not os.path.exists(DIRECTORY):
         os.makedirs(DIRECTORY)
@@ -61,7 +64,7 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
         return self.rpc('add_user', user)
 
     def get_user(self, id: str, token: Token) -> User:
-        return self.rpc('get_user', id, token)
+        return self.rpc('get_user', id, metadata=token)
 
     def check_password(self, credentials: Credentials) -> bool:
         return self.rpc('check_password', credentials)
@@ -91,22 +94,10 @@ if __name__ == '__main__':
 
     user_db = RemoteUserDatabase(address(sys.argv[1]))
     user_auth = RemoteAuthenticationService(address(sys.argv[1]))
-    
-    # Trying to add another user whose role is USER
-    try:
-        user_db.add_user(try_user)
-    except RuntimeError as e:
-        print(f"Error occurred: {str(e)}")
-        
-    try:
-        user_db.get_user('guo jiahao')
-    except RuntimeError as e:
-        print(f"Error occurred: {str(e)}")
-        
-        
+         
     # Trying to get a user that does not exist should raise a KeyError because the user is not authenticated
     try:
-        user_db.get_user('gciatto')
+        user_db.get_user('gciatto',None)
     except RuntimeError as e:
         # assert 'User with ID gciatto not found' in str(e)
         print(e)
@@ -122,17 +113,10 @@ if __name__ == '__main__':
         user_db.add_user(gc_user)
     except RuntimeError as e:
         print(f"Error occurred: {str(e)}")
-        
-    # Trying to get a user that does not exist should raise a KeyError because the user is not authenticated
-    try:
-        user_db.get_user('gciatto')
-    except RuntimeError as e:
-        print(f"Error occurred: {str(e)}")
 
     # Authenticating with the correct credentials should work
     try:
-        user_auth.token = user_db.token = token = user_auth.authenticate(gc_credentials_ok[0])
-        # salvo il token nel file per usare dopo in get_user
+        token = user_auth.authenticate(gc_credentials_ok[0])
         save_tokenToPath(token, gc_user.username)
     except RuntimeError as e:
         print(f"Authentication error: {str(e)}")
@@ -146,22 +130,31 @@ if __name__ == '__main__':
     
     # Trying to get a user after authentication now should work
     try:
-        user_db.get_user('gciatto')
+        user_db.get_user('gciatto',token)
     except RuntimeError as e:
         print(f"Error occurred: {str(e)}")
         
     # Trying to get a user reading from the file should work
     try:
-        user_auth.token = user_db.token = read_tokenFromPath(gc_user.username)
-        user_db.get_user('gciatto')
+        user_db.get_user('gciatto',read_tokenFromPath(gc_user.username))
+    except RuntimeError as e:
+        print(f"Error occurred: {str(e)}")
+        
+     # Trying to add another user whose role is USER
+    try:
+        user_db.add_user(try_user)
+    except RuntimeError as e:
+        print(f"Error occurred: {str(e)}")
+        
+    try:
+        user_db.get_user('guo jiahao',None)
     except RuntimeError as e:
         print(f"Error occurred: {str(e)}")
         
     # Authenticating with USER role to get the user details should not work
     try:
-        user_auth.token = user_db.token = user_auth.authenticate(Credentials(try_user.username, try_user.password))
-        # salvo il token nel file per usare dopo in get_user
-        user_db.get_user()
+        token = user_auth.authenticate(Credentials(try_user.username, try_user.password))
+        user_db.get_user('guo jiahao', token)
     except RuntimeError as e:
         print(f"Authentication error: {str(e)}")
         
