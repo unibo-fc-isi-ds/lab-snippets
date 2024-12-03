@@ -8,9 +8,12 @@ def __check_password_provided(args):
         raise ValueError("Password is required")
 
 def __strip_token(args):
-    with open(args.path, 'r') as file:
-        token = file.read().strip()
-        return token
+    try:
+        with open(args.path, 'r') as file:
+            token = file.read().strip()
+            return token
+    except FileNotFoundError:
+        raise ValueError("Token file not found, you are not authenticated")
 
 if __name__ == '__main__':
 

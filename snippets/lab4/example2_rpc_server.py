@@ -44,11 +44,17 @@ class ServerStub(Server):
                 method = getattr(self.__auth, request.name)
             elif hasattr(self.__user_db, request.name):
                 method = getattr(self.__user_db, request.name)
+                #if get user, validate token, if ok proceed with the request, if not return unauthorized error
                 if request.name == 'get_user':
                     request.metadata = request.args[1]
                     request.args = request.args[:1]
+                    token = request.metadata
+                    #no login
+                    if not token:
+                        return Response(None, 'Not authenticated')
+                    #validate token
                     if not self.__auth.validate_token(request.metadata):
-                        return Response(None, 'Unauthorized')
+                        return Response(None, 'Login token expired, please login again')
             result = method(*request.args)
             error = None
         except Exception as e:

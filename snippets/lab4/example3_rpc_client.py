@@ -6,6 +6,7 @@ from snippets.lab4.example1_presentation import serialize, deserialize, Request,
 class ClientStub:
     def __init__(self, server_address: tuple[str, int]):
         self.__server_address = address(*server_address)
+        #save the token for future requests
         self.__token = None
 
     def rpc(self, name, *args):
@@ -38,6 +39,7 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
         return self.rpc('add_user', user)
 
     def get_user(self, id: str, token: Token) -> User:
+        #check admin role
         if token.user.role.name.upper() != 'ADMIN':
             raise ValueError('Access denied. User is not an admin')
         self.__token = token

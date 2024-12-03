@@ -89,6 +89,7 @@ class Serializer:
         return {
             'name': self._to_ast(request.name),
             'args': [self._to_ast(arg) for arg in request.args],
+            #add metadata to the request
             'metadata': self._to_ast(request.args[1] if len(request.args) > 1 else None)
 
         }
