@@ -56,9 +56,9 @@ class ServerStub(Server):
                     error = None 
                 case 'get_user':
                     if(request.metadata!=None):
-                        #the token is neede for get_users
+                        #the token is needed for get_users
                         if(self.__auth_db.validate_token(request.metadata)):
-                            #the token is calid
+                            #the token is valid
                             if(request.metadata.user.role==Role.ADMIN):
                                 #the token is valid and it's of an admin
                                 method = getattr(self.__user_db, request.name) # get the method from the user database
