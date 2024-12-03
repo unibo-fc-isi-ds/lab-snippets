@@ -40,9 +40,12 @@ class InMemoryUserDatabase(UserDatabase, _Debuggable):
         return self.__users[id]
     
     def get_user(self, id: str, token: Token = None) -> User:
-        result = self.__get_user(id).copy(password=None)
-        self._log(f"Get user with ID {id}: {result}")
-        return result
+        if(token.user.role == Role.ADMIN):    
+            result = self.__get_user(id).copy(password=None)
+            self._log(f"Get user with ID {id}: {result}")
+            return result
+        else:
+            raise ValueError("Insufficient Permission")
 
     def check_password(self, credentials: Credentials) -> bool:
         try:
