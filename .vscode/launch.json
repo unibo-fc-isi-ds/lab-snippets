@@ -191,11 +191,42 @@
                     "-r", "user",
                     "-p", "1234", 
                 ],
-                /*[
+        },{
+            "name": "L4E4: RPC Client cli get",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab4.example4_rpc_client_cli",
+            "args": 
+                [
                     "localhost:8080",
                     "get",
                     "-u", "ciao"
-                ]*/
+                ]
+        },{
+            "name": "L4E4: RPC Client cli auth",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab4.example4_rpc_client_cli",
+            "args": 
+                [
+                    "localhost:8080",
+                    "authenticate",
+                    "-u", "ciao",
+                    "-p", "1234", 
+                    "-th", "token.json"
+                ],
+        },{
+            "name": "L4E4: RPC Client cli val",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab4.example4_rpc_client_cli",
+            "args": 
+                [
+                    "localhost:8080",
+                    "validate",
+                    "-u", "ciao",
+                    "-th", "token.json"
+                ],
         },
     ]
 }
