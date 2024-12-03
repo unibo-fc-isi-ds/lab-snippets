@@ -7,6 +7,11 @@ def __check_password_provided(args):
     if not args.password:
         raise ValueError("Password is required")
 
+def __strip_token(args):
+    with open(args.path, 'r') as file:
+        token = file.read().strip()
+        return token
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(
@@ -46,7 +51,16 @@ if __name__ == '__main__':
                 user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
                 print(user_db.add_user(user))
             case 'get':
-                print(user_db.get_user(ids[0]))
+                if not args.token and not args.path:
+                    raise ValueError("Token is required, only admins can perform this operation")
+                elif args.token:
+                    print(user_db.get_user(ids[0], deserialize(args.token)))
+                elif args.path:
+                    token = __strip_token(args)
+                    print(user_db.get_user(ids[0], deserialize(token)))
+                else:
+                    raise ValueError("Something went wrong, check your inputs")
+                
             case 'check':
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
@@ -62,15 +76,14 @@ if __name__ == '__main__':
                 print(token)
 
             case 'validate':
-                if args.token and args.path:
-                    raise ValueError("Provide a token or a path")
-                elif args.token:
+                if args.token:
                     token = args.token
                 elif args.path:
-                    with open(args.path, 'r') as file:
-                        token = file.read().strip()
+                    token = __strip_token(args)
+                elif args.token and args.path:
+                    token = args.token
                 else:
-                    raise ValueError("A token or a path is required")
+                    raise ValueError("Provide a token or a path to a token file")
                 print(auth.validate(deserialize(token)))
                 
             case _:

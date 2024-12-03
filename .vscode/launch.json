@@ -200,7 +200,8 @@
                 [
                     "localhost:8080",
                     "get",
-                    "-u", "ciao"
+                    "-u", "ciao",
+                    "-th", "token.json"
                 ]
         },{
             "name": "L4E4: RPC Client cli auth",
@@ -211,8 +212,8 @@
                 [
                     "localhost:8080",
                     "authenticate",
-                    "-u", "ciao",
-                    "-p", "1234", 
+                    "-u", "admin",
+                    "-p", "password", 
                     "-th", "token.json"
                 ],
         },{
@@ -224,9 +225,24 @@
                 [
                     "localhost:8080",
                     "validate",
-                    "-u", "ciao",
+                    "-u", "admin",
                     "-th", "token.json"
                 ],
-        },
+        },{
+            "name": "L4E4: RPC Client cli admin",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab4.example4_rpc_client_cli",
+            "args": 
+                [
+                    "localhost:8080",
+                    "add",
+                    "-u", "admin",
+                    "-a", "admin@gmail.com",
+                    "-n", "io",
+                    "-r", "admin",
+                    "-p", "password", 
+                ],
+        }
     ]
 }
