@@ -43,7 +43,7 @@ class Credentials(Datum):
 
     def __post_init__(self):
         if not self.id:
-            raise ValueError("ID is required")
+            raise ValueError("ID (username) is required")
         if not self.password:
             raise ValueError("Password is required")
 
