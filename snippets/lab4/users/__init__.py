@@ -67,7 +67,7 @@ class UserDatabase(Protocol):
     def add_user(self, user: User):
         ...
     
-    def get_user(self, id: str) -> User:
+    def get_user(self, id: str, token: Token) -> User:
         ...
     
     def check_password(self, credentials: Credentials) -> bool:

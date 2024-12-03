@@ -1,4 +1,5 @@
 from .example3_rpc_client import *
+from .example1_presentation import *
 import argparse
 import sys
 from .users.impl import *
@@ -17,6 +18,7 @@ if __name__ == '__main__':
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
+    parser.add_argument('--target', '-t', help='Target')
 
     if len(sys.argv) > 1:
         args = parser.parse_args()
@@ -40,7 +42,15 @@ if __name__ == '__main__':
                 user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
                 print(user_db.add_user(user))
             case 'get':
-                print(user_db.get_user(ids[0]))
+                try:
+                    f = open(str(args.user) + ".txt", 'rt')
+                    read = f.read()
+                    ast = Deserializer()._string_to_ast(read) 
+                    token = Deserializer()._ast_to_token(ast)
+                    print(token)
+                    print(user_db.get_user(args.target, token))
+                except FileNotFoundError as e:
+                    raise ValueError("Token not found")
             case 'check':
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
@@ -61,8 +71,10 @@ if __name__ == '__main__':
                     raise ValueError("Username is required")
                 try:
                     with open(str(args.user) + ".txt", 'rt') as f:
-                        token : Token = f.read()
-                        print(auth.validate_token(deserialize(token)))
+                        read = f.read()
+                        ast = Deserializer()._string_to_ast(read) 
+                        token = Deserializer()._ast_to_token(ast)
+                        print(auth.validate_token(token))
                 except FileNotFoundError as e:
                     raise ValueError("Token not found")
             case _:

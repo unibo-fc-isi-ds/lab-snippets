@@ -38,7 +38,7 @@ class ServerStub(Server):
             case 'close':
                 print('[%s:%d] Close connection' % connection.remote_address)
     
-    def __handle_request(self, request):
+    def __handle_request(self, request : Request):
         try:
             exception = None
             method = None
@@ -53,8 +53,12 @@ class ServerStub(Server):
             
             if(method is None):
                 raise exception
-                
-            result = method(*request.args)
+            
+            if(request.name == 'get_user'):
+                result = method(*request.args, request.metadata)
+            else:
+                result = method(*request.args)
+
             error = None
         except Exception as e:
             result = None

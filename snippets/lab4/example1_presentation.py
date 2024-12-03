@@ -12,9 +12,13 @@ class Request:
 
     name: str
     args: tuple
+    metadata: Token | None = None
 
     def __post_init__(self):
         self.args = tuple(self.args)
+
+    def __str__(self) -> str:
+        return "name: " + self.name + "\t" + "args: " + str(self.args) + "\t" + "metadata: " + str(self.metadata)
 
 
 @dataclass
@@ -52,7 +56,7 @@ class Serializer:
             data = getattr(self, method_name)(obj)
             data['$type'] = type(obj).__name__
             return data
-        raise ValueError(f"Unsupported type {type(obj)}")
+        raise ValueError(f"Unsupported type {type(obj)} has no method: {method_name}")
 
     def _user_to_ast(self, user: User):
         return {
@@ -88,6 +92,7 @@ class Serializer:
         return {
             'name': self._to_ast(request.name),
             'args': [self._to_ast(arg) for arg in request.args],
+            'metadata' : self._to_ast(request.metadata)
         }
 
     def _response_to_ast(self, response: Response):
@@ -112,7 +117,7 @@ class Deserializer:
             method_name = f'_ast_to_{data["$type"].lower()}'
             if hasattr(self, method_name):
                 return getattr(self, method_name)(data)
-            raise ValueError(f"Unsupported type {data['type']}")
+            raise ValueError(f"Unsupported type {data['type']} has no method: {method_name}")
         if isinstance(data, list):
             return [self._ast_to_obj(item) for item in data]
         return data
@@ -149,6 +154,7 @@ class Deserializer:
         return Request(
             name=self._ast_to_obj(data['name']),
             args=tuple(self._ast_to_obj(arg) for arg in data['args']),
+            metadata=self._ast_to_obj(data['metadata'])
         )
 
     def _ast_to_response(self, data):
