@@ -1,4 +1,5 @@
 from snippets.lab3 import Server
+from snippets.lab4.users import Role, Token
 from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 import traceback
@@ -53,26 +54,75 @@ class ServerStub(Server):
                 traceback.print_exception(error)
             case 'close':
                 print('[%s:%d] Close connection' % connection.remote_address)
+    # # foe exercise 4-01
+    # def __handle_request(self, request):
+    #     try:
+    #         # 处理用户数据库相关的请求
+    #         if request.name in ['add_user', 'get_user', 'check_password']:
+    #             method = getattr(self.__user_db, request.name)
+    #             result = method(*request.args)
+    #             error = None
+    #         # 处理认证服务相关的请求
+    #         elif request.name in ['authenticate', 'validate_token']:
+    #             method = getattr(self.__auth_service, request.name)
+    #             result = method(*request.args)
+    #             error = None
+    #         else:
+    #             raise ValueError(f"Unsupported request name: {request.name}")
+    #     except Exception as e:
+    #         result = None
+    #         error = " ".join(e.args)
+    #     return Response(result, error)
+
+    # for exercise 4-02
+    # def __handle_request(self, request):
+    #         try:
+    #             if request.metadata is not None:
+    #                 # 验证 token
+    #                 if not self.__auth_service.validate_token(request.metadata):
+    #                     raise ValueError("Invalid or expired token")
+                    
+    #             # 用户数据库相关请求由 InMemoryUserDatabase 处理
+    #             if request.name in ['add_user', 'get_user', 'check_password']:
+    #                 method = getattr(self.__user_db, request.name)
+    #                 result = method(*request.args)
+    #                 error = None
+    #             # 认证相关请求由 InMemoryAuthenticationService 处理
+    #             elif request.name in ['authenticate', 'validate_token']:
+    #                 method = getattr(self.__auth_service, request.name)
+    #                 result = method(*request.args)
+    #                 error = None
+    #             else:
+    #                 raise ValueError(f"Unsupported request name: {request.name}")
+    #         except Exception as e:
+    #             result = None
+    #             error = " ".join(e.args)
+    #         return Response(result, error)
     
+        # 修改 handle_request 方法，检查角色权限
     def __handle_request(self, request):
         try:
-            # 处理用户数据库相关的请求
+            # 先检查 metadata（Token）是否存在并且有效
+            if request.metadata is not None:
+                if not isinstance(request.metadata, Token) or not self.__auth_service.validate_token(request.metadata):
+                    raise ValueError("Invalid or expired token")
+
+            # 根据 request 的 name 处理不同的请求
             if request.name in ['add_user', 'get_user', 'check_password']:
                 method = getattr(self.__user_db, request.name)
                 result = method(*request.args)
                 error = None
-            # 处理认证服务相关的请求
             elif request.name in ['authenticate', 'validate_token']:
                 method = getattr(self.__auth_service, request.name)
                 result = method(*request.args)
                 error = None
             else:
                 raise ValueError(f"Unsupported request name: {request.name}")
+
         except Exception as e:
             result = None
             error = " ".join(e.args)
         return Response(result, error)
-
 
 if __name__ == '__main__':
     import sys

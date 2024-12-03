@@ -7,12 +7,13 @@ from snippets.lab4.example1_presentation import serialize, deserialize, Request,
 class ClientStub:
     def __init__(self, server_address: tuple[str, int]):
         self.__server_address = address(*server_address)
+        self.__token = None
 
     def rpc(self, name, *args):
         client = Client(self.__server_address)
         try:
             print('# Connected to %s:%d' % client.remote_address)
-            request = Request(name, args)
+            request = Request(name, args, metadata=self.__token)
             print('# Marshalling', request, 'towards', "%s:%d" % client.remote_address)
             request = serialize(request)
             print('# Sending message:', request.replace('\n', '\n# '))
@@ -28,31 +29,55 @@ class ClientStub:
         finally:
             client.close()
             print('# Disconnected from %s:%d' % client.remote_address)
+    
+    def authenticate(self, credentials: Credentials, expiration: timedelta) -> Token:
+        token = self.rpc('authenticate', credentials, expiration)
+        self.__token = token  # 保存 token 以供后续使用
+        return token
 
+    def set_token(self, token: Token):
+        self.__token = token
 
-class RemoteUserDatabase(ClientStub, UserDatabase):
-    def __init__(self, server_address):
-        super().__init__(server_address)
+    def get_saved_token(self):
+        return self.__token
 
-    def add_user(self, user: User):
-        return self.rpc('add_user', user)
-
-    def get_user(self, id: str) -> User:
-        return self.rpc('get_user', id)
-
-    def check_password(self, credentials: Credentials) -> bool:
-        return self.rpc('check_password', credentials)
-
-# for excercise 4-01
+# for excercise 4-01  # for excercise 4-02
 class RemoteAuthenticationService(ClientStub, AuthenticationService):
     def __init__(self, server_address):
         super().__init__(server_address)
 
     def authenticate(self, credentials: Credentials, expiration: datetime) -> Token:
-        return self.rpc('authenticate', credentials, expiration)
+        token = self.rpc('authenticate', credentials, expiration)
+        self.set_token(token)  # 保存 Token
+        return token
 
     def validate_token(self, token: Token) -> bool:
         return self.rpc('validate_token', token)
+    
+# for exercise 4-02
+class RemoteUserDatabase(ClientStub, UserDatabase):
+    def __init__(self, server_address,  auth_service: RemoteAuthenticationService):
+        super().__init__(server_address)
+        self.auth_service = auth_service
+        
+
+    def add_user(self, user: User):
+        return self.rpc('add_user', user)
+
+    def get_user(self, id: str) -> User:
+        token = self.auth_service.get_saved_token()
+        print('----------------get_user_token----------------')
+        print(token)
+        if token is None:
+            raise ValueError("Token is required")
+        self.set_token(token)
+        print('111111111')
+        return self.rpc('get_user', id)
+
+    def check_password(self, credentials: Credentials) -> bool:
+        return self.rpc('check_password', credentials)
+
+
 if __name__ == '__main__':
     from snippets.lab4.example0_users import gc_user, gc_credentials_ok, gc_credentials_wrong
     import sys

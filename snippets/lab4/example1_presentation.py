@@ -12,6 +12,8 @@ class Request:
 
     name: str
     args: tuple
+    # for excercise 4-01
+    metadata: Token | None = None
 
     def __post_init__(self):
         self.args = tuple(self.args)
@@ -55,13 +57,15 @@ class Serializer:
         raise ValueError(f"Unsupported type {type(obj)}")
 
     def _user_to_ast(self, user: User):
-        return {
+        result = {
             'username': self._to_ast(user.username),
             'emails': [self._to_ast(email) for email in user.emails],
             'full_name': self._to_ast(user.full_name),
             'role': self._to_ast(user.role),
             'password': self._to_ast(user.password),
         }
+        print('ffffffffffffffffffffffffffffffffffff')
+        return result
 
     def _credentials_to_ast(self, credentials: Credentials):
         result = {
@@ -72,11 +76,14 @@ class Serializer:
         return result
 
     def _token_to_ast(self, token: Token):
-        return {
+        result = {
             'signature': self._to_ast(token.signature),
             'user': self._to_ast(token.user),
             'expiration': self._to_ast(token.expiration),
         }
+        print('111111111111111111111111111111111111111111111111111111111')
+        print(f"_token_to_ast: {result}")
+        return result
     # for excercise 4-01
     def _datetime_to_ast(self, dt: datetime):
         return {
