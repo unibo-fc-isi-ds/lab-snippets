@@ -8,6 +8,13 @@ class ServerStub(Server):
     def __init__(self, port):
         super().__init__(port, self.__on_connection_event)
         self.__user_db = InMemoryUserDatabase()
+        self.__auth_service = InMemoryAuthenticationService(self.__user_db)
+
+    def __check_authorization(self, token: Token):
+        if not self.__auth_service.validate_token(token):
+            raise PermissionError("Invalid or expired token")
+        if token.user.role != Role.ADMIN:
+            raise PermissionError("Unauthorized access: only admins can perform this operation")
     
     def __on_connection_event(self, event, connection, address, error):
         match event:
@@ -38,13 +45,35 @@ class ServerStub(Server):
     
     def __handle_request(self, request):
         try:
-            method = getattr(self.__user_db, request.name)
-            result = method(*request.args)
+            # Gestione delle richieste
+            if request.name == "get_user":
+                # Richieste protette da autorizzazione
+                token, user_id = request.args
+                self.__check_authorization(token)  # Verifica token e ruolo admin
+                method = getattr(self.__user_db, request.name)
+                result = method(user_id)
+            elif request.name in dir(self.__user_db):
+                # Operazioni relative al database utenti
+                method = getattr(self.__user_db, request.name)
+                result = method(*request.args)
+            elif request.name in dir(self.__auth_service):
+                # Operazioni relative al servizio di autenticazione
+                method = getattr(self.__auth_service, request.name)
+                result = method(*request.args)
+            else:
+                # Metodo sconosciuto
+                raise ValueError(f"Unknown method '{request.name}'")
             error = None
+        except PermissionError as e:
+            # Errore di autorizzazione
+            result = None
+            error = f"PermissionError: {' '.join(e.args)}"
         except Exception as e:
+            # Altri errori
             result = None
             error = " ".join(e.args)
         return Response(result, error)
+
 
 
 if __name__ == '__main__':

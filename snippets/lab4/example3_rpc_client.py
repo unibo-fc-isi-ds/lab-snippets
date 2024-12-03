@@ -27,6 +27,16 @@ class ClientStub:
         finally:
             client.close()
             print('# Disconnected from %s:%d' % client.remote_address)
+            
+class RemoteAuthenticationService(ClientStub, AuthenticationService):
+    def __init__(self, server_address):
+        super().__init__(server_address)
+
+    def authenticate(self, credentials: Credentials, duration: timedelta = None) -> Token:
+        return self.rpc('authenticate', credentials, duration)
+
+    def validate_token(self, token: Token) -> bool:
+        return self.rpc('validate_token', token)
 
 
 class RemoteUserDatabase(ClientStub, UserDatabase):
@@ -36,11 +46,12 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
     def add_user(self, user: User):
         return self.rpc('add_user', user)
 
-    def get_user(self, id: str) -> User:
-        return self.rpc('get_user', id)
+    def get_user(self, token: Token, user_id: str) -> User:
+        return self.rpc('get_user', token, user_id)
 
     def check_password(self, credentials: Credentials) -> bool:
         return self.rpc('check_password', credentials)
+
 
 
 if __name__ == '__main__':

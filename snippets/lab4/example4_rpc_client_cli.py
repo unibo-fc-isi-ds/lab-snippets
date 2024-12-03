@@ -11,11 +11,12 @@ if __name__ == '__main__':
         exit_on_error=False,
     )
     parser.add_argument('address', help='Server address in the form ip:port')
-    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check'])
+    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check', 'authenticate', 'validate'])
     parser.add_argument('--user', '-u', help='Username')
     parser.add_argument('--email', '--address', '-a', nargs='+', help='Email address')
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
+    parser.add_argument('--token', '-t', help='Authentication token (required for certain commands)')
     parser.add_argument('--password', '-p', help='Password')
 
     if len(sys.argv) > 1:
@@ -40,7 +41,21 @@ if __name__ == '__main__':
                 user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
                 print(user_db.add_user(user))
             case 'get':
-                print(user_db.get_user(ids[0]))
+                if not args.token:
+                    raise ValueError("Token is required for this command")
+                token = deserialize(args.token)
+                print(user_db.get_user(token, args.user or args.email[0]))
+            case 'authenticate':
+                if not args.password:
+                    raise ValueError("Password is required")
+                credentials = Credentials(args.user or args.email[0], args.password)
+                token = user_db.authenticate(credentials)
+                print(token)
+            case 'validate':
+                if not args.password:
+                    raise ValueError("Token is required")
+                token = deserialize(args.password)
+                print(user_db.validate_token(token))
             case 'check':
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
@@ -48,3 +63,5 @@ if __name__ == '__main__':
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:
         print(f'[{type(e).__name__}]', *e.args)
+    except PermissionError as e:
+        print(f"[PermissionError] {e}")
