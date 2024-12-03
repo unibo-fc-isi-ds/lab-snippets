@@ -7,11 +7,11 @@ class ClientStub:
     def __init__(self, server_address: tuple[str, int]):
         self.__server_address = address(*server_address)
 
-    def rpc(self, name, *args):
+    def rpc(self, name, token: Token | None, *args):
         client = Client(self.__server_address)
         try:
             print('# Connected to %s:%d' % client.remote_address)
-            request = Request(name, args)
+            request = Request(name, token= token, args=args)
             print('# Marshalling', request, 'towards', "%s:%d" % client.remote_address)
             request = serialize(request)
             print('# Sending message:', request.replace('\n', '\n# '))
@@ -33,24 +33,24 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
     def __init__(self, server_address):
         super().__init__(server_address)
 
-    def add_user(self, user: User):
-        return self.rpc('add_user', user)
+    def add_user(self, token: Token | None, user: User):
+        return self.rpc('add_user', token, user)
 
-    def get_user(self, id: str) -> User:
-        return self.rpc('get_user', id)
+    def get_user(self, token: Token | None, id: str) -> User:
+        return self.rpc('get_user', token, id)
 
-    def check_password(self, credentials: Credentials) -> bool:
-        return self.rpc('check_password', credentials)
+    def check_password(self, token: Token, credentials: Credentials) -> bool:
+        return self.rpc('check_password', token, credentials)
 
 class RemoteAuthenticationService(ClientStub, AuthenticationService):
     def __init__(self, server_address):
         super().__init__(server_address)
 
     def authenticate(self, credentials: Credentials) -> Token:
-        return self.rpc('authenticate', credentials)
+        return self.rpc('authenticate', None, credentials)
 
     def validate_token(self, token: Token) -> bool:
-        return self.rpc('validate_token', token)
+        return self.rpc('validate_token', None, token)
 
 if __name__ == '__main__':
     from snippets.lab4.example0_users import gc_user, gc_credentials_ok, gc_credentials_wrong

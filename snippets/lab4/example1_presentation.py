@@ -11,6 +11,7 @@ class Request:
     """
 
     name: str
+    token: Token | None
     args: tuple
 
     def __post_init__(self):
@@ -85,7 +86,8 @@ class Serializer:
     def _request_to_ast(self, request: Request):
         return {
             'name': self._to_ast(request.name),
-            'args': [self._to_ast(arg) for arg in request.args],
+            'token': self._to_ast(request.token) if request.token is not None else "",
+            'args': [self._to_ast(arg) for arg in request.args]
         }
 
     def _response_to_ast(self, response: Response):
@@ -146,7 +148,8 @@ class Deserializer:
     def _ast_to_request(self, data):
         return Request(
             name=self._ast_to_obj(data['name']),
-            args=tuple(self._ast_to_obj(arg) for arg in data['args']),
+            token=self._ast_to_token(data['token']) if data['token'] else "banana",
+            args=tuple(self._ast_to_obj(arg) for arg in data['args'])
         )
 
     def _ast_to_response(self, data):

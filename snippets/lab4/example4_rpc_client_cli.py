@@ -1,5 +1,5 @@
 import json
-from snippets.lab4.example1_presentation import Serializer, Deserializer
+from snippets.lab4.example1_presentation import serialize, deserialize
 from snippets.lab4.users.impl import InMemoryAuthenticationService
 from .example3_rpc_client import *
 import argparse
@@ -20,6 +20,7 @@ if __name__ == '__main__':
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
+    parser.add_argument('--signature', '-s', help='Token signature')
 
     if len(sys.argv) > 1:
         args = parser.parse_args()
@@ -28,8 +29,6 @@ if __name__ == '__main__':
         sys.exit(0)
 
     TOKENS_FILE_NAME = "tokens.json"
-    DEFAULT_SERIALIZER = Serializer()
-    DEFAULT_DESERIALIZER = Deserializer()
 
     args.address = address(args.address)
     user_db = RemoteUserDatabase(args.address)
@@ -46,11 +45,25 @@ if __name__ == '__main__':
                 if not args.name:
                     raise ValueError("Full name is required")
                 user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
-                print(user_db.add_user(user))
+                print(user_db.add_user(token=None, user = user))
             case 'get':
-                print(user_db.get_user(ids[0]))
+                if not args.signature:
+                    raise ValueError("Signature is required")
+                try:
+                    with open(TOKENS_FILE_NAME, 'r') as file:
+                        tokens = deserialize(file.read() or '[]')
+                except (FileNotFoundError, ValueError):
+                    tokens = []
+
+                foundToken = None
+                for t in tokens:
+                    if t.signature == args.signature:
+                        foundToken = t
+                        break
+                print(f"Token: {foundToken}")
+                print(user_db.get_user(foundToken, ids[0]))
             case 'check':
-                credentials = Credentials(ids[0], args.password)
+                credentials = Credentials(ids[0], token = args.password)
                 print(user_db.check_password(credentials))
             case 'authenticate':
                 if not args.password:
@@ -61,27 +74,28 @@ if __name__ == '__main__':
 
                 try:
                     with open(TOKENS_FILE_NAME, 'r+') as file:
-                        tokens = DEFAULT_DESERIALIZER.deserialize(file.read() or '[]')
+                        tokens = deserialize(file.read() or '[]')
                 except (FileNotFoundError, ValueError):
                     tokens = []
 
                 tokens = [t for t in tokens if t.user.username != token.user.username]
-                print(f"n token letti: {len(tokens)}")
                 tokens.append(token)
 
                 with open(TOKENS_FILE_NAME, 'w') as file:
-                    file.write(DEFAULT_SERIALIZER.serialize(tokens))
-                # print(token)
+                    file.write(serialize(tokens))
+                print(f"Signature: {token.signature}")
             case 'validate':
+                if not args.signature:
+                    raise ValueError("Signature is required")
                 try:
                     with open(TOKENS_FILE_NAME, 'r') as file:
-                        tokens = DEFAULT_DESERIALIZER.deserialize(file.read() or '[]')
+                        tokens = deserialize(file.read() or '[]')
                 except (FileNotFoundError, ValueError):
                     tokens = []
 
                 foundToken = None
                 for t in tokens:
-                    if t.user.username in ids:
+                    if t.signature == args.signature:
                         foundToken = t
                         break
                 if foundToken:

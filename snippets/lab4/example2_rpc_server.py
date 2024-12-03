@@ -40,11 +40,22 @@ class ServerStub(Server):
     
     def __handle_request(self, request):
         try:
-            if request.name in ['add_user', 'get_user', 'check_password']:
-                method = getattr(self.__user_db, request.name)
-            elif request.name in ['authenticate', 'validate_token']:
-                method = getattr(self.__auth_service, request.name)
-            result = method(*request.args)
+            method = None
+            match request.name:
+                case 'add_user'| 'check_password':
+                    method = getattr(self.__user_db, request.name)
+                case 'get_user':
+                    if request.token is None:
+                        raise ValueError("Token is required to perform this operation")
+                    if not self.__auth_service.validate_token(request.token):
+                        raise ValueError("Invalid token")
+                    if request.token.user.role != Role.ADMIN:
+                        raise ValueError("Unauthorized")
+                    method = getattr(self.__user_db, request.name)
+                case 'authenticate'| 'validate_token':
+                    method = getattr(self.__auth_service, request.name)
+            print(f"Calling {request.name} with args: {request.args[0]}")
+            result = method(request.args[0])
             error = None
         except Exception as e:
             result = None
