@@ -45,11 +45,11 @@ if __name__ == '__main__':
                     raise ValueError("Full name is required.")
 
                 user = User(
-                    username=args.user,
-                    email=args.email,
-                    full_name=args.name,
-                    role=Role[args.role.upper()],
-                    password=args.password
+                    args.user,
+                    args.email,
+                    args.name,
+                    Role[args.role.upper()],
+                    args.password
                 )
                 result = user_authentication.add_user(user)
                 print(f"User added successfully: {result}")
