@@ -2,6 +2,7 @@ from .users import User, Credentials, Token, Role
 from datetime import datetime
 import json
 from dataclasses import dataclass
+from typing import Optional
 
 
 @dataclass
@@ -12,9 +13,12 @@ class Request:
 
     name: str
     args: tuple
+    metadata: Optional[dict] = None
 
     def __post_init__(self):
         self.args = tuple(self.args)
+        if self.metadata is None:
+            self.metadata = {}
 
 
 @dataclass
