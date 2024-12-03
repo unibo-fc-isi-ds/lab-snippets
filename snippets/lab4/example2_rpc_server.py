@@ -1,3 +1,4 @@
+from .users import Token, Role
 from snippets.lab3 import Server
 from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
@@ -41,6 +42,23 @@ class ServerStub(Server):
         message_db_error   = ""
         message_auth_error = ""
         error = ""
+
+        if request.name == "get_user":
+            if not isinstance(request.metadata, tuple) and not request.metadata:
+                error = None
+                return Response(error, "Fatal Error")
+            if not isinstance(request.metadata[0], Token):
+                error = None
+                return Response(error, "Token was not provided")
+            token = request.metadata[0]
+            if not self.__auth_service.validate_token(token):
+                error = None
+                return Response(error, "Token is not valid")
+            user =  self.__user_db.get_user(token.user.username)
+                
+            if user.role.value != Role.ADMIN.value:    
+                error = None
+                return Response(error, "User not authorized to carry out the operation")
 
         try:
             method = getattr(self.__user_db, request.name)
