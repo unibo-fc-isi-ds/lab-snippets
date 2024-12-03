@@ -43,7 +43,7 @@ class ServerStub(Server):
         message_auth_error = ""
         error = ""
 
-        if request.name == "get_user":
+        if request.name == "check_password" or request.name == "get_user":
             if not isinstance(request.metadata, tuple) and not request.metadata:
                 error = None
                 return Response(error, "Fatal Error")

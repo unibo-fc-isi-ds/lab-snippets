@@ -72,8 +72,11 @@ if __name__ == '__main__':
                 token = read_token(file_name)
                 print(user_db.get_user(ids[0], token))
             case 'check':
+                if not args.token_file_path:
+                    raise ValueError("Unspecified token file")
+                token = read_token(file_name)
                 credentials = Credentials(ids[0], args.password)
-                print(user_db.check_password(credentials))
+                print(user_db.check_password(credentials, token))
             case 'authenticate':
                 credentials = Credentials(ids[0], args.password)
                 token = authentication_service.authenticate(credentials)

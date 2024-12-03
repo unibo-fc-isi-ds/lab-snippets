@@ -43,8 +43,8 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
     def get_user(self, id: str, token: Token) -> User:
         return self.rpc('get_user', id, token=token)
 
-    def check_password(self, credentials: Credentials) -> bool:
-        return self.rpc('check_password', credentials)
+    def check_password(self, credentials: Credentials, token: Token) -> bool:
+        return self.rpc('check_password', credentials, token=token)
 
 class RemoteAuthDatabase(ClientStub, AuthenticationService):
     def __init__(self, server_address):
