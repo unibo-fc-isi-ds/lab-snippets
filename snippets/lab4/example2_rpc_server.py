@@ -2,12 +2,13 @@ from snippets.lab3 import Server
 from snippets.lab4.users.impl import InMemoryUserDatabase
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 import traceback
-
+from .users.impl import *
 
 class ServerStub(Server):
     def __init__(self, port):
         super().__init__(port, self.__on_connection_event)
-        self.__user_db = InMemoryUserDatabase()
+        self.__user_db = InMemoryUserDatabase(debug=True)
+        self.__auth_service = InMemoryAuthenticationService(self.__user_db, debug=True)
     
     def __on_connection_event(self, event, connection, address, error):
         match event:
@@ -35,10 +36,14 @@ class ServerStub(Server):
                 traceback.print_exception(error)
             case 'close':
                 print('[%s:%d] Close connection' % connection.remote_address)
+                
     
     def __handle_request(self, request):
         try:
-            method = getattr(self.__user_db, request.name)
+            if request.name in ['add_user', 'get_user', 'check_password']:
+                method = getattr(self.__user_db, request.name)
+            elif request.name in ['authenticate', 'validate_token']:
+                method = getattr(self.__auth_service, request.name)
             result = method(*request.args)
             error = None
         except Exception as e:
@@ -52,7 +57,7 @@ if __name__ == '__main__':
     server = ServerStub(int(sys.argv[1]))
     while True:
         try:
-            input('Close server with Ctrl+D (Unix) or Ctrl+Z (Win)\n')
+            user_input = input('Close server with Ctrl+D (Unix) or Ctrl+Z (Win)\n')
         except (EOFError, KeyboardInterrupt):
             break
     server.close()
