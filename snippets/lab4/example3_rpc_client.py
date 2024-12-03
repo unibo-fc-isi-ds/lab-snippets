@@ -2,16 +2,19 @@ import time
 from snippets.lab3 import Client, address
 from snippets.lab4.users import *
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
+from typing import Optional
+import os
 
 class ClientStub:
     def __init__(self, server_address: tuple[str, int]):
         self.__server_address = address(*server_address)
+        self.token: Optional[Token] = None
 
     def rpc(self, name, *args):
         client = Client(self.__server_address)
         try:
             print('# Connected to %s:%d' % client.remote_address)
-            request = Request(name, args)
+            request = Request(name, args, metadata=self.token)
             print('# Marshalling', request, 'towards', "%s:%d" % client.remote_address)
             request = serialize(request)
             print('# Sending message:', request.replace('\n', '\n# '))
@@ -36,7 +39,8 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
     def add_user(self, user: User):
         return self.rpc('add_user', user)
 
-    def get_user(self, id: str) -> User:
+    def get_user(self, id: str, token: Token) -> User:
+        self.token = token
         return self.rpc('get_user', id)
 
     def check_password(self, credentials: Credentials) -> bool:
@@ -52,6 +56,20 @@ class RemoteAuthenticationService(ClientStub, AuthenticationService):
     def validate_token(self, token: Token) -> bool:
         return self.rpc('validate_token', token)
 
+    def save_token_to_file(self, token: Token, path: str):
+        with open(path, 'w') as file:
+            file.write(serialize(token))
+
+    # get the token from the file path if it exists and the path is correct
+    def get_token_from_file(self, id: str, tokenpath: str) -> Optional[Token]:
+        default_path = os.path.join(os.path.expanduser('~'), f'{id}.json')
+        path = default_path if not tokenpath else os.path.join(os.path.expanduser('~'), tokenpath)
+        try:
+            with open(path, 'r') as file:
+                return deserialize(file.read())
+        except FileNotFoundError:
+            raise FileNotFoundError(f"The token file does not exist or the path {path} is not correct")
+        return None
 
 if __name__ == '__main__':
     from snippets.lab4.example0_users import gc_user, gc_credentials_ok, gc_credentials_wrong, gc_user_hidden_password

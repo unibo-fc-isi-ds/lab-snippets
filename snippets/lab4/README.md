@@ -1,17 +1,18 @@
-# Exercise: RPC Auth Service
+# Exercise: RPC Auth Service 2
 
 ## Explanation
 
-The solution extends the RPC infrastructure to support an authentication service. The main differences are:
+The solution extends the RPC infrastructure to support an authorization service. The main difference is that the `get_user` operation requires authentication and authorization, so it should only be possible for authenticated users whose role is admin.
 
-- the `ServerStub` creates an instance of `InMemoryAuthenticationService` which has to do the actual authentication work;
-- the creation of a `ClientStub` which manages the `AuthenticationService`;
-- the presentation has been extended in order to manage (de)serialization of types as `datetime` and `timedelta`;
-- the CLI has added the commands `authenticate` and `validate`, so the arguments `--tokenpath` and `--tokenduration`.
+The implementation of the authorization follows these steps:
 
-The command `authenticate` saves the token created in a JSON file that can be passed through the argument `--tokenpath` (the path starts from the home directory) or by default inside the file `token.json` in the home directory. In addition, the duration of the token by default is one day, but can be set via `--tokenduration` argument, specifying the number of hours.
+- the `Request` has been extended with the optional field `metadata`, which for now can only be filled with the token;
+- when the user wants to retrieve the data, the request's metadata is filled with the token of the user;
+- the `ServerStub` is extended in order to check that the user has the authorization to make that request (for now only `get_user`). The role of the user, the presence and validity of the token are checked;
+- the `ClientStub` is extended to fill the metadata field of the request with the token every time after the first time.
 
-The command `validate` retrieves the token in order to check his validity from the path, in the same way of the command `authenticate`.
+The command `authenticate` saves the token created in a JSON file that can be passed through the argument `--tokenpath` (the path starts from the home directory) or by default inside the file `USERNAME.json` in the home directory, in order to have the possibility to save multiple tokens, meanwhile in the first exercise the default path was `token.json`.
+The same path's logic is used in case of `get` command in order to retrieve the token.
 
 ## Testing
 
@@ -26,7 +27,7 @@ python -m snippets -l 4 -e 2 PORT
 In order to test properly the service, the following one is a reasonable sequence of commands:
 ```
 $ python -m snippets -l 4 -e 4 SERVER_IP:PORT add -u USER -a EMAIL1 [EMAIL2] -n "FULLNAME" -p "PASSWORD" [-r ROLE]
-$ python -m snippets -l 4 -e 4 SERVER_IP:PORT get -u USER
+$ python -m snippets -l 4 -e 4 SERVER_IP:PORT get -u USER [-t "PATH"]
 $ python -m snippets -l 4 -e 4 SERVER_IP:PORT check -u USER -p "PASSWORD"
 $ python -m snippets -l 4 -e 4 SERVER_IP:PORT check -u USER -p "WRONG PASSWORD"
 $ python -m snippets -l 4 -e 4 SERVER_IP:PORT authenticate -u USER -p "PASSWORD" [-t "PATH"] [-d DURATION]

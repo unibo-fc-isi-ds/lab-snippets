@@ -4,7 +4,6 @@ import sys
 from datetime import timedelta
 import os
 
-TOKEN_FILE_PATH = os.path.join(os.path.expanduser('~'),'token.json')
 
 if __name__ == '__main__':
 
@@ -49,7 +48,13 @@ if __name__ == '__main__':
                     user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
                 print(user_db.add_user(user))
             case 'get':
-                print(user_db.get_user(ids[0]))
+                if not ids[0]:
+                    raise ValueError("Username or email is required")
+                default_path = os.path.join(os.path.expanduser('~'), f'{ids[0]}.json')
+                path = default_path if not args.tokenpath else os.path.join(os.path.expanduser('~'), args.tokenpath)
+                print(path)
+                token = auth_service.get_token_from_file(ids[0], path)
+                print(user_db.get_user(ids[0], token))
             case 'check':
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
@@ -60,14 +65,18 @@ if __name__ == '__main__':
                     token = auth_service.authenticate(credentials, duration)
                 else:
                     token = auth_service.authenticate(credentials)
+                print(token) # print the token
                 # save the token in a json file
-                with open(TOKEN_FILE_PATH if not args.tokenpath else os.path.join(os.path.expanduser('~'), args.tokenpath), 'w') as file:
-                    file.write(serialize(token))
-                    print(token) # print the token
+                default_path = os.path.join(os.path.expanduser('~'), f'{ids[0]}.json')
+                path = default_path if not args.tokenpath else os.path.join(os.path.expanduser('~'), args.tokenpath)
+                auth_service.save_token_to_file(token, path)
             case 'validate':
-                with open(TOKEN_FILE_PATH if not args.tokenpath else os.path.join(os.path.expanduser('~'), args.tokenpath), 'r') as file:
-                    token = deserialize(file.read())
-                    print(auth_service.validate_token(token))
+                if not (args.user or args.tokenpath):
+                    raise ValueError("One of username and token path is required")
+                default_path = os.path.join(os.path.expanduser('~'), f'{args.user}.json')
+                path = default_path if not args.tokenpath else os.path.join(os.path.expanduser('~'), args.tokenpath)
+                token = auth_service.get_token_from_file(args.user, path)
+                print(auth_service.validate_token(token))
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:
