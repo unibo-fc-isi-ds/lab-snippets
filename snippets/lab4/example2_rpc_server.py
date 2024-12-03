@@ -1,6 +1,7 @@
 from snippets.lab3 import Server
-from snippets.lab4.users.impl import InMemoryUserDatabase
-from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
+from snippets.lab4.users import Role
+from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService
+from snippets.lab4.example1_presentation import Request, serialize, deserialize, Response
 import traceback
 
 
@@ -8,6 +9,8 @@ class ServerStub(Server):
     def __init__(self, port):
         super().__init__(port, self.__on_connection_event)
         self.__user_db = InMemoryUserDatabase()
+        self.__auth_service = InMemoryAuthenticationService(self.__user_db)
+        self.__protected_methods = {'get_user'}
     
     def __on_connection_event(self, event, connection, address, error):
         match event:
@@ -38,7 +41,19 @@ class ServerStub(Server):
     
     def __handle_request(self, request):
         try:
-            method = getattr(self.__user_db, request.name)
+            if (request.name in self.__protected_methods and 
+                (not request.metadata or
+                    request.metadata.user.role != Role.ADMIN or 
+                    not self.__auth_service.validate_token(request.metadata)
+                )
+            ):
+                raise PermissionError(f"You are not authorized.")
+            if hasattr(self.__user_db, request.name):
+                method = getattr(self.__user_db, request.name)
+            elif hasattr(self.__auth_service, request.name):
+                method = getattr(self.__auth_service, request.name)
+            else:
+                raise AttributeError(f"Method '{request.name}' not found")
             result = method(*request.args)
             error = None
         except Exception as e:
