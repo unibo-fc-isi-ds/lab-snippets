@@ -1,20 +1,7 @@
 import os
 from .example3_rpc_client import *
 import argparse
-import sys
-
-
-def read_file(file):
-    file_path = f"{file}.txt"
-    if not os.path.exists(file_path):
-        return False
-    with open(file_path, "r") as f:
-        return f.read()
-
-def write_file(file, content):
-    with open(f"{file}.txt", "w") as f:
-        f.write(content)
-       
+import sys     
 
 
 if __name__ == '__main__':
@@ -57,34 +44,27 @@ if __name__ == '__main__':
             case "get":
                 user_requester = input("Enter your username or email address: ")
                 password_requester = input("Enter your password: ")
-                
-                if not user_db.check_password(Credentials(user_requester, password_requester)):
-                    raise ValueError("Invalid username or password")
-                
-                token_requester = read_file(user_requester)
-                if not token_requester:
-                    raise ValueError("Authentication required")
-                
-                token_requester = deserialize(token_requester)
-                if not (token_requester.user.role == Role.ADMIN and user_auth.validate_token(token_requester)):
+                token_requester = user_auth.authenticate(Credentials(user_requester, password_requester))
+                if not(token_requester.user.role == Role.ADMIN and user_auth.validate_token(token_requester)):
                     raise ValueError("Unauthorized access to user")
-                
                 print(user_db.get_user(ids[0]))
             case 'check':
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
-            case "authenticate":
+            case 'authenticate':
                 credentials = Credentials(ids[0], args.password)
                 result = user_auth.authenticate(credentials)
-                write_file(ids[0], serialize(result))
-                print(result)
-
-            case "validate":
-                if not args.password or not args.user:
-                    raise ValueError("Password and Username are required")
-                token_content = deserialize(read_file(ids[0]))
-                print(user_auth.validate_token(token_content))
-
+            case 'validate':
+                if not args.password:
+                    raise ValueError("Password is required")
+                if not args.user:
+                    raise ValueError("Username is required")
+                print(user_auth.validate_token(
+                    user_auth.authenticate(
+                            Credentials(ids[0], args.password)
+                        )
+                    )
+                )
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:
