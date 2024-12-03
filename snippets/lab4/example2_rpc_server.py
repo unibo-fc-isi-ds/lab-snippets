@@ -38,6 +38,12 @@ class ServerStub(Server):
     
     def __handle_request(self, request):
         try:
+            if request.metadata and 'token' in request.metadata:
+                token = request.metadata['token']
+                if not self.__auth_service.validate_token(token):
+                    raise PermissionError("Invalid or expired token")
+                if request.name == 'get_user' and token.user.role != Role.ADMIN:
+                    raise PermissionError("Unauthorized access")
             if hasattr(self.__user_db, request.name):
                 method = getattr(self.__user_db, request.name)
             elif hasattr(self.__auth_service, request.name):
