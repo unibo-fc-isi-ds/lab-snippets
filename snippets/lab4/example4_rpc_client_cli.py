@@ -12,7 +12,7 @@ def write_token(token:Token, token_file = TOKEN_DEFAULT_FILE):
     file.write(serialized_token)
     file.close()
 
-def read_token(token_file = TOKEN_DEFAULT_FILE):
+def read_token(token_file = TOKEN_DEFAULT_FILE) -> Token:
     if not os.path.exists(token_file):
         raise ValueError("The file does not exist.")
     file = open(token_file, "r")
@@ -67,7 +67,10 @@ if __name__ == '__main__':
                 user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
                 print(user_db.add_user(user))
             case 'get':
-                print(user_db.get_user(ids[0]))
+                if not args.token_file_path:
+                    raise ValueError("Unspecified token file")
+                token = read_token(file_name)
+                print(user_db.get_user(ids[0], token))
             case 'check':
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
@@ -79,7 +82,7 @@ if __name__ == '__main__':
                 print("Authentication successful")
             case 'validate':
                 if not args.token_file_path:
-                    raise ValueError("Unspecified file")
+                    raise ValueError("Unspecified token file")
                 token = read_token(file_name)
                 if authentication_service.validate_token(token):
                     print("Token with signature:" + token.signature + " is validated")

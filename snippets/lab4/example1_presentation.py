@@ -1,7 +1,7 @@
 from .users import User, Credentials, Token, Role
 from datetime import datetime
+from dataclasses import dataclass, field
 import json
-from dataclasses import dataclass
 
 
 @dataclass
@@ -12,6 +12,7 @@ class Request:
 
     name: str
     args: tuple
+    metadata: tuple
 
     def __post_init__(self):
         self.args = tuple(self.args)
@@ -89,6 +90,7 @@ class Serializer:
         return {
             'name': self._to_ast(request.name),
             'args': [self._to_ast(arg) for arg in request.args],
+            'metadata': [self._to_ast(arg) for arg in request.metadata]
         }
 
     def _response_to_ast(self, response: Response):
@@ -151,6 +153,7 @@ class Deserializer:
         return Request(
             name=self._ast_to_obj(data['name']),
             args=tuple(self._ast_to_obj(arg) for arg in data['args']),
+            metadata=tuple(self._ast_to_obj(arg) for arg in data['metadata'])
         )
 
     def _ast_to_response(self, data):
