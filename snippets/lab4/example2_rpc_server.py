@@ -47,7 +47,16 @@ class ServerStub(Server):
     def __handle_request(self, request: Request) -> Response:
   
         logger.debug(f"Handling request: {request}")
+    
         try:
+            if request.name == "get_user":
+                if not request.metadata:
+                    raise PermissionError("Missing metadata for authorization.")
+                if request.metadata.user.role != Role.ADMIN:
+                    raise PermissionError("You are not authorized to perform this operation.")
+                if not self.__auth_service.validate_token(request.metadata):
+                    raise PermissionError("Invalid or expired token.")
+
             if hasattr(self.__user_db, request.name):
                 method = getattr(self.__user_db, request.name)
                 target_service = "UserDatabase"
@@ -55,23 +64,28 @@ class ServerStub(Server):
                 method = getattr(self.__auth_service, request.name)
                 target_service = "AuthenticationService"
             else:
-                raise AttributeError(f"Method {request.name} not found in available services.")
+                raise AttributeError(f"Method '{request.name}' not found in available services.")
 
             logger.debug(f"Found method '{request.name}' in {target_service}.")
 
-            logger.debug(f"Executing method '{request.name}' with arguments {request.args}.")
+            logger.debug(f"Executing method '{request.name}' with arguments: {request.args}.")
             result = method(*request.args)
 
-            logger.info(f"Method '{request.name}' executed successfully with result: {result}")
+            logger.info(f"Method '{request.name}' executed successfully with result: {result}.")
             return Response(result=result, error=None)
 
+        except PermissionError as e:
+            error_message = f"Permission denied: {e}"
+            logger.warning(error_message)
+            return Response(result=None, error=error_message)
+
         except AttributeError as e:
-            error_message = f"Invalid method: {str(e)}"
+            error_message = f"Invalid method: {e}"
             logger.error(error_message)
             return Response(result=None, error=error_message)
 
         except Exception as e:
-            error_message = f"Unexpected error: {traceback.format_exc()}"
+            error_message = f"Unexpected error occurred: {traceback.format_exc()}"
             logger.error(error_message)
             return Response(result=None, error=error_message)
 

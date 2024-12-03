@@ -1,7 +1,8 @@
 from .users import User, Credentials, Token, Role
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass,field
+from typing import Optional
 
 
 @dataclass
@@ -12,6 +13,7 @@ class Request:
 
     name: str
     args: tuple
+    metadata: Optional[Token] = field(default=None)
 
     def __post_init__(self):
         self.args = tuple(self.args)
@@ -87,6 +89,13 @@ class Serializer:
             'microsecond': self._to_ast(dt.microsecond),
             'isoformat': self._to_ast(dt.isoformat())}
     
+    def _timedelta_to_ast(self, td: timedelta):
+        return {
+            'days': self._to_ast(td.days),
+            'seconds': self._to_ast(td.seconds),
+            'microseconds': self._to_ast(td.microseconds),
+        }
+    
     def _role_to_ast(self, role: Role):
         return {'name': role.name}
 
@@ -94,6 +103,7 @@ class Serializer:
         return {
             'name': self._to_ast(request.name),
             'args': [self._to_ast(arg) for arg in request.args],
+            'metadata': self._to_ast(request.metadata)
         }
 
 
@@ -157,13 +167,21 @@ class Deserializer:
             microsecond=self._ast_to_obj(data['microsecond'])
         )
     
+    def _ast_to_timedelta(self, data):
+        return timedelta(
+            days=self._ast_to_obj(data['days']),
+            seconds=self._ast_to_obj(data['seconds']),
+            microseconds=self._ast_to_obj(data['microseconds']),
+        )
+    
     def _ast_to_role(self, data):
         return Role[self._ast_to_obj(data['name'])]
 
     def _ast_to_request(self, data):
         return Request(
             name=self._ast_to_obj(data['name']),
-            args=tuple(self._ast_to_obj(arg) for arg in data['args']), 
+            args=tuple(self._ast_to_obj(arg) for arg in data['args']),
+            metadata=self._ast_to_obj(data['metadata']) 
         )
 
     def _ast_to_response(self, data):

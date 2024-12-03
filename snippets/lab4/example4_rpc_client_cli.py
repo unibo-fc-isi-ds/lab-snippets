@@ -1,4 +1,5 @@
-
+from snippets.lab4.example3_rpc_client import RemoteAuthenticathion
+from snippets.lab4.tokenHandler import TokenHandler
 from .example3_rpc_client import *
 import argparse
 import sys
@@ -18,6 +19,8 @@ if __name__ == '__main__':
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
+    parser.add_argument('--authentication-user', '-au', help='Username for authentication')
+    parser.add_argument('--authentication-password', '-ap', help='Password for authentication')
 
     if len(sys.argv) > 1:
         args = parser.parse_args()
@@ -29,49 +32,63 @@ if __name__ == '__main__':
     user_db = RemoteUserDatabase(args.address)
     user_authentication= RemoteAuthenticathion(args.address)
 
-    try :
+    try:
         ids = (args.email or []) + [args.user]
-        if len(ids) == 0:
-            raise ValueError("Username or email address is required")
+        if not ids:
+            raise ValueError("Username or email address is required.")
+
         match args.command:
             case 'add':
                 if not args.password:
-                    raise ValueError("Password is required")
+                    raise ValueError("Password is required.")
                 if not args.name:
-                    raise ValueError("Full name is required")
-                user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
-                print(user_db.add_user(user))
+                    raise ValueError("Full name is required.")
+
+                user = User(
+                    username=args.user,
+                    email=args.email,
+                    full_name=args.name,
+                    role=Role[args.role.upper()],
+                    password=args.password
+                )
+                result = user_authentication.add_user(user)
+                print(f"User added successfully: {result}")
+
             case 'get':
-                print(user_db.get_user(ids[0]))
+                credentials = Credentials(args.authentication_user, args.authentication_password)
+                token = TokenHandler().load_token(credentials.id)
+                user_authentication.check_user_privileges(user_db, credentials, token)
+                user = user_authentication.get_user(ids[0], metadata=token)
+                print(f"User data: {user}")
+
             case 'check':
                 credentials = Credentials(ids[0], args.password)
-                print(user_db.check_password(credentials))
+                is_valid = user_authentication.check_password(credentials)
+                print(f"Password validation result: {is_valid}")
+
             case 'auth':
                 if not args.password:
                     raise ValueError("Password is required for authentication.")
-        
+                
                 credentials = Credentials(ids[0], args.password)
-                token = user_authentication.authenticate(credentials) 
-        
-                try:
-                    with open('data.txt', 'w') as f:
-                        f.write(serialize(token))
-                    print(f"Authentication successful. Token saved to 'data.txt'.")
-                except Exception as e:
-                    raise RuntimeError(f"Error saving token: {e}")
+                token = user_authentication.authenticate(credentials)
+                TokenHandler().save_token(token)
+                print(f"Authentication successful. Token saved for user: {credentials.id}")
+
             case 'validate':
-                token = None
-                try:
-                    with open('data.txt', 'r') as f:
-                        token = deserialize(f.read())
-                except FileNotFoundError:
-                    raise ValueError("Authentication is required: please authenticate first and save the token.")
-                except Exception as e:
-                    raise ValueError(f"Error reading token file: {e}")
-        
+                token = TokenHandler().load_token(args.user)
                 user = user_authentication.validate_token(token)
-                print(user)
+                print(f"Token is valid for user: {user}")
+
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
+
+    except ValueError as e:
+        print(f"[ValueError] {e}")
+
     except RuntimeError as e:
-        print(f'[{type(e).__name__}]', *e.args)
+        print(f"[RuntimeError] {e}")
+
+    except Exception as e:
+        print(f"[{type(e).__name__}] An unexpected error occurred: {e}")
+
