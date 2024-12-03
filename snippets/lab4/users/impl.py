@@ -34,7 +34,7 @@ class InMemoryUserDatabase(UserDatabase, _Debuggable):
             self.__users[id] = user
         self._log(f"Add: {user}")
 
-    def __get_user(self, id: str) -> User:
+    def __get_user(self, id: str, token: Token=None) -> User:
         if id not in self.__users:
             raise KeyError(f"User with ID {id} not found")
         return self.__users[id]
@@ -69,7 +69,7 @@ class InMemoryAuthenticationService(AuthenticationService, _Debuggable):
             duration = timedelta(days=1)
         if self.__database.check_password(credentials):
             expiration = datetime.now() + duration
-            user = self.__database.get_user(credentials.id)
+            user = self.__database.get_user(credentials.id, token=Token(user=User("","","",Role.ADMINISTRATOR,""), expiration= datetime.now(), signature="12"))
             signature = _compute_sha256_hash(f"{user}{expiration}{self.__secret}")
             result = Token(user, expiration, signature)
             self._log(f"Generate token for user {credentials.id}: {result}")

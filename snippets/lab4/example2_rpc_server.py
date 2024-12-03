@@ -37,17 +37,21 @@ class ServerStub(Server):
             case 'close':
                 print('[%s:%d] Close connection' % connection.remote_address)
     
-    def __handle_request(self, request):
+    def __handle_request(self, request: Request):
         try:
-            method = getattr(self.__user_db, request.name) if hasattr (self.__user_db, request.name) else None#prende un metodo(request.name) dall'oggetto self.__user_db 
-            method = getattr(self.__auth_service, request.name) if method is None else method #se il metodo non esiste in self.__user_db lo prende da self.__auth_service
-            result = method(*request.args)#ottengo la funzione e la chiamo con gli argomenti
-
-            error = None
+            if hasattr(self.__auth_service, request.name):
+                method = getattr(self.__auth_service, request.name)
+            elif hasattr(self.__user_db, request.name):
+                method = getattr(self.__user_db, request.name)
+            else:
+                raise AttributeError(f"Method '{request.name}' not found in services")
+            if request.name == 'get_user':
+                result = method(*request.args, request.metadata)
+            else:
+                result = method(*request.args)
+            return result
         except Exception as e:
-            result = None
-            error = " ".join(e.args)
-        return Response(result, error)
+            return {"error": str(e)}
 
 
 if __name__ == '__main__':
