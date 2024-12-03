@@ -1,5 +1,6 @@
 from snippets.lab3 import Server
 from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService
+from snippets.lab4.users import Role
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 import traceback
 
