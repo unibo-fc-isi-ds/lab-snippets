@@ -11,12 +11,14 @@ if __name__ == '__main__':
         exit_on_error=False,
     )
     parser.add_argument('address', help='Server address in the form ip:port')
-    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check'])
+    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check', 'auth', 'validate'])
     parser.add_argument('--user', '-u', help='Username')
     parser.add_argument('--email', '--address', '-a', nargs='+', help='Email address')
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
+    parser.add_argument('--cookie', '-c', help='Cookie')
+    parser.add_argument('--ckpth', '-path', help='Cookie local path')
 
     if len(sys.argv) > 1:
         args = parser.parse_args()
@@ -26,6 +28,7 @@ if __name__ == '__main__':
 
     args.address = address(args.address)
     user_db = RemoteUserDatabase(args.address)
+    auth_service = RemoteAuthenticationService(args.address)
 
     try :
         ids = (args.email or []) + [args.user]
@@ -39,11 +42,42 @@ if __name__ == '__main__':
                     raise ValueError("Full name is required")
                 user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
                 print(user_db.add_user(user))
+
             case 'get':
-                print(user_db.get_user(ids[0]))
+                if args.path:
+                    with open(args.path, 'r') as file:
+                        cookie = file.read().strip()
+                else:
+                    raise ValueError("Your cookie path is required")
+                print(user_db.get_user(ids[0], deserialize(cookie))) 
+
             case 'check':
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
+            
+            case 'auth':
+                credentials = Credentials(ids[0], args.password)
+                if not args.password:
+                    raise ValueError("Password required!")
+                cookie = auth_service.authenticate(credentials)
+                print(f"User '{args.user}' logged successfully")
+                if args.path:
+                    with open(args.path, 'w') as f:
+                        f.write(serialize(cookie))
+                print(cookie)
+
+            case 'validate':
+                if args.cookie and args.path:
+                    raise ValueError("Provide a cookie or a path")
+                if args.cookie:
+                    cookie = args.cookie
+                if args.path:
+                    with open(args.path, 'r') as file:
+                        cookie = file.read().strip()
+                else:
+                    raise ValueError("A cookie or a path is required")
+                print(auth_service.validate(deserialize(cookie)))
+
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:
