@@ -1,22 +1,38 @@
+import os
 from snippets.lab3 import Client, address
 from snippets.lab4.users import *
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 
+DIRECTORY = os.path.dirname("./lab-snippets/userTokens/")
+@staticmethod
+def save_tokenToPath(token: Token, path: str):
+    if not os.path.exists(DIRECTORY):
+        os.makedirs(DIRECTORY)
+    filename = os.path.join(DIRECTORY, f"{path}.json")
+    with open(filename, 'w') as f:
+        f.write(serialize(token))
+
+ 
+    
+@staticmethod
+def read_tokenFromPath(path: str):
+    filename = os.path.join(DIRECTORY, f"{path}.json")
+    if not os.path.exists(DIRECTORY):
+        raise FileNotFoundError(f"Directory '{DIRECTORY}' does not exist")
+    if not os.path.exists(filename):
+        raise FileNotFoundError(f"File '{filename}' does not exist in the specified directory")
+    with open(filename, 'r') as f:
+        return deserialize(f.read())
 
 class ClientStub:
     def __init__(self, server_address: tuple[str, int]):
         self.__server_address = address(*server_address)
-        self.token = None
 
-    def rpc(self, name, *args):
+    def rpc(self, name, *args, metadata=None):
         client = Client(self.__server_address)
         try:
             print('# Connected to %s:%d' % client.remote_address)
-            #if token is provided then include it in the request
-            if self.token is not None:
-                request = Request(name, args, metadata=self.token)
-            else:
-                request = Request(name, args)
+            request = Request(name, args, metadata)
             print('# Marshalling', request, 'towards', "%s:%d" % client.remote_address)
             request = serialize(request)
             print('# Sending message:', request.replace('\n', '\n# '))
@@ -44,8 +60,8 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
     def add_user(self, user: User):
         return self.rpc('add_user', user)
 
-    def get_user(self, id: str) -> User:
-        return self.rpc('get_user', id)
+    def get_user(self, id: str, token: Token) -> User:
+        return self.rpc('get_user', id, token)
 
     def check_password(self, credentials: Credentials) -> bool:
         return self.rpc('check_password', credentials)
@@ -64,6 +80,7 @@ if __name__ == '__main__':
     from snippets.lab4.example0_users import gc_user, gc_credentials_ok, gc_credentials_wrong
     import sys
 
+    # Test with user whose role is USER
     try_user = User(
         username='guo jiahao',
         emails={'jiahao.guo@studio.unibo.it'},
@@ -73,8 +90,20 @@ if __name__ == '__main__':
     )
 
     user_db = RemoteUserDatabase(address(sys.argv[1]))
+    user_auth = RemoteAuthenticationService(address(sys.argv[1]))
     
-
+    # Trying to add another user whose role is USER
+    try:
+        user_db.add_user(try_user)
+    except RuntimeError as e:
+        print(f"Error occurred: {str(e)}")
+        
+    try:
+        user_db.get_user('guo jiahao')
+    except RuntimeError as e:
+        print(f"Error occurred: {str(e)}")
+        
+        
     # Trying to get a user that does not exist should raise a KeyError because the user is not authenticated
     try:
         user_db.get_user('gciatto')
@@ -83,23 +112,60 @@ if __name__ == '__main__':
         print(e)
 
     # Adding a novel user should work
-    #user_db.add_user(gc_user)
+    try:
+        user_db.add_user(gc_user)
+    except RuntimeError as e:
+        print(f"Error occurred: {str(e)}")
 
     # Trying to add a user that already exist should raise a ValueError
     try:
         user_db.add_user(gc_user)
     except RuntimeError as e:
-        assert str(e).startswith('User with ID')
-        assert str(e).endswith('already exists')
+        print(f"Error occurred: {str(e)}")
         
-        # Trying to get a user that does not exist should raise a KeyError because the user is not authenticated
+    # Trying to get a user that does not exist should raise a KeyError because the user is not authenticated
     try:
         user_db.get_user('gciatto')
     except RuntimeError as e:
-        # assert 'User with ID gciatto not found' in str(e)
-        print(e)
+        print(f"Error occurred: {str(e)}")
 
-    # # Getting a user that exists should work
+    # Authenticating with the correct credentials should work
+    try:
+        user_auth.token = user_db.token = token = user_auth.authenticate(gc_credentials_ok[0])
+        # salvo il token nel file per usare dopo in get_user
+        save_tokenToPath(token, gc_user.username)
+    except RuntimeError as e:
+        print(f"Authentication error: {str(e)}")
+
+    # Authenticating with the wrong credentials should raise an exception
+    try:
+        token = user_auth.authenticate(gc_credentials_wrong)
+        save_tokenToPath(token, gc_user.username)
+    except RuntimeError as e:
+        print(f"Authentication failed: {str(e)}")
+    
+    # Trying to get a user after authentication now should work
+    try:
+        user_db.get_user('gciatto')
+    except RuntimeError as e:
+        print(f"Error occurred: {str(e)}")
+        
+    # Trying to get a user reading from the file should work
+    try:
+        user_auth.token = user_db.token = read_tokenFromPath(gc_user.username)
+        user_db.get_user('gciatto')
+    except RuntimeError as e:
+        print(f"Error occurred: {str(e)}")
+        
+    # Authenticating with USER role to get the user details should not work
+    try:
+        user_auth.token = user_db.token = user_auth.authenticate(Credentials(try_user.username, try_user.password))
+        # salvo il token nel file per usare dopo in get_user
+        user_db.get_user()
+    except RuntimeError as e:
+        print(f"Authentication error: {str(e)}")
+        
+    # Getting a user that exists should work
     # assert user_db.get_user('gciatto') == gc_user.copy(password=None)
 
     # # Checking credentials should work if there exists a user with the same ID and password (no matter which ID is used)

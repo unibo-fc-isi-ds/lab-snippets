@@ -1,31 +1,9 @@
-
-import os
 from snippets.lab4.example1_presentation import serialize, deserialize
 from .example3_rpc_client import *
 import argparse
 
 import sys
 
-DIRECTORY = os.path.dirname("./lab-snippets/userTokens/")
-@staticmethod
-def save_tokenToPath(token: Token, path: str):
-    if not os.path.exists(DIRECTORY):
-        os.makedirs(DIRECTORY)
-    filename = os.path.join(DIRECTORY, f"{path}.json")
-    with open(filename, 'w') as f:
-        f.write(serialize(token))
-
- 
-    
-@staticmethod
-def read_tokenFromPath(path: str):
-    filename = os.path.join(DIRECTORY, f"{path}.json")
-    if not os.path.exists(DIRECTORY):
-        raise FileNotFoundError(f"Directory '{DIRECTORY}' does not exist")
-    if not os.path.exists(filename):
-        raise FileNotFoundError(f"File '{filename}' does not exist in the specified directory")
-    with open(filename, 'r') as f:
-        return deserialize(f.read())
 
 if __name__ == '__main__':
 
@@ -70,8 +48,8 @@ if __name__ == '__main__':
                 # In path prendo il token dal file 
                 if not args.path:
                     raise ValueError("Path of token file(the token filename)")
-                user_auth.__token = user_db.token = token = read_tokenFromPath(args.path)
-                print(user_db.get_user(ids[0]))
+                token = read_tokenFromPath(args.path)
+                print(user_db.get_user(ids[0],token))
             case 'check':
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
@@ -80,10 +58,9 @@ if __name__ == '__main__':
                     raise ValueError("Path of token file(the token filename) is required")
                 credentials = Credentials(ids[0], args.password)
                 # Ottengo il token dopo login
-                user_auth.__token = user_db.token = token = user_auth.authenticate(credentials)
+                token = user_auth.authenticate(credentials)
                 # salvo il token nel file per usare dopo in get_user
                 save_tokenToPath(token, args.path)
-                print(user_db.get_user(ids[0]))
             case 'validate':
                 if not args.token and not args.path:
                     raise ValueError("Token or Path of token file(the token filename) is required")

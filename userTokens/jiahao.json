@@ -1,7 +1,7 @@
 {
-  "signature": "863e51cd4bfa4be49a404d150c18e480424ebc1c8bc0695a95ea2f119d545d0b",
+  "signature": "06a6a4c97c9729c624d91cfa1c4eb857dfcb15fe8a8a63584eb84225b8dc7c0c",
   "user": {
-    "username": "guojia",
+    "username": "guojiaha",
     "emails": [
       "jiahao.g@studio.unibo.it"
     ],
@@ -14,7 +14,7 @@
     "$type": "User"
   },
   "expiration": {
-    "datetime": "2024-12-03T15:29:40.362537",
+    "datetime": "2024-12-04T18:14:51.221329",
     "$type": "datetime"
   },
   "$type": "Token"
