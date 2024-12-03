@@ -200,7 +200,7 @@
                 [
                     "localhost:8080",
                     "get",
-                    "-u", "ciao",
+                    "-u", "admin",
                     "-th", "token.json"
                 ]
         },{

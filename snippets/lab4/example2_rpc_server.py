@@ -44,20 +44,17 @@ class ServerStub(Server):
                 method = getattr(self.__auth, request.name)
             elif hasattr(self.__user_db, request.name):
                 method = getattr(self.__user_db, request.name)
+                if request.name == 'get_user':
+                    request.metadata = request.args[1]
+                    request.args = request.args[:1]
+                    if not self.__auth.validate_token(request.metadata):
+                        return Response(None, 'Unauthorized')
             result = method(*request.args)
             error = None
         except Exception as e:
             result = None
             error = " ".join(e.args)
         return Response(result, error)
-    
-def __check_token(token : Token):
-    if not token:
-        raise ValueError('Invalid token')
-    elif token.user.role.name.upper() != 'ADMIN':
-        raise ValueError('Access denied. User is not an admin')
-    return True
-
 
 if __name__ == '__main__':
     import sys
