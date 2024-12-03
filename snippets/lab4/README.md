@@ -22,4 +22,4 @@ Check if a user's password is correct from the client cli after successful authe
 
 ``` python -m snippets -l 4 -e 4 SERVER_IP:PORT check -u USER -p PASSWORD -t TOKEN_FILE_NAME ```
 
-TOKEN_FILE_NAME is the path of the file where the token is saved, token_file.json is used by default if no other files are specified.
+TOKEN_FILE_NAME is the path of the file where the token is saved.
