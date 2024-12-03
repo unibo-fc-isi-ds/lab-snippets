@@ -48,10 +48,10 @@ class ServerStub(Server):
             # Gestione delle richieste
             if request.name == "get_user":
                 # Richieste protette da autorizzazione
-                token, user_id = request.args
+                token, id = request.args
                 self.__check_authorization(token)  # Verifica token e ruolo admin
                 method = getattr(self.__user_db, request.name)
-                result = method(user_id)
+                result = method(id)
             elif request.name in dir(self.__user_db):
                 # Operazioni relative al database utenti
                 method = getattr(self.__user_db, request.name)

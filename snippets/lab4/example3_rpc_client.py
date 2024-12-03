@@ -46,8 +46,8 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
     def add_user(self, user: User):
         return self.rpc('add_user', user)
 
-    def get_user(self, token: Token, user_id: str) -> User:
-        return self.rpc('get_user', token, user_id)
+    def get_user(self, token: Token, id: str) -> User:
+        return self.rpc('get_user', token, id)
 
     def check_password(self, credentials: Credentials) -> bool:
         return self.rpc('check_password', credentials)
