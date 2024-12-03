@@ -42,6 +42,8 @@ if __name__ == '__main__':
             case 'get':
                 print(user_db.get_user(ids[0]))
             case 'check':
+                if not args.password:
+                    raise ValueError("Password is required")
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
             case 'authenticate':
