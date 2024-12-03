@@ -5,12 +5,12 @@ from snippets.lab4.example2_rpc_server import ServerStub
 from snippets.lab4.example3_rpc_client import LOGOUT_FAIL, LOGOUT_SUCCESS, RemoteUserAuthDatabase
 from snippets.lab4.users import Credentials, Role, User
 
-SERVER_PORT=8080
+SERVER_PORT=8081
 admin=User("emma", ["emma.leonardi2@studio.unibo.it", "emma@gmail.com"], "Emma Leonardi", Role.ADMIN, "password")
 admin_cred=Credentials("emma", "password")
 admin_cred_wrong=Credentials("emma", "wrong password")
 dummyUser=User("dummy", ["dummy@gmail.com"], "Dummy McDummy", Role.USER, "dummypassword")
-dummy_cred=Credentials("dummy", "dummypassword")
+dummy_cred=Credentials("dummy@gmail.com", "dummypassword")
 
 class TestAuthAdmin(unittest.TestCase):
     def setUp(self):
