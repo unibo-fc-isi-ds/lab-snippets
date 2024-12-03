@@ -25,7 +25,7 @@ if __name__ == '__main__':
         sys.exit(0)
 
     args.address = address(args.address)
-    user_db = RemoteUserDatabase(args.address)
+    user_db = RemoteUserAuthDatabase(args.address)
 
     try :
         ids = (args.email or []) + [args.user]

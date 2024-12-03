@@ -36,7 +36,7 @@ class ClientStub:
             print('# Disconnected from %s:%d' % client.remote_address)
 
 
-class RemoteUserDatabase(ClientStub, UserDatabase):
+class RemoteUserAuthDatabase(ClientStub, UserDatabase):
     def __init__(self, server_address):
         super().__init__(server_address)
 
@@ -69,7 +69,7 @@ if __name__ == '__main__':
     import sys
 
 
-    user_db = RemoteUserDatabase(address(sys.argv[1]))
+    user_db = RemoteUserAuthDatabase(address(sys.argv[1]))
 
     # Trying to get a user that does not exist should raise a KeyError
     try:

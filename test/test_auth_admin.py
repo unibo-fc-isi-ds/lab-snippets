@@ -2,7 +2,7 @@ import unittest
 
 from snippets.lab2 import address
 from snippets.lab4.example2_rpc_server import ServerStub
-from snippets.lab4.example3_rpc_client import LOGOUT_FAIL, LOGOUT_SUCCESS, RemoteUserDatabase
+from snippets.lab4.example3_rpc_client import LOGOUT_FAIL, LOGOUT_SUCCESS, RemoteUserAuthDatabase
 from snippets.lab4.users import Credentials, Role, User
 
 SERVER_PORT=8080
@@ -16,7 +16,7 @@ class TestAuthAdmin(unittest.TestCase):
     def setUp(self):
         #create client and server
         self.server=ServerStub(SERVER_PORT)
-        self.user_db=RemoteUserDatabase(address("127.0.0.1",port=SERVER_PORT)) #localhost address
+        self.user_db=RemoteUserAuthDatabase(address("127.0.0.1",port=SERVER_PORT)) #localhost address
 
     def test_add(self):
         self.user_db.add_user(user=admin)
