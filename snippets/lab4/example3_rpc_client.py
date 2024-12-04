@@ -1,3 +1,9 @@
+import sys
+import os
+
+from snippets.lab4.users.impl import _compute_sha256_hash
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+
 from snippets.lab3 import Client, address
 from snippets.lab4.users import *
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
@@ -6,27 +12,33 @@ from snippets.lab4.example1_presentation import serialize, deserialize, Request,
 class ClientStub:
     def __init__(self, server_address: tuple[str, int]):
         self.__server_address = address(*server_address)
+        self.token = None  # Store the token after authentication
 
     def rpc(self, name, *args):
         client = Client(self.__server_address)
         try:
-            print('# Connected to %s:%d' % client.remote_address)
-            request = Request(name, args)
-            print('# Marshalling', request, 'towards', "%s:%d" % client.remote_address)
-            request = serialize(request)
-            print('# Sending message:', request.replace('\n', '\n# '))
-            client.send(request)
+            metadata = {'token': self.token} if self.token else None  # Include the token in metadata
+            request = Request(name=name, args=args, metadata=metadata)
+            serialized_request = serialize(request)
+            client.send(serialized_request)
             response = client.receive()
-            print('# Received message:', response.replace('\n', '\n# '))
             response = deserialize(response)
-            assert isinstance(response, Response)
-            print('# Unmarshalled', response, 'from', "%s:%d" % client.remote_address)
             if response.error:
                 raise RuntimeError(response.error)
             return response.result
         finally:
             client.close()
-            print('# Disconnected from %s:%d' % client.remote_address)
+    
+
+class RemoteAuthenticationService(ClientStub, AuthenticationService):
+    def authenticate(self, credentials: Credentials) -> Token:
+        token = self.rpc('authenticate', credentials)
+        self.token = serialize(token)  # Save the token for future requests
+        return token
+
+
+    def validate_token(self, token: Token) -> bool:
+        return self.rpc('validate_token', token)
 
 
 class RemoteUserDatabase(ClientStub, UserDatabase):
@@ -34,6 +46,7 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
         super().__init__(server_address)
 
     def add_user(self, user: User):
+        print(f"Attempting to add user: {user}")
         return self.rpc('add_user', user)
 
     def get_user(self, id: str) -> User:
