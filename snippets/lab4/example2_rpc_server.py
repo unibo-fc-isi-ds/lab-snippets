@@ -13,7 +13,6 @@ class ServerStub(Server):
         super().__init__(port, self.__on_connection_event)
         self.__user_db = InMemoryUserDatabase()
         self.__auth_service = InMemoryAuthenticationService(self.__user_db)
-        self.tokens : Token = []
         
     def __on_connection_event(self, event, connection, address, error):
         match event:
