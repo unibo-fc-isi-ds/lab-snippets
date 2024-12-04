@@ -26,6 +26,18 @@ def load(id):
     except:
         return None
     
+def loadAll():
+    try:
+        if not os.path.exists(token_root):
+            return None
+        data = []
+        for filename in os.listdir(token_root):
+            with open(os.path.join(token_root, filename), 'r') as read_file:
+                data.append(Deserializer().deserialize(read_file.read()))
+        return data
+    except:
+        return None
+    
 class _Debuggable:
     def __init__(self, debug: bool = True):
         self.__debug = debug

@@ -1,3 +1,4 @@
+from snippets.lab4.users.impl import loadAll
 from .example3_rpc_client import *
 import argparse
 import sys
@@ -17,6 +18,8 @@ if __name__ == '__main__':
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
+    parser.add_argument('--signature', '-s', help='Signature')
+
 
     if len(sys.argv) > 1:
         args = parser.parse_args()
@@ -42,14 +45,27 @@ if __name__ == '__main__':
                 user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
                 print(user_db.add_user(user))
             case 'get':
-                print(user_db.get_user(ids[0]))
+                if not args.signature:
+                    raise ValueError("Signature is required")
+                tokenFound = None
+                tokens = loadAll()
+                for token in tokens:
+                    if token.signature == args.signature:
+                        tokenFound = token
+                        break
+                print(user_db.get_user(ids[0], tokenFound))
             case 'check':
+                if not args.password:
+                    raise ValueError("Password is required")
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
             case 'authenticate':
+                if not args.password:
+                    raise ValueError("Password is required")
                 credentials = Credentials(ids[0], args.password)
                 token = user_auth.authenticate(credentials)
                 save(credentials.id, token)
+                print(f"Signature: {token.signature}")
             case 'validate':
                 user_auth.validate_token(ids[0])
             case _:

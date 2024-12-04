@@ -1,16 +1,20 @@
+import token
 from snippets.lab2 import local_ips
 from snippets.lab3 import Server
+from snippets.lab4.users import Role, Token
 from snippets.lab4.users.impl import InMemoryAuthenticationService, InMemoryUserDatabase
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 import traceback
 
 
 class ServerStub(Server):
+    
     def __init__(self, port):
         super().__init__(port, self.__on_connection_event)
         self.__user_db = InMemoryUserDatabase()
         self.__auth_service = InMemoryAuthenticationService(self.__user_db)
-    
+        self.tokens : Token = []
+        
     def __on_connection_event(self, event, connection, address, error):
         match event:
             case 'listen':
@@ -29,7 +33,18 @@ class ServerStub(Server):
                 request = deserialize(payload)
                 assert isinstance(request, Request)
                 print('[%s:%d] Unmarshall request:' % connection.remote_address, request)
-                response = self.__handle_request(request)
+                
+                response = Response(None, None)
+                if request.name == 'get_user':
+                    if request.metadata is None or not self.__auth_service.validate_token(request.metadata):
+                        response.error = 'Token absent or invalid'
+                    elif request.metadata.user.role != Role.ADMIN:
+                        response.error = 'Not authorized'
+                    else:
+                        response = self.__handle_request(request)
+                else:
+                    response = self.__handle_request(request)
+
                 connection.send(serialize(response))
                 print('[%s:%d] Marshall response:' % connection.remote_address, response)
                 connection.close()
