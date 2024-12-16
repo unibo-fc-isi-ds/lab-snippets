@@ -1,7 +1,8 @@
 from .users import User, Credentials, Token, Role
 from datetime import datetime
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Dict, Any
 
 
 @dataclass
@@ -12,6 +13,7 @@ class Request:
 
     name: str
     args: tuple
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
         self.args = tuple(self.args)
@@ -46,11 +48,16 @@ class Serializer:
             return [self._to_ast(item) for item in obj]
         if isinstance(obj, dict):
             return {key: self._to_ast(value) for key, value in obj.items()}
+        
+        if hasattr(obj, '_to_ast'):
+            return obj._to_ast()
+
         # selects the appropriate method to convert the object to AST via reflection
         method_name = f'_{type(obj).__name__.lower()}_to_ast'
         if hasattr(self, method_name):
             data = getattr(self, method_name)(obj)
-            data['$type'] = type(obj).__name__
+            if isinstance(data, dict): 
+                data['$type'] = type(obj).__name__
             return data
         raise ValueError(f"Unsupported type {type(obj)}")
 
@@ -77,7 +84,7 @@ class Serializer:
         }
 
     def _datetime_to_ast(self, dt: datetime):
-        raise NotImplementedError("Missing implementation for datetime serialization")
+        return dt.isoformat()
 
     def _role_to_ast(self, role: Role):
         return {'name': role.name}
@@ -86,6 +93,7 @@ class Serializer:
         return {
             'name': self._to_ast(request.name),
             'args': [self._to_ast(arg) for arg in request.args],
+            'metadata': self._to_ast(request.metadata),
         }
 
     def _response_to_ast(self, response: Response):
@@ -106,7 +114,6 @@ class Deserializer:
         if isinstance(data, dict):
             if '$type' not in data:
                 return {key: self._ast_to_obj(value) for key, value in data.items()}
-            # selects the appropriate method to convert the AST to object via reflection
             method_name = f'_ast_to_{data["$type"].lower()}'
             if hasattr(self, method_name):
                 return getattr(self, method_name)(data)
@@ -131,14 +138,17 @@ class Deserializer:
         )
 
     def _ast_to_token(self, data):
+        expiration_data = data['expiration']
+        expiration = datetime.fromisoformat(expiration_data) if expiration_data else None
+
         return Token(
             signature=self._ast_to_obj(data['signature']),
             user=self._ast_to_obj(data['user']),
-            expiration=self._ast_to_obj(data['expiration']),
+            expiration=expiration,
         )
 
     def _ast_to_datetime(self, data):
-        raise NotImplementedError("Missing implementation for datetime deserialization")
+        return datetime.fromisoformat(data)
 
     def _ast_to_role(self, data):
         return Role[self._ast_to_obj(data['name'])]
@@ -147,6 +157,7 @@ class Deserializer:
         return Request(
             name=self._ast_to_obj(data['name']),
             args=tuple(self._ast_to_obj(arg) for arg in data['args']),
+            metadata=self._ast_to_obj(data['metadata']),
         )
 
     def _ast_to_response(self, data):
