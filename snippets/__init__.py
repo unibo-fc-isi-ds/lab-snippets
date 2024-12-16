@@ -63,5 +63,8 @@ class Example:
 def find_examples(lab: int, example: int) -> Iterable[Example]:
     for name, path in EXAMPLES.items():
         if name.startswith('snippets.lab' + str(lab or "")):
-            if f'.example{example or ""}' in name:
+            if (
+                f'.example{example or ""}' in name or 
+                (example == '4' and name.endswith('.exercise_tcp_group_chat'))
+            ):
                 yield Example(name, path)
