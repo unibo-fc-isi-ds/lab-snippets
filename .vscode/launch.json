@@ -4,6 +4,7 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+
         {
             "name": "L1E1: Game Loop",
             "type": "debugpy",
@@ -100,7 +101,7 @@
             "request": "launch",
             "module": "snippets.lab3.example1_tcp_echo_wrong",
             "args": [
-                "server",
+                "starter",
                 "8080"
             ],
         },{
@@ -147,6 +148,69 @@
             "args": [
                 "client",
                 "localhost:8080"
+            ],
+        },{
+            "name": "Test 1: introduce first user",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab3.exercise_tcp_group_chat",
+            "args": [
+                "8080",
+                "Andrea",
+            ],
+        },{
+            "name": "Test 2: introduce second user",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab3.exercise_tcp_group_chat",
+            "args": [
+                "8081",
+                "Giovanni",
+                "localhost:8080"
+            ],
+        },{
+            "name": "Test 3: introduce third user",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab3.exercise_tcp_group_chat",
+            "args": [
+                "8082",
+                "Francesco",
+                "localhost:8080",
+                "localhost:8081"
+            ],
+        },{
+            "name": "Test 4: first user exited and wants to re-enter",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab3.exercise_tcp_group_chat",
+            "args": [
+                "8080",
+                "Andrea",
+                "localhost:8081",
+                "localhost:8082"
+            ],
+        },{
+            "name": "Test 5: second user exited and wants to re-enter",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab3.exercise_tcp_group_chat",
+            "args": [
+                "8081",
+                "Giovanni",
+                "localhost:8080",
+                "localhost:8082"
+            ],
+        },{
+            "name": "Test 6: third user exited and wants to re-enter",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab3.exercise_tcp_group_chat",
+            "args": [
+                "8081",
+                "Francesco",
+                "localhost:8080",
+                "localhost:8081"
             ],
         },{
             "name": "L4E0: Users",
