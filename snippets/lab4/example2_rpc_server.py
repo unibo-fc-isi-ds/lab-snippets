@@ -1,18 +1,23 @@
+import token
+from snippets.lab2 import local_ips
 from snippets.lab3 import Server
-from snippets.lab4.users.impl import InMemoryUserDatabase
+from snippets.lab4.users import Role, Token
+from snippets.lab4.users.impl import InMemoryAuthenticationService, InMemoryUserDatabase
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 import traceback
 
 
 class ServerStub(Server):
+    
     def __init__(self, port):
         super().__init__(port, self.__on_connection_event)
         self.__user_db = InMemoryUserDatabase()
-    
+        self.__auth_service = InMemoryAuthenticationService(self.__user_db)
+        
     def __on_connection_event(self, event, connection, address, error):
         match event:
             case 'listen':
-                print('Server listening on %s:%d' % address)
+                print(f"Server listening on port {address[1]} at {', '.join(local_ips())}")
             case 'connect':
                 connection.callback = self.__on_message_event
             case 'error':
@@ -27,7 +32,18 @@ class ServerStub(Server):
                 request = deserialize(payload)
                 assert isinstance(request, Request)
                 print('[%s:%d] Unmarshall request:' % connection.remote_address, request)
-                response = self.__handle_request(request)
+                
+                response = Response(None, None)
+                if request.name == 'get_user':
+                    if request.metadata is None or not self.__auth_service.validate_token(request.metadata):
+                        response.error = 'Token absent or invalid'
+                    elif request.metadata.user.role != Role.ADMIN:
+                        response.error = 'Not authorized'
+                    else:
+                        response = self.__handle_request(request)
+                else:
+                    response = self.__handle_request(request)
+
                 connection.send(serialize(response))
                 print('[%s:%d] Marshall response:' % connection.remote_address, response)
                 connection.close()
@@ -38,7 +54,10 @@ class ServerStub(Server):
     
     def __handle_request(self, request):
         try:
-            method = getattr(self.__user_db, request.name)
+            if(request.name == "authenticate" or request.name == "validate_token"):
+                method = getattr(self.__auth_service, request.name)
+            else:
+                method = getattr(self.__user_db, request.name)
             result = method(*request.args)
             error = None
         except Exception as e:
