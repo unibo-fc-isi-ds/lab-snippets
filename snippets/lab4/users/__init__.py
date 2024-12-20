@@ -63,6 +63,8 @@ class Token(Datum):
             raise ValueError("Signature is required")
     
 
+# una classe particolare di tipo "Protocol". Funziona in una maniera similare ad un'Interfaccia di Java, dove definisco
+# i metodi con i parametri e valori di ritorno, che verranno poi implementati da altre classi
 class UserDatabase(Protocol):
     def add_user(self, user: User):
         ...
