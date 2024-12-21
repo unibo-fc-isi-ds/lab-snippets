@@ -1,5 +1,7 @@
 from snippets.lab3 import Server
 from snippets.lab4.users.impl import InMemoryUserDatabase
+from snippets.lab4.users.impl import InMemoryAuthenticationService
+from snippets.lab4.users import *
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 import traceback
 
@@ -8,6 +10,7 @@ class ServerStub(Server):
     def __init__(self, port):
         super().__init__(port, self.__on_connection_event)
         self.__user_db = InMemoryUserDatabase()
+        self.__auth_service = InMemoryAuthenticationService()
     
     def __on_connection_event(self, event, connection, address, error):
         match event:
@@ -37,6 +40,17 @@ class ServerStub(Server):
                 print('[%s:%d] Close connection' % connection.remote_address)
     
     def __handle_request(self, request):
+
+        token = request.metadata.get('token') if request.metadata else None
+        if token:
+            user = self.__auth_service.validate_token(token)
+            if not user:
+                return Response(None, "Invalid or expired token")
+            
+            if request.name in ['get_user', 'check_password']:  # Example restricted methods
+                if request.name == 'get_user' and user.role != Role.ADMIN:
+                    return Response(None, "Unauthorized: Admin role required")
+
         try:
             method = getattr(self.__user_db, request.name)
             result = method(*request.args)
