@@ -42,6 +42,37 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
     def check_password(self, credentials: Credentials) -> bool:
         return self.rpc('check_password', credentials)
 
+class RemoteAuthenticationService(ClientStub):
+    def __init__(self, server_address):
+        super().__init__(server_address)
+        self.token = None  # Store the token for later use
+
+    def authenticate(self, credentials: Credentials) -> bool:
+        """Authenticate user and store token"""
+        result = self.rpc('authenticate', credentials)
+        if result:
+            self.token = result.get('token')  # Store the token for later use
+        return bool(self.token)
+
+    def get_user(self, user_id: str):
+        """Send request to get user details, include token in metadata"""
+        if not self.token:
+            raise RuntimeError("Authentication required")
+        
+        # Pass token in metadata for authorization
+        request = Request("get_user", [user_id], metadata={'token': self.token})
+        return self.rpc(request.name, *request.args, metadata=request.metadata)
+
+    def check_password(self, credentials: Credentials):
+        """Check password with the token included in metadata"""
+        if not self.token:
+            raise RuntimeError("Authentication required")
+        
+        # Pass token in metadata for authorization
+        request = Request("check_password", [credentials], metadata={'token': self.token})
+        return self.rpc(request.name, *request.args, metadata=request.metadata)
+
+
 
 if __name__ == '__main__':
     from snippets.lab4.example0_users import gc_user, gc_credentials_ok, gc_credentials_wrong
