@@ -80,3 +80,12 @@ class AuthenticationService(Protocol):
 
     def validate_token(self, token: Token) -> bool:
         ...
+
+
+class Signer(Protocol):
+    def sign(self, *args) -> str:
+        ...
+    
+    @property
+    def signature(self) -> str:
+        ...
