@@ -43,6 +43,7 @@ class InMemoryUserDatabase(UserDatabase, _Debuggable):
         result = self.__get_user(id).copy(password=None)
         self._log(f"Get user with ID {id}: {result}")
         return result
+        
 
     def check_password(self, credentials: Credentials) -> bool:
         try:
@@ -66,7 +67,7 @@ class InMemoryAuthenticationService(AuthenticationService, _Debuggable):
     
     def authenticate(self, credentials: Credentials, duration: timedelta = None) -> Token:
         if duration is None:
-            duration = timedelta(days=1)
+            duration = timedelta(minutes=10)
         if self.__database.check_password(credentials):
             expiration = datetime.now() + duration
             user = self.__database.get_user(credentials.id)
