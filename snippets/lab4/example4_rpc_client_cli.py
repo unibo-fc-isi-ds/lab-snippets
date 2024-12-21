@@ -17,6 +17,7 @@ if __name__ == '__main__':
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
+    #parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check', 'authenticate', 'validate'])
 
     if len(sys.argv) > 1:
         args = parser.parse_args()
@@ -25,7 +26,8 @@ if __name__ == '__main__':
         sys.exit(0)
 
     args.address = address(args.address)
-    user_db = RemoteUserDatabase(args.address)
+    #user_db = RemoteUserDatabase(args.address)
+    user_db = RemoteAuthenticationService(args.address)
 
     try :
         ids = (args.email or []) + [args.user]
@@ -40,10 +42,27 @@ if __name__ == '__main__':
                 user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
                 print(user_db.add_user(user))
             case 'get':
-                print(user_db.get_user(ids[0]))
+                if user_db.token:
+                    print(user_db.get_user(ids[0]))
+                else:
+                    print("Authentication required")
+                #print(user_db.get_user(ids[0]))
             case 'check':
                 credentials = Credentials(ids[0], args.password)
-                print(user_db.check_password(credentials))
+                if user_db.token:
+                    print(user_db.check_password(credentials))
+                else:
+                    print("Authentication required")
+               # print(user_db.check_password(credentials))
+            case 'authenticate':
+                if user_db.authenticate(credentials= Credentials(args.user, args.password)):
+                    print(f"Authenticated successfully! Token: {user_db.token}")
+                else:
+                   print("Authentication failed")
+            case 'validate':
+                if not args.token:
+                    raise ValueError("Token is required")
+                print(user_db.validate_token(args.token))
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:
