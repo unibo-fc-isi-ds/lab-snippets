@@ -1,5 +1,7 @@
 node_modules/
 
+*token.txt
+
 tmp/
 .idea/
 .vscode/
