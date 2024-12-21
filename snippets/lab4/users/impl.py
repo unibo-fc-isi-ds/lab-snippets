@@ -1,3 +1,4 @@
+from doctest import FAIL_FAST
 from ..users import *
 import hashlib
 
@@ -18,7 +19,7 @@ class _Debuggable:
 
 
 class InMemoryUserDatabase(UserDatabase, _Debuggable):
-    def __init__(self, debug: bool = True):
+    def __init__(self, debug: bool = False):
         _Debuggable.__init__(self, debug)
         self.__users: dict[str, User] = {}
         self._log("User database initialized with empty users")
@@ -43,6 +44,9 @@ class InMemoryUserDatabase(UserDatabase, _Debuggable):
         result = self.__get_user(id).copy(password=None)
         self._log(f"Get user with ID {id}: {result}")
         return result
+    def get_user_role(self, id: str) -> Role:
+        user = self.__get_user(id)
+        return user.role
 
     def check_password(self, credentials: Credentials) -> bool:
         try:
@@ -83,3 +87,10 @@ class InMemoryAuthenticationService(AuthenticationService, _Debuggable):
         result = token.expiration > datetime.now() and self.__validate_token_signature(token)
         self._log(f"{token} is " + ('valid' if result else 'invalid'))
         return result
+
+    def check_permission(self, token: Token, required_role: Role):
+        if not self.validate_token(token):
+            raise ValueError("Invalid or expired token")
+        if token.user.role != required_role:
+            raise ValueError(f"Access denied: {required_role} role required")
+        self._log(f"User {token.user.username} has sufficient permissions")
