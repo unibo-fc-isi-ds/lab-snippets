@@ -77,8 +77,16 @@ class Serializer:
         }
 
     def _datetime_to_ast(self, dt: datetime):
-        raise NotImplementedError("Missing implementation for datetime serialization")
-
+        return {
+            'year': self._to_ast(dt.year),
+            'month': self._to_ast(dt.month),
+            'day': self._to_ast(dt.day),
+            'hour': self._to_ast(dt.hour),
+            'minute': self._to_ast(dt.minute),
+            'second': self._to_ast(dt.second),
+            'microsecond': self._to_ast(dt.microsecond),
+            'isoformat': self._to_ast(dt.isoformat())}
+    
     def _role_to_ast(self, role: Role):
         return {'name': role.name}
 
@@ -87,6 +95,7 @@ class Serializer:
             'name': self._to_ast(request.name),
             'args': [self._to_ast(arg) for arg in request.args],
         }
+
 
     def _response_to_ast(self, response: Response):
         return {
@@ -138,15 +147,23 @@ class Deserializer:
         )
 
     def _ast_to_datetime(self, data):
-        raise NotImplementedError("Missing implementation for datetime deserialization")
-
+        return datetime(
+            year=self._ast_to_obj(data['year']),
+            month=self._ast_to_obj(data['month']),
+            day=self._ast_to_obj(data['day']),
+            hour=self._ast_to_obj(data['hour']),
+            minute=self._ast_to_obj(data['minute']),
+            second=self._ast_to_obj(data['second']),
+            microsecond=self._ast_to_obj(data['microsecond'])
+        )
+    
     def _ast_to_role(self, data):
         return Role[self._ast_to_obj(data['name'])]
 
     def _ast_to_request(self, data):
         return Request(
             name=self._ast_to_obj(data['name']),
-            args=tuple(self._ast_to_obj(arg) for arg in data['args']),
+            args=tuple(self._ast_to_obj(arg) for arg in data['args']), 
         )
 
     def _ast_to_response(self, data):
