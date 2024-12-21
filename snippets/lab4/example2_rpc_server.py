@@ -1,5 +1,6 @@
 from snippets.lab3 import Server
 from snippets.lab4.users.impl import InMemoryUserDatabase
+from snippets.lab4.users.impl import InMemoryAuthenticationService
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 import traceback
 
@@ -8,7 +9,8 @@ class ServerStub(Server):
     def __init__(self, port):
         super().__init__(port, self.__on_connection_event)
         self.__user_db = InMemoryUserDatabase()
-    
+        self.__auth_service = InMemoryAuthenticationService(self.__user_db)
+        
     def __on_connection_event(self, event, connection, address, error):
         match event:
             case 'listen':
@@ -36,10 +38,27 @@ class ServerStub(Server):
             case 'close':
                 print('[%s:%d] Close connection' % connection.remote_address)
     
-    def __handle_request(self, request):
+    def __handle_request(self, request : Request):
         try:
-            method = getattr(self.__user_db, request.name)
-            result = method(*request.args)
+            exception = None
+            method = None
+            try:
+                method = getattr(self.__auth_service, request.name)
+            except Exception as e:
+                exception = e            
+            try:
+                method = getattr(self.__user_db, request.name)
+            except Exception as e:
+                exception = e
+            
+            if(method is None):
+                raise exception
+            
+            if(request.name == 'get_user'):
+                result = method(*request.args, request.metadata)
+            else:
+                result = method(*request.args)
+
             error = None
         except Exception as e:
             result = None
