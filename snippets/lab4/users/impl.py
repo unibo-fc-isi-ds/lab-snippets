@@ -53,6 +53,9 @@ class InMemoryUserDatabase(UserDatabase, _Debuggable):
         self._log(f"Checking {credentials}: {'correct' if result else 'incorrect'}")
         return result
     
+    def clear(self):
+        self.__users.clear()
+    
 
 class InMemoryAuthenticationService(AuthenticationService, _Debuggable):
     def __init__(self, database: UserDatabase, secret: str = None, debug: bool = True):
@@ -63,6 +66,14 @@ class InMemoryAuthenticationService(AuthenticationService, _Debuggable):
             secret = str(uuid.uuid4())
         self.__secret = secret
         self._log(f"Authentication service initialized with secret {secret}")
+    
+    @property
+    def user_db(self) -> UserDatabase:
+        return self.__database
+    
+    @property
+    def secret(self) -> str:
+        return self.__secret
     
     def authenticate(self, credentials: Credentials, duration: timedelta = None) -> Token:
         if duration is None:
