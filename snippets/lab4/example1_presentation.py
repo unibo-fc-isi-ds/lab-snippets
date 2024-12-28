@@ -33,23 +33,33 @@ class Serializer:
     primitive_types = (int, float, str, bool, type(None))
     container_types = (list, set)
 
-    def serialize(self, obj):
+    # converte prima ogg in ast, poi ast in una stringa
+    def serialize(self, obj): 
         return self._ast_to_string(self._to_ast(obj))
 
     def _ast_to_string(self, data):
         return json.dumps(data, indent=2)
 
+    # tengo d'occhio di diversi corner cases
     def _to_ast(self, obj):
+        # magari l'oggetto da serializzare fa parte dei tipi che considero primitivi all'inizio della classe
         if isinstance(obj, self.primitive_types):
-            return obj
+            return obj # questi li mappo direttamente
+        # il secondo caso si riferisce a tutti gli oggetti che considero "containers" (list e set)
         if isinstance(obj, self.container_types):
-            return [self._to_ast(item) for item in obj]
+            return [self._to_ast(item) for item in obj] # mappo ogni oggetto del "container", creando un JSON array
+        # il terzo caso si riferisce agli oggetti strutturati in maniera dictionary
         if isinstance(obj, dict):
-            return {key: self._to_ast(value) for key, value in obj.items()}
+            return {key: self._to_ast(value) for key, value in obj.items()} # mappo come Oggetto JSON
         # selects the appropriate method to convert the object to AST via reflection
+        # quando trovo un oggetto più complesso (esempio, Credentials)
+        # cerca prima di tutto di vedere qual'è il nome del tipo dell'oggetto passato (messo poi lowercase)
+        # dentro method_name, scrivo così il nome del metodo
         method_name = f'_{type(obj).__name__.lower()}_to_ast'
         if hasattr(self, method_name):
+            # usando getattr recupero un riferimento al metodo da applicare a quell'oggetto (es:CREDENTIALS)
             data = getattr(self, method_name)(obj)
+            # il dato ottenuto è così un oggetto JSON, a cui infine aggiungo un ultimo dato $type dove indico il tipo di dato
             data['$type'] = type(obj).__name__
             return data
         raise ValueError(f"Unsupported type {type(obj)}")

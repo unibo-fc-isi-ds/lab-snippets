@@ -2,7 +2,8 @@ from .example3_rpc_client import *
 import argparse
 import sys
 
-
+# questa è l'interfaccia command-line creata per l'utente, che si basa su utente per performare invocazioni su Server
+# (ovviamente ognuno può fare la propria Interfaccia differente, tipo una GUI)
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(
