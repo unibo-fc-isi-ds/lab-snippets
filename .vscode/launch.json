@@ -176,6 +176,73 @@
             "args": [
                 "localhost:8080"
             ],
-        },
+        },{
+            "name": "L4E4: RPC Client cli",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab4.example4_rpc_client_cli",
+            "args": 
+                [
+                    "localhost:8080",
+                    "add",
+                    "-u", "ciao",
+                    "-a", "ab@gmail.com",
+                    "-n", "Lory T",
+                    "-r", "user",
+                    "-p", "1234", 
+                ],
+        },{
+            "name": "L4E4: RPC Client cli get",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab4.example4_rpc_client_cli",
+            "args": 
+                [
+                    "localhost:8080",
+                    "get",
+                    "-u", "admin",
+                    "-th", "token.json"
+                ]
+        },{
+            "name": "L4E4: RPC Client cli auth",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab4.example4_rpc_client_cli",
+            "args": 
+                [
+                    "localhost:8080",
+                    "authenticate",
+                    "-u", "admin",
+                    "-p", "password", 
+                    "-th", "token.json"
+                ],
+        },{
+            "name": "L4E4: RPC Client cli val",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab4.example4_rpc_client_cli",
+            "args": 
+                [
+                    "localhost:8080",
+                    "validate",
+                    "-u", "admin",
+                    "-th", "token.json"
+                ],
+        },{
+            "name": "L4E4: RPC Client cli admin",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab4.example4_rpc_client_cli",
+            "args": 
+                [
+                    "localhost:8080",
+                    "add",
+                    "-u", "admin",
+                    "-a", "admin@gmail.com",
+                    "-n", "io",
+                    "-r", "admin",
+                    "-p", "password", 
+                ],
+        }
     ]
 }
