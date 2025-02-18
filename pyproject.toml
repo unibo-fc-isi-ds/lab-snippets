@@ -22,7 +22,7 @@ poetry = "^2.0.0"
 pytest = "^8.2.2"
 
 [tool.poe.tasks]
-# test = "python -m unittest discover -v -s tests -p '*.py'"
+test = "python -m unittest discover -v -s tests -p '*.py'"
 # coverage = "coverage run -m unittest discover -v -s tests -p '*.py'"
 # coverage-report = "coverage report -m"
 # coverage-html = "coverage html"
