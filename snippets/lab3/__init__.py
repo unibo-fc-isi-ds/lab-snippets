@@ -1,11 +1,26 @@
 from snippets.lab2 import *
 import threading
-
+import logging
+import os
 
 # Uncomment this line to observe timeout errors more often.
 # Beware: short timeouts can make demonstrations more difficult to follow.
 # socket.setdefaulttimeout(5) # set default timeout for blocking operations to 5 seconds
 
+logging.basicConfig(
+    level=logging.INFO,
+    filename="./tests/chat_log.log",
+    encoding="utf-8",
+    filemode="a",
+    format="{message}",
+#   format="{levelname} - {message}",    
+    style="{"
+)
+
+def clear_log_file(file_path: str) -> None:
+    if os.path.exists(file_path):
+        with open(file_path, 'w') as _:
+            pass
 
 class Connection:
     def __init__(self, socket: socket.socket, callback=None):
