@@ -67,6 +67,10 @@ class InMemoryAuthenticationService(AuthenticationService, _Debuggable):
     def authenticate(self, credentials: Credentials, duration: timedelta = None) -> Token:
         if duration is None:
             duration = timedelta(days=1)
+        # exercise 4-01
+        if isinstance(duration, datetime):
+            duration = duration - datetime.now()
+            
         if self.__database.check_password(credentials):
             expiration = datetime.now() + duration
             user = self.__database.get_user(credentials.id)

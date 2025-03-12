@@ -1,5 +1,5 @@
 from .users import User, Credentials, Token, Role
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 from dataclasses import dataclass
 
@@ -12,6 +12,8 @@ class Request:
 
     name: str
     args: tuple
+    # for excercise 4-01
+    metadata: Token | None = None
 
     def __post_init__(self):
         self.args = tuple(self.args)
@@ -55,29 +57,45 @@ class Serializer:
         raise ValueError(f"Unsupported type {type(obj)}")
 
     def _user_to_ast(self, user: User):
-        return {
+        result = {
             'username': self._to_ast(user.username),
             'emails': [self._to_ast(email) for email in user.emails],
             'full_name': self._to_ast(user.full_name),
             'role': self._to_ast(user.role),
             'password': self._to_ast(user.password),
         }
+        print('ffffffffffffffffffffffffffffffffffff')
+        return result
 
     def _credentials_to_ast(self, credentials: Credentials):
-        return {
+        result = {
             'id': self._to_ast(credentials.id),
             'password': self._to_ast(credentials.password),
         }
+        print(f"_credentials_to_ast: {result}") 
+        return result
 
     def _token_to_ast(self, token: Token):
-        return {
+        result = {
             'signature': self._to_ast(token.signature),
             'user': self._to_ast(token.user),
             'expiration': self._to_ast(token.expiration),
         }
-
+        print('111111111111111111111111111111111111111111111111111111111')
+        print(f"_token_to_ast: {result}")
+        return result
+    # for excercise 4-01
     def _datetime_to_ast(self, dt: datetime):
-        raise NotImplementedError("Missing implementation for datetime serialization")
+        return {
+            'timestamp': dt.timestamp(),
+            '$type': 'datetime'
+        }
+    def _timedelta_to_ast(self, td: timedelta):
+        return {
+            'total_seconds': td.total_seconds(),  
+            '$type': 'timedelta'
+        }
+
 
     def _role_to_ast(self, role: Role):
         return {'name': role.name}
@@ -93,7 +111,7 @@ class Serializer:
             'result': self._to_ast(response.result) if response.result is not None else None,
             'error': self._to_ast(response.error),
         }
-
+    
 
 class Deserializer:
     def deserialize(self, string):
@@ -115,6 +133,7 @@ class Deserializer:
             return [self._ast_to_obj(item) for item in data]
         return data
 
+    
     def _ast_to_user(self, data):
         return User(
             username=self._ast_to_obj(data['username']),
@@ -136,9 +155,13 @@ class Deserializer:
             user=self._ast_to_obj(data['user']),
             expiration=self._ast_to_obj(data['expiration']),
         )
-
+    # for excercise 4-01
     def _ast_to_datetime(self, data):
-        raise NotImplementedError("Missing implementation for datetime deserialization")
+        return datetime.fromtimestamp(data['timestamp'])
+    
+    def _ast_to_timedelta(self, data):
+        return timedelta(seconds=data['total_seconds'])  # 使用总秒数恢复 timedelta 对象
+
 
     def _ast_to_role(self, data):
         return Role[self._ast_to_obj(data['name'])]
@@ -154,7 +177,7 @@ class Deserializer:
             result=self._ast_to_obj(data['result']) if data['result'] is not None else None,
             error=self._ast_to_obj(data['error']),
         )
-
+    
 
 DEFAULT_SERIALIZER = Serializer()
 DEFAULT_DESERIALIZER = Deserializer()
