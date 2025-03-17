@@ -23,7 +23,7 @@ class InMemoryUserDatabase(UserDatabase, _Debuggable):
         self.__users: dict[str, User] = {}
         self._log("User database initialized with empty users")
     
-    def add_user(self, user: User):
+    def add_user(self, user: User, auth: bool):
         for id in user.ids:
             if id in self.__users:
                 raise ValueError(f"User with ID {id} already exists")
@@ -39,12 +39,14 @@ class InMemoryUserDatabase(UserDatabase, _Debuggable):
             raise KeyError(f"User with ID {id} not found")
         return self.__users[id]
     
-    def get_user(self, id: str) -> User:
+    def get_user(self, id: str, auth: bool) -> User:
+        if not auth:
+            raise PermissionError("Must be authorized to get users")
         result = self.__get_user(id).copy(password=None)
         self._log(f"Get user with ID {id}: {result}")
         return result
 
-    def check_password(self, credentials: Credentials) -> bool:
+    def check_password(self, credentials: Credentials, auth: bool) -> bool:
         try:
             user = self.__get_user(credentials.id)
             result = user.password == _compute_sha256_hash(credentials.password)
@@ -67,9 +69,9 @@ class InMemoryAuthenticationService(AuthenticationService, _Debuggable):
     def authenticate(self, credentials: Credentials, duration: timedelta = None) -> Token:
         if duration is None:
             duration = timedelta(days=1)
-        if self.__database.check_password(credentials):
+        if self.__database.check_password(credentials, True):
             expiration = datetime.now() + duration
-            user = self.__database.get_user(credentials.id)
+            user = self.__database.get_user(credentials.id, True)
             signature = _compute_sha256_hash(f"{user}{expiration}{self.__secret}")
             result = Token(user, expiration, signature)
             self._log(f"Generate token for user {credentials.id}: {result}")
