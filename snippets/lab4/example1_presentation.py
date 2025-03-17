@@ -9,12 +9,13 @@ class Request:
     """
     A container for RPC requests: a name of the function to call and its arguments.
     """
-
     name: str
     args: tuple
-
+    metadata: dict | None = None
+    
     def __post_init__(self):
         self.args = tuple(self.args)
+        
 
 
 @dataclass
@@ -75,10 +76,10 @@ class Serializer:
             'user': self._to_ast(token.user),
             'expiration': self._to_ast(token.expiration),
         }
-
     def _datetime_to_ast(self, dt: datetime):
-        raise NotImplementedError("Missing implementation for datetime serialization")
-
+        #raise NotImplementedError("Missing implementation for datetime serialization")
+        return {'datetime':dt.isoformat()}
+    
     def _role_to_ast(self, role: Role):
         return {'name': role.name}
 
@@ -86,6 +87,7 @@ class Serializer:
         return {
             'name': self._to_ast(request.name),
             'args': [self._to_ast(arg) for arg in request.args],
+            'metadata' : self._to_ast(request.metadata) if request.metadata is not None else None,
         }
 
     def _response_to_ast(self, response: Response):
@@ -110,7 +112,7 @@ class Deserializer:
             method_name = f'_ast_to_{data["$type"].lower()}'
             if hasattr(self, method_name):
                 return getattr(self, method_name)(data)
-            raise ValueError(f"Unsupported type {data['type']}")
+            raise ValueError(f"Unsupported type {data['$type']}")
         if isinstance(data, list):
             return [self._ast_to_obj(item) for item in data]
         return data
@@ -138,22 +140,23 @@ class Deserializer:
         )
 
     def _ast_to_datetime(self, data):
-        raise NotImplementedError("Missing implementation for datetime deserialization")
-
+        #raise NotImplementedError("Missing implementation for datetime deserialization")
+        return datetime.fromisoformat(data['datetime'])
     def _ast_to_role(self, data):
         return Role[self._ast_to_obj(data['name'])]
 
     def _ast_to_request(self, data):
         return Request(
-            name=self._ast_to_obj(data['name']),
-            args=tuple(self._ast_to_obj(arg) for arg in data['args']),
-        )
+            name = self._ast_to_obj(data['name']),
+            args = tuple(self._ast_to_obj(arg) for arg in data['args']),
+            metadata = self._ast_to_obj(data['metadata']) # assuming 'token' field is optional in the request structure
+        ) if data.get('metadata') is not None else Request( name = self._ast_to_obj(data['name']),
+            args = tuple(self._ast_to_obj(arg) for arg in data['args']),)
 
     def _ast_to_response(self, data):
         return Response(
-            result=self._ast_to_obj(data['result']) if data['result'] is not None else None,
-            error=self._ast_to_obj(data['error']),
-        )
+            result = self._ast_to_obj(data['result']) if data['result'] is not None else None,
+            error = self._ast_to_obj(data['error']),)
 
 
 DEFAULT_SERIALIZER = Serializer()
