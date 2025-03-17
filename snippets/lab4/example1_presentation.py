@@ -1,8 +1,23 @@
 from .users import User, Credentials, Token, Role
-from datetime import datetime
-import json
 from dataclasses import dataclass
+from datetime import datetime
+from enum import Enum
+import json
 
+class Service(Enum):
+    """
+    Defines what kind of service the client will interact with via RPC
+    """
+    
+    DATABASE = 1
+    AUTHENTICATION = 2
+
+    @classmethod
+    def from_string(cls, value: str):
+        try:
+            return cls[value.upper()]
+        except KeyError:
+            raise ValueError(f"{value} is not a valid value for {cls.__name__}")
 
 @dataclass
 class Request:
@@ -11,11 +26,12 @@ class Request:
     """
 
     name: str
+    service: Service
+    token: Token | None
     args: tuple
 
     def __post_init__(self):
         self.args = tuple(self.args)
-
 
 @dataclass
 class Response:
@@ -70,14 +86,15 @@ class Serializer:
         }
 
     def _token_to_ast(self, token: Token):
-        return {
+        return None if token is None else \
+        {
             'signature': self._to_ast(token.signature),
             'user': self._to_ast(token.user),
             'expiration': self._to_ast(token.expiration),
         }
 
     def _datetime_to_ast(self, dt: datetime):
-        raise NotImplementedError("Missing implementation for datetime serialization")
+        return {'datetime': dt.isoformat()}
 
     def _role_to_ast(self, role: Role):
         return {'name': role.name}
@@ -85,6 +102,8 @@ class Serializer:
     def _request_to_ast(self, request: Request):
         return {
             'name': self._to_ast(request.name),
+            'service': self._to_ast(request.service.name.lower()),
+            'token': self._token_to_ast(request.token),
             'args': [self._to_ast(arg) for arg in request.args],
         }
 
@@ -131,21 +150,25 @@ class Deserializer:
         )
 
     def _ast_to_token(self, data):
-        return Token(
+        return None if data is None else \
+        Token(
             signature=self._ast_to_obj(data['signature']),
             user=self._ast_to_obj(data['user']),
-            expiration=self._ast_to_obj(data['expiration']),
+            expiration=self._ast_to_obj(data['expiration'])
         )
 
     def _ast_to_datetime(self, data):
-        raise NotImplementedError("Missing implementation for datetime deserialization")
+        return datetime.fromisoformat(data['datetime'])
 
     def _ast_to_role(self, data):
         return Role[self._ast_to_obj(data['name'])]
 
     def _ast_to_request(self, data):
+        service_type = self._ast_to_obj(data['service'])
         return Request(
             name=self._ast_to_obj(data['name']),
+            service=Service.from_string(service_type),
+            token=self._ast_to_token(data['token']),
             args=tuple(self._ast_to_obj(arg) for arg in data['args']),
         )
 
