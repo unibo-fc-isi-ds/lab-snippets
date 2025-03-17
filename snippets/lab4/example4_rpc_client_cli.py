@@ -11,7 +11,7 @@ if __name__ == '__main__':
         exit_on_error=False,
     )
     parser.add_argument('address', help='Server address in the form ip:port')
-    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check'])
+    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check', 'auth'])
     parser.add_argument('--user', '-u', help='Username')
     parser.add_argument('--email', '--address', '-a', nargs='+', help='Email address')
     parser.add_argument('--name', '-n', help='Full name')
@@ -40,11 +40,27 @@ if __name__ == '__main__':
                 user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
                 print(user_db.add_user(user))
             case 'get':
-                print(user_db.get_user(ids[0]))
+                token = None
+                try:
+                    with open('token.txt') as f:
+                        token = deserialize(f.read())
+                        if not isinstance(token, Token):
+                            raise ValueError("Invalid token")
+                except FileNotFoundError:
+                    raise ValueError("Missing Token, authentication is required")
+                print(user_db.get_user(ids[0], token))
             case 'check':
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
+            case 'auth':
+                credentials = Credentials(ids[0], args.password)
+                token = user_db.authenticate(credentials)
+                with open('token.txt', 'w') as f:
+                    f.write(serialize(token))
+                print(token)
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:
         print(f'[{type(e).__name__}]', *e.args)
+
+

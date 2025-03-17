@@ -1,6 +1,7 @@
 from snippets.lab3 import Server
-from snippets.lab4.users.impl import InMemoryUserDatabase
+from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
+from snippets.lab4.users import Role
 import traceback
 
 
@@ -8,6 +9,7 @@ class ServerStub(Server):
     def __init__(self, port):
         super().__init__(port, self.__on_connection_event)
         self.__user_db = InMemoryUserDatabase()
+        self.__auth_service = InMemoryAuthenticationService(self.__user_db)
     
     def __on_connection_event(self, event, connection, address, error):
         match event:
@@ -38,12 +40,26 @@ class ServerStub(Server):
     
     def __handle_request(self, request):
         try:
-            method = getattr(self.__user_db, request.name)
+            method = None
+            if request.name == 'authenticate':
+                method = getattr(self.__auth_service, request.name)
+            else:
+                method = getattr(self.__user_db, request.name)
+                if request.token:
+                    if not self.__auth_service.validate_token(request.token):
+                        error = 'Token expired or invalid'
+                        return Response(None, error)
+                    if not request.token.user.role == Role.ADMIN:
+                        error = 'Unauthorized operation, insufficient privileges'
+                        return Response(None, error)
+    
             result = method(*request.args)
             error = None
         except Exception as e:
+            import traceback
             result = None
-            error = " ".join(e.args)
+            error = traceback.format_exc()
+            error += " ".join(e.args)
         return Response(result, error)
 
 
