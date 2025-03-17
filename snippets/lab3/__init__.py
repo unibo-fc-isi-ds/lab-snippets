@@ -18,10 +18,12 @@ class Connection:
         if self.__callback:
             self.__receiver_thread.start()
 
+    # decoratore che ritorna la callback
     @property
     def callback(self):
         return self.__callback or (lambda *_: None)
     
+    # decoratore che setta la callback per la Connection
     @callback.setter
     def callback(self, value):
         if self.__callback:
@@ -34,12 +36,15 @@ class Connection:
     def closed(self):
         return self.__socket._closed
     
+    # questa funzione serve per inviare i messaggi, lo codifica in bytes se non lo è, prendendo in bytes anche la lunghezza del messaggio
     def send(self, message):
         if not isinstance(message, bytes):
             message = message.encode()
             message = int.to_bytes(len(message), 2, 'big') + message
-        self.__socket.sendall(message)
+        self.__socket.sendall(message) # invia poi il messaggio
 
+    # con questa funzione, utilizza prima il socket per recuperare prima le dimensioni del messaggio, se la lunghezza del messaggio
+    # non è 0, allora recupera il resto del messaggio usando recv e lo codifica(la prima chiamata recupera solo la possibile dimensione)
     def receive(self):
         length = int.from_bytes(self.__socket.recv(2), 'big')
         if length == 0:
@@ -72,14 +77,18 @@ class Connection:
         self.callback(event, payload, connection, error)
 
 
+# classe per i clienti
 class Client(Connection):
     def __init__(self, server_address, callback=None):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.bind(address(port=0))
-        sock.connect(address(*server_address))
+        sock.connect(address(*server_address)) # questo per connettersi ad un server (metto la * perchè server_address è una tupla con IP e port)
         super().__init__(sock, callback)
 
 
+# classe per il server TCP
+# Il server è quello che aspetta stando in ascolto per possibili nuove connessioni
+# aspetta e le accetta, per poi cominciare ad inviare e ricevere dati
 class Server:
     def __init__(self, port, callback=None):
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -102,11 +111,11 @@ class Server:
             self.__listener_thread.start()
     
     def __handle_incoming_connections(self):
-        self.__socket.listen()
+        self.__socket.listen() # listen serve per poter fare sì che il server accetti connessioni in arrivo (posso anche metterci un numero per indicare quante ne aspetto)
         self.on_event('listen', address=self.__socket.getsockname())
         try:
             while not self.__socket._closed:
-                socket, address = self.__socket.accept()
+                socket, address = self.__socket.accept() # con questo si accetta una nuova connessione
                 connection = Connection(socket)
                 self.on_event('connect', connection, address)
         except ConnectionAbortedError as e:
