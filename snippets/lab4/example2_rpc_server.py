@@ -1,13 +1,15 @@
 from snippets.lab3 import Server
-from snippets.lab4.users.impl import InMemoryUserDatabase
+from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 import traceback
 
 
 class ServerStub(Server):
-    def __init__(self, port):
+    def __init__(self, port, suppress_error_log = False):
         super().__init__(port, self.__on_connection_event)
-        self.__user_db = InMemoryUserDatabase()
+        self.auth_service = InMemoryAuthenticationService(InMemoryUserDatabase())
+        self.auth_request_names = ["authenticate", "validate_token"]
+        self.suppress_error_log = suppress_error_log
     
     def __on_connection_event(self, event, connection, address, error):
         match event:
@@ -16,7 +18,8 @@ class ServerStub(Server):
             case 'connect':
                 connection.callback = self.__on_message_event
             case 'error':
-                traceback.print_exception(error)
+                if not self.suppress_error_log:
+                    traceback.print_exception(error)
             case 'stop':
                 print('Server stopped')
     
@@ -38,7 +41,11 @@ class ServerStub(Server):
     
     def __handle_request(self, request):
         try:
-            method = getattr(self.__user_db, request.name)
+            if request.name not in self.auth_request_names:  
+                method = getattr(self.auth_service.user_db, request.name)
+            else:
+                method = getattr(self.auth_service, request.name)
+                
             result = method(*request.args)
             error = None
         except Exception as e:
@@ -46,8 +53,7 @@ class ServerStub(Server):
             error = " ".join(e.args)
         return Response(result, error)
 
-
-if __name__ == '__main__':
+def main():
     import sys
     server = ServerStub(int(sys.argv[1]))
     while True:
@@ -56,3 +62,8 @@ if __name__ == '__main__':
         except (EOFError, KeyboardInterrupt):
             break
     server.close()
+
+#poetry scripts needs an entrypoint, this way the module can be run both as script and as module
+if __name__ == '__main__':
+    main()
+    
