@@ -1,6 +1,27 @@
+from datetime import timedelta
 from snippets.lab3 import Client, address
 from snippets.lab4.users import *
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
+from snippets.lab4.users import Credentials, Token
+from pathlib import Path
+
+_TOKEN_DIR = Path("./token/")
+_TOKEN_PATH = _TOKEN_DIR / "token.json"
+
+def _read_token() -> Token | None:
+    if _TOKEN_PATH.exists():
+        try:
+            return deserialize(_TOKEN_PATH.read_text("utf-8"))
+        except Exception as e:
+            print(f"Failed to deserialize {_TOKEN_PATH}: {e}")
+    return None
+
+def _save_token(token: Token):
+    try:
+        _TOKEN_DIR.mkdir(exist_ok=True)
+        _TOKEN_PATH.write_text(serialize(token), encoding="utf-8")
+    except Exception as e:
+        print(f"Failed to write to {_TOKEN_PATH}: {e}")
 
 
 class ClientStub:
@@ -11,7 +32,7 @@ class ClientStub:
         client = Client(self.__server_address)
         try:
             print('# Connected to %s:%d' % client.remote_address)
-            request = Request(name, args)
+            request = Request(name, args, {"token": _read_token()})
             print('# Marshalling', request, 'towards', "%s:%d" % client.remote_address)
             request = serialize(request)
             print('# Sending message:', request.replace('\n', '\n# '))
@@ -42,6 +63,19 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
     def check_password(self, credentials: Credentials) -> bool:
         return self.rpc('check_password', credentials)
 
+class RemoteAuthenticationService(ClientStub, AuthenticationService):
+    def __init__(self, server_address):
+        super().__init__(server_address)
+
+    def authenticate(self, credentials: Credentials, duration: timedelta = None) -> Token:
+        token = self.rpc('authenticate', credentials, duration)
+        if token:
+            _save_token(token)
+        return token
+
+    def validate_token(self, token: Token) -> bool:
+        token = token or _read_token()
+        return self.rpc('validate_token', token) if token else False
 
 if __name__ == '__main__':
     from snippets.lab4.example0_users import gc_user, gc_credentials_ok, gc_credentials_wrong
