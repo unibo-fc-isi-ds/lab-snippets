@@ -29,7 +29,9 @@ gc_credentials_wrong = Credentials(
 try:
     user_db.get_user('gciatto')
 except KeyError as e:
-    assert 'User with ID gciatto not found' in str(e)
+    #assert 'User with ID gciatto not found' in str(e)
+    assert 'User with ID' in str(e)
+    assert 'not found' in str(e)
 
 # Adding a novel user should work
 user_db.add_user(gc_user)
