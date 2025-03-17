@@ -1,17 +1,21 @@
 from snippets.lab3 import Client, address
 from snippets.lab4.users import *
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
+import os
 
+FILEAUTH="auth.json"
+LOGOUT_FAIL="Error while logging out"
+LOGOUT_SUCCESS="User logged out correctly"
 
 class ClientStub:
     def __init__(self, server_address: tuple[str, int]):
         self.__server_address = address(*server_address)
 
-    def rpc(self, name, *args):
+    def rpc(self, name, authToken, *args):
         client = Client(self.__server_address)
         try:
             print('# Connected to %s:%d' % client.remote_address)
-            request = Request(name, args)
+            request = Request(name, args, metadata=authToken)
             print('# Marshalling', request, 'towards', "%s:%d" % client.remote_address)
             request = serialize(request)
             print('# Sending message:', request.replace('\n', '\n# '))
@@ -23,24 +27,41 @@ class ClientStub:
             print('# Unmarshalled', response, 'from', "%s:%d" % client.remote_address)
             if response.error:
                 raise RuntimeError(response.error)
+            if isinstance(response.result, Token):
+                writeFile(response.result)
+                
             return response.result
         finally:
             client.close()
             print('# Disconnected from %s:%d' % client.remote_address)
 
 
-class RemoteUserDatabase(ClientStub, UserDatabase):
+class RemoteUserAuthDatabase(ClientStub, UserDatabase):
     def __init__(self, server_address):
         super().__init__(server_address)
 
     def add_user(self, user: User):
-        return self.rpc('add_user', user)
+        return self.rpc('add_user', None, user)
 
     def get_user(self, id: str) -> User:
-        return self.rpc('get_user', id)
+        t=readFile()
+        return self.rpc('get_user', t, id)
 
     def check_password(self, credentials: Credentials) -> bool:
-        return self.rpc('check_password', credentials)
+        t=readFile()
+        return self.rpc('check_password', t, credentials)
+    
+    def authenticate(self, credentials: Credentials):
+        t=self.rpc('authenticate', None, credentials)
+        writeFile(t)
+    
+    def logout(self):
+        if os.path.exists(FILEAUTH):
+            os.remove(FILEAUTH)
+            return LOGOUT_SUCCESS
+        else:
+            return LOGOUT_FAIL
+
 
 
 if __name__ == '__main__':
@@ -48,7 +69,7 @@ if __name__ == '__main__':
     import sys
 
 
-    user_db = RemoteUserDatabase(address(sys.argv[1]))
+    user_db = RemoteUserAuthDatabase(address(sys.argv[1]))
 
     # Trying to get a user that does not exist should raise a KeyError
     try:
@@ -75,3 +96,26 @@ if __name__ == '__main__':
 
     # Checking credentials should fail if the password is wrong
     assert user_db.check_password(gc_credentials_wrong) == False
+
+
+def writeFile(t:Token):
+    if(t!=None):
+        json_object = serialize(t)
+        #write token to a file
+        with open(FILEAUTH, "w") as outfile:
+            outfile.write(json_object)
+            print('# Authentication token saved')
+
+def readFile()->Token:
+    if os.path.exists(FILEAUTH):
+        # Opening JSON file
+        with open(FILEAUTH, 'r') as openfile:
+        # Reading from json file
+            json_string = openfile.read() #string containing Token is read
+            json_object=deserialize(json_string) #token is parsed into a Token object
+            if isinstance(json_object, Token):
+                print('# Authentication token read')
+                return json_object
+    else:
+        return None
+        
