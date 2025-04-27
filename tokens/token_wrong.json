@@ -1,0 +1,22 @@
+{
+  "signature": "c9baa2122b8a62c633640089c9b6608eb38a4a00a9d8808dc3cf1fbc3b6ed4ce",
+  "user": {
+    "username": "gciatto",
+    "emails": [
+      "giovanni.ciatto@gmail.com",
+      "giovanni.ciatto@unibo.it"
+    ],
+    "full_name": "Giovanni Ciatto",
+    "role": {
+      "name": "ADMIN",
+      "$type": "Role"
+    },
+    "password": null,
+    "$type": "User"
+  },
+  "expiration": {
+    "datetime": "2024-12-03T14:46:33.590201",
+    "$type": "datetime"
+  },
+  "$type": "Token"
+}
