@@ -2,16 +2,23 @@ from snippets.lab3 import Client, address
 from snippets.lab4.users import *
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 
+token_filepath="token.txt"
 
 class ClientStub:
     def __init__(self, server_address: tuple[str, int]):
         self.__server_address = address(*server_address)
+        self.__token = None
+        try:
+            with open(token_filepath, 'r') as file:
+                self.__token = deserialize(file.read());
+        except FileNotFoundError:
+            print("Token file not existing")
 
     def rpc(self, name, *args):
         client = Client(self.__server_address)
         try:
             print('# Connected to %s:%d' % client.remote_address)
-            request = Request(name, args)
+            request = Request(name, args, self.__token)
             print('# Marshalling', request, 'towards', "%s:%d" % client.remote_address)
             request = serialize(request)
             print('# Sending message:', request.replace('\n', '\n# '))
@@ -41,6 +48,20 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
 
     def check_password(self, credentials: Credentials) -> bool:
         return self.rpc('check_password', credentials)
+    
+class RemoteAuthenticationService(ClientStub, AuthenticationService):
+    def __init__(self, server_address):
+        super().__init__(server_address)
+
+    def authenticate(self, credentials, duration = None) -> Token:
+        token = self.rpc('authenticate', credentials, duration)
+        with open(token_filepath, 'w') as file:
+            file.write(serialize(token))
+            print(f"Token write to file as \"{token_filepath}\"")
+        return token
+    
+    def validate_token(self, token) -> bool:
+        return self.rpc("validate_token", token)
 
 
 if __name__ == '__main__':
