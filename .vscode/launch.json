@@ -4,6 +4,7 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+
         {
             "name": "L1E1: Game Loop",
             "type": "debugpy",
@@ -100,7 +101,7 @@
             "request": "launch",
             "module": "snippets.lab3.example1_tcp_echo_wrong",
             "args": [
-                "server",
+                "starter",
                 "8080"
             ],
         },{
@@ -149,6 +150,69 @@
                 "localhost:8080"
             ],
         },{
+            "name": "Test 1: introduce first user",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab3.exercise_tcp_group_chat",
+            "args": [
+                "8080",
+                "Andrea",
+            ],
+        },{
+            "name": "Test 2: introduce second user",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab3.exercise_tcp_group_chat",
+            "args": [
+                "8081",
+                "Giovanni",
+                "localhost:8080"
+            ],
+        },{
+            "name": "Test 3: introduce third user",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab3.exercise_tcp_group_chat",
+            "args": [
+                "8082",
+                "Francesco",
+                "localhost:8080",
+                "localhost:8081"
+            ],
+        },{
+            "name": "Test 4: first user exited and wants to re-enter",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab3.exercise_tcp_group_chat",
+            "args": [
+                "8080",
+                "Andrea",
+                "localhost:8081",
+                "localhost:8082"
+            ],
+        },{
+            "name": "Test 5: second user exited and wants to re-enter",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab3.exercise_tcp_group_chat",
+            "args": [
+                "8081",
+                "Giovanni",
+                "localhost:8080",
+                "localhost:8082"
+            ],
+        },{
+            "name": "Test 6: third user exited and wants to re-enter",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab3.exercise_tcp_group_chat",
+            "args": [
+                "8081",
+                "Francesco",
+                "localhost:8080",
+                "localhost:8081"
+            ],
+        },{
             "name": "L4E0: Users",
             "type": "debugpy",
             "request": "launch",
@@ -175,6 +239,57 @@
             "module": "snippets.lab4.example3_rpc_client",
             "args": [
                 "localhost:8080"
+            ],
+        },{
+            "name": "RPC TEST 0: start Server",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab4.example2_rpc_server",
+            "args": [
+                "8080",
+            ],
+        },{
+            "name": "RPC TEST 1: add User",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab4.example4_rpc_client_cli",
+            "args": [
+                "localhost:8080",
+                "add",
+                "-u",
+                "abianchi",
+                "-a",
+                "andBianchi@gmail.com",
+                "-n",
+                "Andrea Bianchi",
+                "-r",
+                "admin",
+                "-p",
+                "good_password"
+            ],
+        },{
+            "name": "RPC TEST 2: authenticate User",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab4.example4_rpc_client_cli",
+            "args": [
+                "localhost:8080",
+                "authenticate",
+                "-u",
+                "abianchi",
+                "-p",
+                "good_password"
+            ],
+        },{
+            "name": "RPC TEST 3: validate token of User",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "snippets.lab4.example4_rpc_client_cli",
+            "args": [
+                "localhost:8080",
+                "validate_token",
+                "-u",
+                "abianchi",
             ],
         },
     ]
