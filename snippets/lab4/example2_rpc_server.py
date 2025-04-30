@@ -1,14 +1,20 @@
 from snippets.lab3 import Server
-from snippets.lab4.users.impl import InMemoryUserDatabase
-from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
+from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService
+from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response, Service
+from snippets.lab4.users.cryptography import DefaultSigner
+from snippets.lab4.users import Role
 import traceback
 
+TEST_SECRET = 'secret'
 
 class ServerStub(Server):
-    def __init__(self, port):
+    def __init__(self, port, debug=False):
         super().__init__(port, self.__on_connection_event)
-        self.__user_db = InMemoryUserDatabase()
-    
+        self.__user_db = InMemoryUserDatabase(debug)
+        self.__auth_service = \
+            InMemoryAuthenticationService(self.__user_db) if not debug else \
+            InMemoryAuthenticationService(self.__user_db, DefaultSigner(TEST_SECRET))
+
     def __on_connection_event(self, event, connection, address, error):
         match event:
             case 'listen':
@@ -36,9 +42,27 @@ class ServerStub(Server):
             case 'close':
                 print('[%s:%d] Close connection' % connection.remote_address)
     
-    def __handle_request(self, request):
+    def __handle_request(self, request: Request):
         try:
-            method = getattr(self.__user_db, request.name)
+            match request.service:
+                case Service.DATABASE:
+                    method = getattr(self.__user_db, request.name)
+                    # checks if method is protected, i.e. it requires authorization (Token + Admin role)
+                    if getattr(method, 'requires_authorization', False):
+                        if request.token is None:
+                            raise Exception('Bad request: protected operation called with no token provided')
+                        
+                        token_is_not_valid = not self.__auth_service.validate_token(token=request.token)
+                        if token_is_not_valid:
+                            raise Exception('Bad request: protected operation called with invalid token provided')
+                        
+                        requester = self.__user_db.get_user(id=request.token.user.username)
+                        if requester.role is not Role.ADMIN:
+                            raise Exception('Bad request: protected operation called by unauthorized user')
+                case Service.AUTHENTICATION:
+                    method = getattr(self.__auth_service, request.name)
+                case _:
+                    raise Exception('Bad Request: no valid service called')
             result = method(*request.args)
             error = None
         except Exception as e:
