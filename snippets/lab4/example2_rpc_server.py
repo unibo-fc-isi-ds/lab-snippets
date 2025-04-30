@@ -1,13 +1,25 @@
 from snippets.lab3 import Server
-from snippets.lab4.users.impl import InMemoryUserDatabase
+from snippets.lab4.users import Role, Token
+from snippets.lab4.users.impl import InMemoryAuthenticationService, InMemoryUserDatabase
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 import traceback
+import os
 
+_ENV_AUTH = "REQUIRES_AUTH"
+_ENV_ADMIN = "REQUIRES_ADMIN"
 
 class ServerStub(Server):
     def __init__(self, port):
         super().__init__(port, self.__on_connection_event)
         self.__user_db = InMemoryUserDatabase()
+        self.__auth = InMemoryAuthenticationService(self.__user_db)
+        self.__config = {
+            _ENV_AUTH: self.__read_envvar(_ENV_AUTH),
+            _ENV_ADMIN: self.__read_envvar(_ENV_ADMIN)
+        }
+
+    def __read_envvar(self, name: str) -> list[str]:
+        return [func.strip() for func in os.environ[name].split(",")]
     
     def __on_connection_event(self, event, connection, address, error):
         match event:
@@ -36,16 +48,32 @@ class ServerStub(Server):
             case 'close':
                 print('[%s:%d] Close connection' % connection.remote_address)
     
-    def __handle_request(self, request):
-        try:
-            method = getattr(self.__user_db, request.name)
-            result = method(*request.args)
-            error = None
-        except Exception as e:
-            result = None
-            error = " ".join(e.args)
-        return Response(result, error)
+    def __requires_auth(self, request_name: str) -> bool:
+        return request_name in self.__config[_ENV_AUTH]
 
+    def __requires_admin(self, request_name: str) -> bool:
+        return request_name in self.__config[_ENV_ADMIN]
+
+    def __can_perform_request(self, request) -> tuple[bool, str]:
+        if self.__requires_auth(request.name):
+            token: Token = request.metadata["token"]
+            if not token:
+                return (False, "A token is required.")
+            if not self.__auth.validate_token(token):
+                return (False, "Invalid token.")
+            if self.__requires_admin(request.name) and token.user.role != Role.ADMIN:
+                return (False, f"User {token.user.username} does not have admin privileges.")
+        return (True, "")
+
+    def __handle_request(self, request):
+        can_perform, err = self.__can_perform_request(request)
+        if not can_perform:
+            return Response(None, err)
+        for backend in [self.__user_db, self.__auth]:
+            method = getattr(backend, request.name, None)
+            if callable(method):
+                return Response(method(*request.args), None)
+        return Response(None, f"Unhandled request '{request.name}'.")
 
 if __name__ == '__main__':
     import sys
