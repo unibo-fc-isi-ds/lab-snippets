@@ -1,5 +1,6 @@
 from snippets.lab3 import Server
-from snippets.lab4.users.impl import InMemoryUserDatabase
+from snippets.lab4.users import Role
+from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 import traceback
 
@@ -8,6 +9,7 @@ class ServerStub(Server):
     def __init__(self, port):
         super().__init__(port, self.__on_connection_event)
         self.__user_db = InMemoryUserDatabase()
+        self.__auth = InMemoryAuthenticationService(self.__user_db)
     
     def __on_connection_event(self, event, connection, address, error):
         match event:
@@ -38,9 +40,29 @@ class ServerStub(Server):
     
     def __handle_request(self, request):
         try:
-            method = getattr(self.__user_db, request.name)
-            result = method(*request.args)
-            error = None
+            match request.name:
+                case 'authenticate' | 'validate_token':
+                    method = getattr(self.__auth, request.name)
+                    result = method(*request.args)
+                    error = None
+                case 'get_user' | 'check_password':
+                    if request.token is not None:
+                        token = request.token
+                        if(self.__auth.validate_token(token) and token.user.role == Role.ADMIN):
+                            method = getattr(self.__user_db, request.name)
+                            result = method(*request.args)
+                            error = None
+                        else:
+                            result = None
+                            error = "Request rejected: the token is not valid or role not authorized"
+                    else:
+                        result = None
+                        error = "Request rejected: you're not authenticated yet"
+                
+                case _:
+                    method = getattr(self.__user_db, request.name)
+                    result = method(*request.args)
+                    error = None
         except Exception as e:
             result = None
             error = " ".join(e.args)
