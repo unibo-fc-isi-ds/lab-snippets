@@ -1,3 +1,9 @@
+# Some istruction
+1. to do the "get" action, first take the signature with "authenticate" action
+2. "authenticate" need user(-u) and password(-p)
+3. "get" need user(-u) and admin's signature(-s)
+
+
 # Lab snippets, examples, and exercises
 
 This repository contains the lab snippets, examples, and exercises 
