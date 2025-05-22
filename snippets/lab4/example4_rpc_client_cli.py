@@ -3,6 +3,18 @@ import argparse
 import sys
 
 
+def __check_password_provided(args):
+    if not args.password:
+        raise ValueError("Password is required")
+
+def __strip_token(args):
+    try:
+        with open(args.path, 'r') as file:
+            token = file.read().strip()
+            return token
+    except FileNotFoundError:
+        raise ValueError("Token file not found, you are not authenticated")
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(
@@ -11,12 +23,13 @@ if __name__ == '__main__':
         exit_on_error=False,
     )
     parser.add_argument('address', help='Server address in the form ip:port')
-    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check'])
+    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check', 'authenticate', 'validate'])
     parser.add_argument('--user', '-u', help='Username')
     parser.add_argument('--email', '--address', '-a', nargs='+', help='Email address')
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
+    parser.add_argument('--path', '-th', help='Token path')
 
     if len(sys.argv) > 1:
         args = parser.parse_args()
@@ -26,6 +39,7 @@ if __name__ == '__main__':
 
     args.address = address(args.address)
     user_db = RemoteUserDatabase(args.address)
+    auth = RemoteAuthenticationService(args.address)
 
     try :
         ids = (args.email or []) + [args.user]
@@ -33,17 +47,43 @@ if __name__ == '__main__':
             raise ValueError("Username or email address is required")
         match args.command:
             case 'add':
-                if not args.password:
-                    raise ValueError("Password is required")
+                __check_password_provided(args)
                 if not args.name:
                     raise ValueError("Full name is required")
                 user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
                 print(user_db.add_user(user))
             case 'get':
-                print(user_db.get_user(ids[0]))
+                if not args.path:
+                    raise ValueError("Token is required, only admins can perform this operation")
+                elif args.path:
+                    token = __strip_token(args)
+                    print(user_db.get_user(ids[0], deserialize(token)))
+                else:
+                    raise ValueError("Something went wrong, check your inputs")
+                
             case 'check':
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
+
+            case 'authenticate':
+                credentials = Credentials(ids[0], args.password)
+                __check_password_provided(args)
+                token = auth.authenticate(credentials)
+                print("User logged in")
+                if args.path:
+                    with open(args.path, 'w') as f:
+                        f.write(serialize(token))
+                print(token)
+
+            case 'validate':
+                if args.path:
+                    token = __strip_token(args)
+                elif args.token and args.path:
+                    token = args.token
+                else:
+                    raise ValueError("Provide a token path")
+                print(auth.validate(deserialize(token)))
+                
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:
