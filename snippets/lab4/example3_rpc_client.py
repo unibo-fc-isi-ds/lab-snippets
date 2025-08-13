@@ -7,11 +7,11 @@ class ClientStub:
     def __init__(self, server_address: tuple[str, int]):
         self.__server_address = address(*server_address)
 
-    def rpc(self, name, *args):
+    def rpc(self, name, *args, token: Token = None):
         client = Client(self.__server_address)
         try:
             print('# Connected to %s:%d' % client.remote_address)
-            request = Request(name, args)
+            request = Request(name, args, token)
             print('# Marshalling', request, 'towards', "%s:%d" % client.remote_address)
             request = serialize(request)
             print('# Sending message:', request.replace('\n', '\n# '))
@@ -36,11 +36,21 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
     def add_user(self, user: User):
         return self.rpc('add_user', user)
 
-    def get_user(self, id: str) -> User:
-        return self.rpc('get_user', id)
+    def get_user(self, id: str, token: Token = None) -> User:
+        return self.rpc('get_user', id, token=token)
 
     def check_password(self, credentials: Credentials) -> bool:
         return self.rpc('check_password', credentials)
+
+class RemoteAuthenticationService(ClientStub, AuthenticationService):
+    def __init__(self, server_address):
+        super().__init__(server_address)
+
+    def authenticate(self, credentials: Credentials, duration = None) -> Token:
+        return self.rpc('authenticate', credentials, duration)
+
+    def validate_token(self, token: Token) -> bool:
+        return self.rpc("validate_token", token)
 
 
 if __name__ == '__main__':
