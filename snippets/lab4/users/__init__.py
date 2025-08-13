@@ -62,6 +62,7 @@ class Token(Datum):
         if not self.signature:
             raise ValueError("Signature is required")
     
+    
 
 class UserDatabase(Protocol):
     def add_user(self, user: User):
