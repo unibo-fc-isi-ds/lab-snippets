@@ -3,8 +3,8 @@ import socket
 import sys
 
 
-mode = sys.argv[1].lower().strip()
-BUFFER_SIZE = 1024
+mode = sys.argv[1].lower().strip() # prima verifico se sta entrando il server o il client
+BUFFER_SIZE = 1024 # dimensione del buffer che riceve
 
 
 if mode == 'client':
@@ -28,12 +28,14 @@ if mode == 'client':
     sock.close()
     print("# connection closed")
 elif mode == 'server':
-    port = int(sys.argv[2])
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
-        server.bind(address(port=port)) 
-        server.listen(1) # only one connection at a time
+    port = int(sys.argv[2]) # qui specifico la porta da passare al server a linea di comando
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server: # viene creato il socket server
+        server.bind(address(port=port)) # che viene bindato alla porta passata (con indirizzo IP "0.0.0.0")
+        server.listen(1) # ascolta solo una connessione alla volta
         print(f"# echo server listening on port {port}")
-        sock, addr = server.accept()
+        sock, addr = server.accept() # il server aspetta che venga stabilita una connessione e si bloccherà qui
+        # quando un cliente riesce a contattare il server, il server legge un chunk di bytes di dimensione fissa del client
+        # e poi rinvia tutto al client
         print(f"# start echoing data from {addr}")
         while True:
             buffer = sock.recv(BUFFER_SIZE)
