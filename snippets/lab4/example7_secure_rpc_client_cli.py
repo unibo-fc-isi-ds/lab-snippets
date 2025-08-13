@@ -1,3 +1,4 @@
+from snippets.lab4.example6_secure_rpc_client import SecureRemoteAuthenticationDatabaseService
 from .example3_rpc_client import *
 import argparse
 import sys
@@ -6,7 +7,7 @@ import sys
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(
-        prog=f'python -m snippets -l 4 -e 4',
+        prog=f'python -m snippets -l 4 -e 7',
         description='RPC client for user database',
         exit_on_error=False,
     )
@@ -20,6 +21,9 @@ if __name__ == '__main__':
     parser.add_argument('--duration', '-d', help='Token duration in seconds', type=int)
     parser.add_argument('--datetime', '-dt', help='Datetime in the format YYYY-MM-DDTHH:MM:SS')
     parser.add_argument('--signature', '-s', help='Token signature')
+    parser.add_argument('--admin_user', '-au', help='Username of admin')
+    parser.add_argument('--admin_email', '--aaddress', '-aa', nargs='+', help='Email address of admin')
+    parser.add_argument('--admin_name', '-an', help='Full name of admin')
 
     if len(sys.argv) > 1:
         args = parser.parse_args()
@@ -28,7 +32,7 @@ if __name__ == '__main__':
         sys.exit(0)
 
     args.address = address(args.address)
-    db_auth_service = RemoteAuthenticationDatabaseService(address(sys.argv[1]))
+    db_auth_service = SecureRemoteAuthenticationDatabaseService(address(sys.argv[1]))
 
     try :
         ids = (args.email or []) + [args.user]
@@ -43,7 +47,10 @@ if __name__ == '__main__':
                 user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
                 print(db_auth_service.add_user(user))
             case 'get':
-                print(db_auth_service.get_user(ids[0]))
+                if not args.admin_user or not args.admin_email or not args.admin_name or not args.role or not args.datetime or not args.signature:
+                    raise ValueError("The following admin information is needed to create a Token: Username, Email, Full Name, Role, Datetime and Signature")
+                admin_token = Token(User(args.admin_user, args.admin_email, args.admin_name, Role[args.role.upper()]), datetime.fromisoformat(args.datetime), args.signature)
+                print(db_auth_service.get_user(ids[0], metadata=admin_token))
             case 'check':
                 credentials = Credentials(ids[0], args.password)
                 print(db_auth_service.check_password(credentials))
