@@ -12,6 +12,7 @@ class Request:
 
     name: str
     args: tuple
+    metadata: dict
 
     def __post_init__(self):
         self.args = tuple(self.args)
@@ -77,7 +78,7 @@ class Serializer:
         }
 
     def _datetime_to_ast(self, dt: datetime):
-        raise NotImplementedError("Missing implementation for datetime serialization")
+        return {'date': dt.isoformat()}
 
     def _role_to_ast(self, role: Role):
         return {'name': role.name}
@@ -86,6 +87,7 @@ class Serializer:
         return {
             'name': self._to_ast(request.name),
             'args': [self._to_ast(arg) for arg in request.args],
+            'metadata': {key: self._to_ast(value) for key, value in request.metadata.items()},
         }
 
     def _response_to_ast(self, response: Response):
@@ -138,7 +140,7 @@ class Deserializer:
         )
 
     def _ast_to_datetime(self, data):
-        raise NotImplementedError("Missing implementation for datetime deserialization")
+        return datetime.fromisoformat(data['date'])
 
     def _ast_to_role(self, data):
         return Role[self._ast_to_obj(data['name'])]
@@ -147,11 +149,14 @@ class Deserializer:
         return Request(
             name=self._ast_to_obj(data['name']),
             args=tuple(self._ast_to_obj(arg) for arg in data['args']),
+            metadata={key: self._ast_to_obj(
+                value) for key, value in data['metadata'].items()},
         )
 
     def _ast_to_response(self, data):
         return Response(
-            result=self._ast_to_obj(data['result']) if data['result'] is not None else None,
+            result=self._ast_to_obj(
+                data['result']) if data['result'] is not None else None,
             error=self._ast_to_obj(data['error']),
         )
 
@@ -174,11 +179,13 @@ if __name__ == '__main__':
     request = Request(
         name='my_function',
         args=(
-            gc_credentials_wrong, # an instance of Credentials
-            gc_user, # an instance of User
-            ["a string", 42, 3.14, True, False], # a list, containing various primitive types
-            {'key': 'value'}, # a dictionary
-            Response(None, 'an error'), # a Response, which contains a None field
+            gc_credentials_wrong,  # an instance of Credentials
+            gc_user,  # an instance of User
+            # a list, containing various primitive types
+            ["a string", 42, 3.14, True, False],
+            {'key': 'value'},  # a dictionary
+            # a Response, which contains a None field
+            Response(None, 'an error'),
         )
     )
     serialized = serialize(request)
