@@ -1,13 +1,15 @@
 from snippets.lab3 import Server
-from snippets.lab4.users.impl import InMemoryUserDatabase
+from snippets.lab4.users.impl import *
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 import traceback
 
+_PRINT_LOGS = __name__ == '__main__'
 
 class ServerStub(Server):
     def __init__(self, port):
         super().__init__(port, self.__on_connection_event)
         self.__user_db = InMemoryUserDatabase()
+        self.__auth = InMemoryAuthenticationService(self.__user_db, debug=_PRINT_LOGS)
     
     def __on_connection_event(self, event, connection, address, error):
         match event:
@@ -38,14 +40,27 @@ class ServerStub(Server):
     
     def __handle_request(self, request):
         try:
-            method = getattr(self.__user_db, request.name)
+            if hasattr(self.__auth, request.name):
+                method = getattr(self.__auth, request.name)
+            elif hasattr(self.__user_db, request.name):
+                method = getattr(self.__user_db, request.name)
+                #if get user, validate token, if ok proceed with the request, if not return unauthorized error
+                if request.name == 'get_user':
+                    request.metadata = request.args[1]
+                    request.args = request.args[:1]
+                    token = request.metadata
+                    #no login
+                    if not token:
+                        return Response(None, 'Not authenticated')
+                    #validate token
+                    if not self.__auth.validate_token(request.metadata):
+                        return Response(None, 'Login token expired, please login again')
             result = method(*request.args)
             error = None
         except Exception as e:
             result = None
             error = " ".join(e.args)
         return Response(result, error)
-
 
 if __name__ == '__main__':
     import sys
