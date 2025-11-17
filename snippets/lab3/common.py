@@ -1,0 +1,17 @@
+# Constants
+CONN_TYPE = "tcp"
+CMD_PREFIX = "/"
+CMD_JOIN = CMD_PREFIX + "join"
+CMD_DIAL = CMD_PREFIX + "dial"
+CMD_INIT = CMD_PREFIX + "init"
+CMD_LEAVE = CMD_PREFIX + "leave"
+CMD_CHATSEND = CMD_PREFIX + "chatS"
+CMD_CHATRECEIVE = CMD_PREFIX + "chatR"
+
+# ANSI Color codes
+PURPLE_CLR = "\033[35m"
+CYAN_CLR = "\033[36m"
+WHITE_CLR = "\033[10m"
+YELLOW_CLR = "\033[33m"
+GREEN_CLR = "\033[32m"
+RESET_CLR = "\033[0m"
