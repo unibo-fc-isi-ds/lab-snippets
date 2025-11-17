@@ -101,7 +101,10 @@ class Peer:
             conn.close()
 
 
-def on_message_received(event: str, payload: str | None, conn: Connection | None, error: Exception | None) -> None:
+def on_message_received(event: str,
+                        payload: str | None,
+                        conn: Connection | None,
+                        error: Exception | None) -> None:
     match event:
         case 'message':
             print(payload)
