@@ -365,6 +365,9 @@ class ClientGroup:
                             pass
 
             except Exception as e:
+                if self.is_running and isinstance(e, OSError):
+                    self.quit()
+                    break
                 print(f"Error reading from socket: {e}")
                 self.quit()
                 break
