@@ -1,12 +1,9 @@
 from snippets.lab2 import *
 import threading
 
+#Questa classe contiene una serie di utiliy functions per la gestione di connessioni TCP
 
-# Uncomment this line to observe timeout errors more often.
-# Beware: short timeouts can make demonstrations more difficult to follow.
-# socket.setdefaulttimeout(5) # set default timeout for blocking operations to 5 seconds
-
-
+## Classe Connection: rappresenta una connessione TCP tra due peer
 class Connection:
     def __init__(self, socket: socket.socket, callback=None):
         self.__socket = socket
@@ -15,10 +12,10 @@ class Connection:
         self.__notify_closed = False
         self.__callback = callback
         self.__receiver_thread = threading.Thread(target=self.__handle_incoming_messages, daemon=True)
-        if self.__callback:
+        if self.__callback: #if a callback is provided, start the receiver thread immediately
             self.__receiver_thread.start()
 
-    @property
+    @property # getter for callback
     def callback(self):
         return self.__callback or (lambda *_: None)
     
@@ -30,7 +27,7 @@ class Connection:
         if value:
             self.__receiver_thread.start()
 
-    @property
+    @property 
     def closed(self):
         return self.__socket._closed
     
@@ -71,7 +68,7 @@ class Connection:
             connection = self
         self.callback(event, payload, connection, error)
 
-
+## Classe Client: rappresenta un client TCP che si connette a un server
 class Client(Connection):
     def __init__(self, server_address, callback=None):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -79,7 +76,7 @@ class Client(Connection):
         sock.connect(address(*server_address))
         super().__init__(sock, callback)
 
-
+## Classe Server: rappresenta un server TCP che accetta connessioni in ingresso
 class Server:
     def __init__(self, port, callback=None):
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
