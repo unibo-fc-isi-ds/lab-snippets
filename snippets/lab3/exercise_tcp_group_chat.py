@@ -54,7 +54,6 @@ class Peer:
             sock.bind(address(port=0))
             sock.connect(peer)
             conn = Connection(sock)
-            conn.callback = self.__wrap_callback(conn)
         except Exception as e:
             self.on_event('error', error=e)
         else:
