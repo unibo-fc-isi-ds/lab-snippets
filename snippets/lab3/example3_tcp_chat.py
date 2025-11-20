@@ -4,7 +4,7 @@ import sys
 mode = sys.argv[1].lower().strip() #primo argomento: specifica se sono in modalità client o server
 remote_peer: Client | None = None 
 
-#gestione dell'invio di un messaggio
+#gestione dell'invio di un messaggio : usata sia dal client che dal server
 def send_message(msg, sender):
     if remote_peer is None: # nessun peer connesso
         print("No peer connected, message is lost")

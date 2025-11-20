@@ -61,7 +61,7 @@ class Connection:
     def __handle_incoming_messages(self):
         try:
             while not self.closed: # finché la connessione non è chiusa
-                message = self.receive() # riceve un messaggio
+                message = self.receive() #BLOCCANTE --> attende la ricezione di un messaggio
                 if message is None:
                     break
                 self.on_event('message', message)
@@ -115,7 +115,7 @@ class Server:
         self.on_event('listen', address=self.__socket.getsockname())
         try:
             while not self.__socket._closed: #finché il socket non è chiuso
-                socket, address = self.__socket.accept() #accetta una connessione in ingresso
+                socket, address = self.__socket.accept() #BLOCCANTE : accetta una connessione in ingresso
                 connection = Connection(socket) #crea una connessione per il socket accettato
                 self.on_event('connect', connection, address) 
         except ConnectionAbortedError as e:
