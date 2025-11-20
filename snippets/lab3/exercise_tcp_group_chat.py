@@ -2,9 +2,9 @@ from snippets.lab2 import *
 import threading
 import sys
 
+mode = sys.argv[1].lower().strip() 
+
 ##Non devo più distinguere tra client e server, ma solo tra peer
 
-class Peer(Connection):   
-    def __init__(self, port, peers=None):
-        super().__init__(port, peers)
-        
+class Peer :
+    pass
