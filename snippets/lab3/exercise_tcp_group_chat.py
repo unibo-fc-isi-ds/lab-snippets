@@ -1,20 +1,44 @@
 from multiprocessing.dummy import connection
-from snippets.lab2 import *
-from snippets.lab3 import *
+from datetime import datetime
 import threading
 import sys
+import socket
 
-port = sys.argv[1].lower().strip() #porta su cui ascoltare 
-peer = sys.argv[2].strip() #ip:porta del peer a cui connettersi
-remote_peer: Peer | None = None 
+localport = sys.argv[1].strip() #porta su cui ascoltare 
+peer = None
 
+# Fa il parsing di un indirizzo IP e porta 
+def address(ip='0.0.0.0:0', port=None):
+    ip = ip.strip()
+    if ':' in ip:
+        ip, p = ip.split(':')
+        p = int(p)
+        port = port or p
+    if port is None:
+        port = 0
+    if not isinstance(port, int):
+        port = int(port)
+    assert port in range(0, 65536), "Port number must be in the range 0-65535"
+    assert isinstance(ip, str), "IP address must be a string"
+    return ip, port
+
+# Crea un messaggio formattato con timestamp, mittente e testo
+def message(text: str, sender: str, timestamp: datetime=None):
+    if timestamp is None:
+        timestamp = datetime.now()
+    return f"[{timestamp.isoformat()}] {sender}:\n\t{text}"
+
+# Classe Peer per la comunicazione TCP tra peer
 class Peer :
 
     # ------ COSTRUTTORE ------
     def __init__(self, port, peer=None):
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #socket TCP
         self.__socket.bind(address(port=port)) #bind del socket alla porta specificata in argv[1]
-        self.__socket.connect(address(*address(peer))) 
+
+        if peer is not None:
+            self.connectPeer(peer) #provo a connettermi al peer remoto
+        
         self.__listPeers = [] #lista dei peer connessi
 
         self.__listener_thread = threading.Thread(target=self.__handle_incoming_connections, daemon=True) #thread per gestire le connessioni in ingresso
@@ -111,8 +135,8 @@ class Peer :
             case 'error':
                 print(error)
 
-    # -- METODO PER GESITIRE L'INVIO DEI MESSAGGI --
-    def send_message(msg, sender):
+    # ---- METODO DI INVIO MESSAGGI ----
+    def send_message(self, msg, sender):
         if remote_peer is None: # nessun peer connesso
             print("No peer connected, message is lost")
         elif msg: #c'è un peer connesso e il messaggio non è vuoto --> posso inviare
@@ -120,21 +144,51 @@ class Peer :
         else: #c'è un peer connesso ma il messaggio è vuoto
             print("Empty message, not sent")
 
+    # invia un messaggio attraverso la connessione
+    def send(self, message):
+        if not isinstance(message, bytes): #se il messaggio non è in bytes, lo converto
+            message = message.encode()
+            message = int.to_bytes(len(message), 2, 'big') + message
+        self.__socket.sendall(message) # invia tutti i byte finché non sono stati inviati
+        #__socket.send invece restituisce il numero di byte effettivamente inviati, quindi potrebbe essere necessario richiamarlo più volte 
+
+    # riceve un messaggio dalla connessione
+    def receive(self):
+        length = int.from_bytes(self.__socket.recv(2), 'big') #carica la lunghezza del messaggio
+        if length == 0:
+            return None
+        return self.__socket.recv(length).decode() # riceve il messaggio e lo decodifica
+    
+    ## -- METODO PER CONNETERSI A UN PEER
+    def connectPeer(self, peer):
+        try:
+            self.__socket.connect(address(*address(peer))) #mi connetto al peer
+            print(f"Connected to peer: {peer}")
+            self.__listPeers.append(peer) # lo aggiungo alla lista dei peer
+        except Exception as e :
+            pass
+
     # ---- METODO DI CHIUSURA ----
     def close(self):
         self.__socket.close()
 
-p = Peer(port, peer) 
+######################################################
+remote_peer: Peer | None = None 
+
+
+if len(sys.argv) > 2:
+    peer = sys.argv[2].strip() #ip:porta del peer a cui connettersi
+
+p = Peer(localport, peer) 
 
 #controllo se il peer a cui voglio connettermi è a sua volta connesso ad altri peer
-if p.listPeers:
+if not p.listPeers:
+    print("No connected peers found.")
+else: 
     print("Connected peers:")
     for peer in p.listPeers:
         print(f"- {peer}")  
-
-#provo a connettermi a tutti quei peer
-for peer in p.listPeers:
-    peer.connect()  
+        p.connectPeer(peer)
 
 username = input('Enter your username to start the chat:\n')
 print('Type your message and press Enter to send it. Messages from other peers will be displayed below.')
