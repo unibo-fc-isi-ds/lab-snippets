@@ -5,15 +5,21 @@ peers_lock = threading.Lock()
 peers: set[Connection] = set()
 
 def send_group_message(msg, sender):
-    if len(peers):
-        if msg:
-            for connection in peers:
-                connection.send(message(msg.strip(), sender))
+    with peers_lock:
+        if len(peers):
+            if msg:
+                closed_peers = []
+                for connection in peers:
+                    if connection.closed:
+                        closed_peers.append(connection)
+                        continue
+                    connection.send(message(msg.strip(), sender))
+                for closed in closed_peers:
+                    peers.discard(closed)
+            else:
+                print("Empty message, not sent")
         else:
-            print("Empty message, not sent")
-    else:
-        print("No peers connected, message is lost")
-
+            print("No peers connected, message is lost")
 
 def on_message_received(event, payload, connection, error):
     match event:
