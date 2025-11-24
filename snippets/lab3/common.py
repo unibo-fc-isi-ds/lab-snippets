@@ -1,17 +1,15 @@
-# Constants
-CONN_TYPE = "tcp"
-CMD_PREFIX = "/"
-CMD_JOIN = CMD_PREFIX + "join"
-CMD_DIAL = CMD_PREFIX + "dial"
-CMD_INIT = CMD_PREFIX + "init"
-CMD_LEAVE = CMD_PREFIX + "leave"
-CMD_CHATSEND = CMD_PREFIX + "chatS"
-CMD_CHATRECEIVE = CMD_PREFIX + "chatR"
-
 # ANSI Color codes
 PURPLE_CLR = "\033[35m"
 CYAN_CLR = "\033[36m"
-WHITE_CLR = "\033[10m"
 YELLOW_CLR = "\033[33m"
 GREEN_CLR = "\033[32m"
+RED_CLR = "\033[31m"
 RESET_CLR = "\033[0m"
+
+EXIT_MESSAGE = " has left the chat..."
+READY_MESSAGE = " Chat ready – type messages. Use /exit or Ctrl+C to quit. "
+EXIT_SEPARATOR = "|"
+MSG_ENCODE = "<MSGENCD>"
+EXIT_ENCODE = "<EXTENCD>"
+CLEAR_RIGHT = "\033[K"  # clean to the right of the cursor
+PREV_LINE = "\033[F"  # move cursor to the beginning of previous line

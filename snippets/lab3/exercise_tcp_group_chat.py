@@ -1,142 +1,120 @@
-import socket
-import threading
-import json
 import sys
-import os
 from datetime import datetime
-from typing import Dict, List, Optional
-import queue
-
-from snippets.lab3.common import *
+from snippets.lab2 import address
+from snippets.lab3 import Client, Server, message
 from snippets.lab3 import *
 
-def start_listener(chat_room: ChatRoom, port: int):
-    """Start listening for incoming connections"""
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+class GroupPeer:
+    def __init__(self, port: int, peers=None):
+        self.peers = []
+        self.local_addr = ("", port)
+        self.server = Server(port, self.on_server_event)
 
-    try:
-        server_socket.bind(('localhost', port))
-        server_socket.listen(5)
-        print(f"{PURPLE_CLR}listening on port localhost:{port}{RESET_CLR}")
+        if peers:
+            targets = list({peer for peer in peers})
+            for peer in targets:
+                try:
+                    conn = Client(peer, self.on_connection_event)
+                    self.peers.append(conn)
+                except:
+                    pass
 
-        while True:
+    def broadcast(self, msg, sender):
+        if not msg or not self.peers:
+            print(f"{RED_CLR}\nNo peer connected, message is lost{RESET_CLR}\n")
+            return
+
+        packet = message(msg.strip(), sender) + MSG_ENCODE
+
+        for peer in list(self.peers):
             try:
-                conn, addr = server_socket.accept()
-                print(f"{CYAN_CLR}New connection from {addr}{RESET_CLR}")
-                client = ClientGroup(chat_room, conn)
-                chat_room.join(client)
-                # Send our name to the newly connected peer
-                if chat_room.point_name:
-                    try:
-                        client.outgoing.put(f"{CMD_INIT} {chat_room.point_name}\n")
-                    except:
-                        pass
-            except Exception as e:
-                print(f"Error accepting connection: {e}")
+                peer.send(packet)
+            except:
+                self._remove_peer(peer)
 
-    finally:
-        server_socket.close()
+    def exit(self, sender):
+        now = datetime.now().isoformat()
 
+        exit_packet = f"\n[{now}]{EXIT_SEPARATOR}\n{PURPLE_CLR}{sender} {EXIT_MESSAGE} {RESET_CLR} {EXIT_ENCODE}"
 
-def main():
-    """Main entry point"""
-    if len(sys.argv) < 2:
-        print("Usage: python tcp_group_chat.py <port> [server_host:server_port]")
-        print("Example: python tcp_group_chat.py 8080 localhost:8081")
-        sys.exit(1)
+        for peer in list(self.peers):
+            try:
+                peer.send(exit_packet)
+            except:
+                pass
 
-    try:
-        conn_port = int(sys.argv[1])
-    except ValueError:
-        print("Port must be a number")
-        sys.exit(1)
+        self._close_all()
 
-    chat_room = ChatRoom(str(conn_port))
-
-    # Start server listener in background thread
-    listener_thread = threading.Thread(
-        target=start_listener,
-        args=(chat_room, conn_port),
-        daemon=True
-    )
-    listener_thread.start()
-
-    # Get username
-    print(f"{GREEN_CLR}Enter name: {RESET_CLR}", end='')
-    sys.stdout.flush()
-    point_name = input().strip()
-    chat_room.point_name = point_name
-
-    # Connect to initial peer if provided
-    if len(sys.argv) >= 3:
-        server_addr = sys.argv[2]
+    def _remove_peer(self, peer):
         try:
-            host, port = server_addr.split(':')
-            port = int(port)
+            if peer in self.peers:
+                self.peers.remove(peer)
+        except:
+            pass
 
-            print(f"{YELLOW_CLR}Connecting to {host}:{port}...{RESET_CLR}")
-            conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            conn.connect((host, port))
+        try:
+            peer.close()
+        except:
+            pass
 
-            client = ClientGroup(chat_room, conn)
-            chat_room.join(client)
+    def on_connection_event(self, event, payload, connection, error):
+        if event == "message":
+            cleaned = (
+                payload.replace(MSG_ENCODE, "")
+                       .replace(EXIT_ENCODE, "")
+                       .rstrip()
+            )
+            if cleaned:
+                print(cleaned)
+        elif event == "error":
+            print(f"{RED_CLR}Connection error on {connection}: {error}{RESET_CLR}")
+            self._remove_peer(connection)
+        elif event == "close":
+            self._remove_peer(connection)
 
-            # Send our name to the peer we're connecting to
-            if point_name:
-                client.outgoing.put(f"{CMD_INIT} {point_name}\n")
+    def on_server_event(self, event, connection, address, error):
+        if event == "listen":
+            self.local_addr = address
 
-            # Announce join and request chat history
-            join_msg = f"{CMD_JOIN} {CMD_DIAL} {conn_port}|{point_name}\n"
-            client.outgoing.put(join_msg)
+        elif event == "connect":
+            connection.callback = self.on_connection_event
+            self.peers.append(connection)
 
-            history_msg = f"{CMD_CHATSEND} {conn.getsockname()[1]}\n"
-            client.outgoing.put(history_msg)
-
-        except Exception as e:
-            print(f"Error connecting to server: {e}")
-
-    # Start stdin reader (only once, not per client)
-    def stdin_reader():
-        """Read stdin and broadcast messages to all peers"""
-        # Send init message to all connected clients
-        chat_room.broadcast(f"{CMD_INIT} {chat_room.point_name}\n")
-        
-        while True:
+    def _close_all(self):
+        for peer in list(self.peers):
             try:
-                user_input = input()
-                if not user_input:
-                    continue
+                peer.close()
+            except:
+                pass
 
-                # Remove leading slash if present
-                if user_input.startswith(CMD_PREFIX):
-                    user_input = user_input[1:]
+        try:
+            self.server.close()
+        except:
+            pass
 
-                # Add to local message history
-                plain_msg = f"{WHITE_CLR}{datetime.now().strftime('%H:%M:%S')} - {chat_room.point_name}:{GREEN_CLR} {user_input}\n{RESET_CLR}"
-                with chat_room.lock:
-                    chat_room.messages.append(plain_msg)
+username = input(f"{PURPLE_CLR}Enter your username to start the chat:{RESET_CLR}\n")
+port = int(sys.argv[1])
 
-                # Broadcast to all peers
-                chat_room.broadcast(user_input + "\n")
+if len(sys.argv) > 2:
+    peers = [address(p) for p in sys.argv[2:]]
+    node = GroupPeer(port, peers)
+else:
+    node = GroupPeer(port)
 
-            except EOFError:
-                break
-            except Exception as e:
-                print(f"Error reading stdin: {e}")
-                break
+print(f"{CYAN_CLR}\n{READY_MESSAGE}{RESET_CLR}\n")
 
-    stdin_thread = threading.Thread(target=stdin_reader, daemon=True)
-    stdin_thread.start()
+try:
+    while True:
+        text = input()
 
-    # Keep main thread alive
-    try:
-        while True:
-            threading.Event().wait(1)
-    except KeyboardInterrupt:
-        print(f"\n{PURPLE_CLR}Goodbye!{RESET_CLR}")
-        sys.exit(0)
+        if text.strip() == "/exit":
+            raise KeyboardInterrupt
+        if not text:
+            continue
+        print(f"{PREV_LINE}{YELLOW_CLR}{text}{RESET_CLR}{CLEAR_RIGHT}")
+        node.broadcast(text, username)
 
-
-if __name__ == "__main__":
-    main()
+except (KeyboardInterrupt, EOFError):
+    node.exit(username)
+    print(f"{PURPLE_CLR}Bye!{RESET_CLR}")
+    sys.exit(0)
