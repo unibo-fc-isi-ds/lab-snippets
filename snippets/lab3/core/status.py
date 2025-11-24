@@ -19,17 +19,13 @@ class Status:
 		self.node_name = node_name
 		self.port = port
 
-		# liste delle connessioni
-		self.incoming = []			# connessioni ricevute
-		self.outgoing = []			# connessioni aperte verso altri peer
+		self.incoming = []
+		self.outgoing = []
 
-		# deduplica messaggi
 		self.seen_messages = set()
 
-		# timestamp heartbeat per connessione
-		self.last_heartbeat = {}	# conn → float(timestamp)
+		self.last_heartbeat = {}	# conn → timestamp
 
-		# lock globale di sincronizzazione
 		self.lock = threading.Lock()
 
 	# -------------------------------
@@ -47,7 +43,7 @@ class Status:
 			self.last_heartbeat[conn] = time.time()
 
 	def remove_connection(self, conn):
-        # rimozione connessione + relativa entry heartbeat
+		# rimozione connessione + relativa entry heartbeat
 		with self.lock:
 			if conn in self.incoming:
 				self.incoming.remove(conn)
@@ -73,17 +69,10 @@ class Status:
 	# -------------------------------
 
 	def update_heartbeat(self, conn):
-		"""
-		Aggiorna timestamp di ultimo heartbeat per una connessione.
-		"""
 		with self.lock:
 			self.last_heartbeat[conn] = time.time()
 
 	def get_stale_connections(self, timeout):
-		"""
-		Ritorna una lista di connessioni il cui heartbeat è troppo vecchio.
-		(timeout espresso in secondi)
-		"""
 		now = time.time()
 		stale = []
 

@@ -1,11 +1,11 @@
 import threading
-from connection import Connection
+from connection.connection import Connection
 
 
 class AcceptThread(threading.Thread):
 	"""
 	Thread che accetta nuove connessioni TCP
-	e le registra nello Status.
+	e crea oggetti Connection corrispondenti.
 	"""
 
 	def __init__(self, server_socket, node, status):
@@ -19,6 +19,7 @@ class AcceptThread(threading.Thread):
 			try:
 				sock, addr = self.server_socket.accept()
 			except OSError:
+				# server socket chiuso → termina thread
 				break
 
 			conn = Connection(sock, self.node, self.status)

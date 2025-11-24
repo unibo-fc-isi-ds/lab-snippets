@@ -1,5 +1,5 @@
 import threading
-from message import Message
+from core.message import Message
 
 
 class HeartbeatThread(threading.Thread):
@@ -21,16 +21,18 @@ class HeartbeatThread(threading.Thread):
 			# attesa non-busy
 			threading.Event().wait(self.interval)
 
-			# invio heartbeat
+			# crea heartbeat
 			msg = Message.new_heartbeat(self.status.node_name)
 			self.status.mark_seen(msg.msg_id)
 
+			# invio a tutti i peer
 			with self.status.lock:
-				for conn in (self.status.incoming + self.status.outgoing):
+				peers = self.status.incoming + self.status.outgoing
+				for conn in peers:
 					if conn.alive:
 						conn.send(msg)
 
-			# rileva conn stale
+			# rileva connessioni stale
 			stale_list = self.status.get_stale_connections(self.timeout)
 			for conn in stale_list:
 				conn.close()

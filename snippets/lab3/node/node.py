@@ -1,9 +1,10 @@
 import socket
 from core.message import Message
 from core.status import Status
-from connection import Connection
-from accept_thread import AcceptThread
-from hearthbeat_thread import HeartbeatThread
+from connection.connection import Connection
+from node.accept_thread import AcceptThread
+from node.heartbeat_thread import HeartbeatThread
+from uuid import uuid4
 
 
 class Node:
@@ -19,7 +20,7 @@ class Node:
 		self.status = Status(name, port)
 		self.queue_ui = queue_ui
 
-		# socket server
+		# socket server TCP
 		self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 		self.server_socket.bind(("0.0.0.0", port))
@@ -33,7 +34,7 @@ class Node:
 		self.heartbeat_thread = HeartbeatThread(self, self.status)
 		self.heartbeat_thread.start()
 
-		# connessioni out
+		# connessioni outgoing
 		if peers:
 			for host, p in peers:
 				self.connect_to_peer(host, p)
@@ -60,10 +61,12 @@ class Node:
 		conn.send(msg)
 
 	def handle_message(self, msg, conn):
+		# deduplica
 		if self.status.has_seen(msg.msg_id):
 			return
 		self.status.mark_seen(msg.msg_id)
 
+		# dispatch per tipo
 		if msg.type == "connect":
 			conn.peer_name = msg.payload.get("name")
 
@@ -74,6 +77,7 @@ class Node:
 		elif msg.type == "heartbeat":
 			self.status.update_heartbeat(conn)
 
+		# rebroadcast verso gli altri peer
 		self._rebroadcast(msg, conn)
 
 	def _rebroadcast(self, msg, origin_conn):
@@ -87,7 +91,26 @@ class Node:
 	def send_chat(self, text):
 		msg = Message.new_chat(self.status.node_name, text)
 		self.status.mark_seen(msg.msg_id)
+
+		# MOSTRA SUBITO IL MESSAGGIO LOCALE
+		if self.queue_ui:
+			self.queue_ui.put(msg)
+
 		self._rebroadcast(msg, None)
 
 	def on_connection_closed(self, conn):
-		pass
+		"""
+		Notifica locale della disconnessione del peer.
+		"""
+		name = conn.peer_name or "peer"
+
+		# Messaggio solo per la UI locale
+		system_msg = Message(
+			msg_id="system-" + str(uuid4()),
+			sender="SYSTEM",
+			type_="info",
+			payload=f"[{name}] disconnesso"
+		)
+
+		if self.queue_ui:
+			self.queue_ui.put(system_msg)

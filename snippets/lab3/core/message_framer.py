@@ -4,7 +4,7 @@ class MessageFramer:
 	terminatore arbitrario (default: b"\\0").
 	"""
 
-	TERMINATOR = b"\0"
+	TERMINATOR = b"\n"
 
 	def __init__(self):
 		self.buffer = b""
@@ -17,22 +17,20 @@ class MessageFramer:
 		Ritorna:
 			- list[bytes] : lista dei messaggi completi (senza terminatore)
 		"""
+		if not data:
+			return []
+
 		self.buffer += data
 		messages = []
 
 		while True:
-			# cerca il terminatore
 			sep_index = self.buffer.find(self.TERMINATOR)
-
-			# nessun messaggio completo
 			if sep_index == -1:
 				break
 
-			# estrai bytes del messaggio
 			raw_msg = self.buffer[:sep_index]
 			messages.append(raw_msg)
 
-			# rimuovi messaggio + terminatore dal buffer
 			self.buffer = self.buffer[sep_index + len(self.TERMINATOR):]
 
 		return messages
