@@ -8,33 +8,22 @@ from uuid import uuid4
 
 
 class Node:
-	"""
-	Nodo P2P TCP:
-	- accept thread esterno
-	- heartbeat thread esterno
-	- gestione messaggi
-	- rebroadcast
-	"""
 
 	def __init__(self, name, port, peers=None, queue_ui=None):
 		self.status = Status(name, port)
 		self.queue_ui = queue_ui
 
-		# socket server TCP
 		self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 		self.server_socket.bind(("0.0.0.0", port))
 		self.server_socket.listen()
 
-		# avvio accept thread
 		self.accept_thread = AcceptThread(self.server_socket, self, self.status)
 		self.accept_thread.start()
 
-		# avvio heartbeat thread
 		self.heartbeat_thread = HeartbeatThread(self, self.status)
 		self.heartbeat_thread.start()
 
-		# connessioni outgoing
 		if peers:
 			for host, p in peers:
 				self.connect_to_peer(host, p)
@@ -49,6 +38,16 @@ class Node:
 
 			self.send_connect_message(conn)
 
+			# LOCAL: inform UI
+			if self.queue_ui:
+				system_msg = Message(
+					msg_id="system-" + str(uuid4()),
+					sender="SYSTEM",
+					type_="info",
+					payload=f"Connected to peer {host}:{port}"
+				)
+				self.queue_ui.put(system_msg)
+
 		except Exception as e:
 			print("Connessione fallita:", e)
 
@@ -61,23 +60,45 @@ class Node:
 		conn.send(msg)
 
 	def handle_message(self, msg, conn):
-		# deduplica
 		if self.status.has_seen(msg.msg_id):
 			return
 		self.status.mark_seen(msg.msg_id)
 
-		# dispatch per tipo
+		# --------------------
+		# HANDLE CONNECT
+		# --------------------
 		if msg.type == "connect":
 			conn.peer_name = msg.payload.get("name")
+			peer = conn.peer_name
 
+			# deduplica per peer
+			with self.status.lock:
+				first_time = peer not in self.status.connected_peers
+				self.status.connected_peers.add(peer)
+
+			if first_time and self.queue_ui:
+				system_msg = Message(
+					msg_id="system-" + str(uuid4()),
+					sender="SYSTEM",
+					type_="info",
+					payload=f"[{peer}] connected"
+				)
+				self.queue_ui.put(system_msg)
+
+		# --------------------
+		# HANDLE CHAT
+		# --------------------
 		elif msg.type == "chat":
 			if self.queue_ui:
 				self.queue_ui.put(msg)
 
+		# --------------------
+		# HANDLE HEARTBEAT
+		# --------------------
 		elif msg.type == "heartbeat":
 			self.status.update_heartbeat(conn)
 
-		# rebroadcast verso gli altri peer
+		# rebroadcast verso altri peer
 		self._rebroadcast(msg, conn)
 
 	def _rebroadcast(self, msg, origin_conn):
@@ -92,19 +113,14 @@ class Node:
 		msg = Message.new_chat(self.status.node_name, text)
 		self.status.mark_seen(msg.msg_id)
 
-		# MOSTRA SUBITO IL MESSAGGIO LOCALE
 		if self.queue_ui:
 			self.queue_ui.put(msg)
 
 		self._rebroadcast(msg, None)
 
 	def on_connection_closed(self, conn):
-		"""
-		Notifica locale della disconnessione del peer.
-		"""
 		name = conn.peer_name or "peer"
 
-		# Messaggio solo per la UI locale
 		system_msg = Message(
 			msg_id="system-" + str(uuid4()),
 			sender="SYSTEM",

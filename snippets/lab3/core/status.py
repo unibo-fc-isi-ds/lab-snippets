@@ -23,6 +23,8 @@ class Status:
 		self.outgoing = []
 
 		self.seen_messages = set()
+		self.connected_peers = set()
+    
 
 		self.last_heartbeat = {}	# conn → timestamp
 
