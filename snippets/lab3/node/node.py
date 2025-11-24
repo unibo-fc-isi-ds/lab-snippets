@@ -103,57 +103,69 @@ class Node:
 	def handle_message(self, msg, conn):
 		"""
 		Main entry for all incoming messages from ReaderThread.
-
-		Responsibilities:
-		- deduplication (ignore known msg_id)
-		- dispatch by message type
-		- rebroadcast to all connected peers except the sender
 		"""
 
-		# deduplication check
+		# ---------------------------------------
+		# Step 1: Dedup check (but NOT mark seen)
+		# ---------------------------------------
 		if self.status.has_seen(msg.msg_id):
 			return
-		self.status.mark_seen(msg.msg_id)
 
-		# --------------------
-		# CONNECT MESSAGE
-		# --------------------
+		# ---------------------------------------
+		# Step 2: Handle message types
+		# ---------------------------------------
 		if msg.type == "connect":
 			conn.peer_name = msg.payload.get("name")
 			peer = conn.peer_name
 
-			# deduplicate per-peer connection notifications
 			with self.status.lock:
 				first_time = peer not in self.status.connected_peers
 				self.status.connected_peers.add(peer)
 
-			# notify UI only the first time this peer appears
 			if first_time and self.queue_ui:
-				system_msg = Message(
-					msg_id="system-" + str(uuid4()),
-					sender="SYSTEM",
-					type_="info",
-					payload=f"[{peer}] connected"
+				self.queue_ui.put(
+					Message(
+						msg_id="system-" + str(uuid4()),
+						sender="SYSTEM",
+						type_="info",
+						payload=f"[{peer}] connected"
+					)
 				)
-				self.queue_ui.put(system_msg)
 
-		# --------------------
-		# CHAT MESSAGE
-		# --------------------
 		elif msg.type == "chat":
-			# pass-through to UI (local display)
 			if self.queue_ui:
 				self.queue_ui.put(msg)
 
-		# --------------------
-		# HEARTBEAT MESSAGE
-		# --------------------
 		elif msg.type == "heartbeat":
-			# update timestamp for connection liveness checks
 			self.status.update_heartbeat(conn)
 
-		# broadcast to all other peers (fan-out)
+		elif msg.type == "disconnect":
+			peer = msg.payload.get("peer")
+
+			with self.status.lock:
+				if peer in self.status.connected_peers:
+					self.status.connected_peers.remove(peer)
+
+			if self.queue_ui:
+				self.queue_ui.put(
+					Message(
+						msg_id="system-" + str(uuid4()),
+						sender="SYSTEM",
+						type_="info",
+						payload=f"[{peer}] disconnected"
+					)
+				)
+
+		# ---------------------------------------
+		# Step 3: Rebroadcast FIRST
+		# ---------------------------------------
 		self._rebroadcast(msg, conn)
+
+		# ---------------------------------------
+		# Step 4: Only now: mark as seen
+		# ---------------------------------------
+		self.status.mark_seen(msg.msg_id)
+
 
 	# ----------------------------------------------------------------------
 	# MESSAGE REBROADCAST
@@ -196,17 +208,37 @@ class Node:
 	def on_connection_closed(self, conn):
 		"""
 		Called by Connection.close() when a socket dies.
-		Used only for local UI notifications.
+		Broadcasts a 'disconnect' message and updates local UI.
 		"""
 
-		name = conn.peer_name or "peer"
+		peer = conn.peer_name or "peer"
 
-		system_msg = Message(
-			msg_id="system-" + str(uuid4()),
-			sender="SYSTEM",
-			type_="info",
-			payload=f"[{name}] disconnesso"
+		# 1. Remove peer from connected set
+		with self.status.lock:
+			if peer in self.status.connected_peers:
+				self.status.connected_peers.remove(peer)
+
+		# 2. Create a disconnect message (broadcast to network)
+		disconnect_msg = Message(
+			msg_id=str(uuid4()),
+			sender=self.status.node_name,
+			type_="disconnect",
+			payload={"peer": peer}
 		)
 
+		# Mark to avoid loops
+		self.status.mark_seen(disconnect_msg.msg_id)
+
+		# Broadcast disconnect to all remaining peers
+		self._rebroadcast(disconnect_msg, None)
+
+		# 3. Local UI message
 		if self.queue_ui:
-			self.queue_ui.put(system_msg)
+			self.queue_ui.put(
+				Message(
+					msg_id="system-" + str(uuid4()),
+					sender="SYSTEM",
+					type_="info",
+					payload=f"[{peer}] disconnected"
+				)
+			)

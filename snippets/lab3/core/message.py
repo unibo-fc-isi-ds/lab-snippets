@@ -75,6 +75,16 @@ class Message:
 			payload={}
 		)
 
+	@classmethod
+	def new_disconnect(cls, sender, peer):
+		return cls(
+			msg_id=str(uuid4()),
+			sender=sender,
+			type_="disconnect",
+			payload={"peer": peer}
+		)
+
+
 	# ----------------------------------------------------------------------
 	# Serialization
 	# ----------------------------------------------------------------------
