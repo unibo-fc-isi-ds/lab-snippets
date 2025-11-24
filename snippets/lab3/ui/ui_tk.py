@@ -9,20 +9,20 @@ class TkChatUI:
 		self.msg_queue = node.queue_ui
 		self.stop = False
 
-		# finestra principale
+		# main window
 		self.root = tk.Tk()
 		self.root.title(f"TCP Chat – {node.status.node_name}")
 
-		# area messaggi (read-only)
+		# message area (read-only)
 		self.msg_area = scrolledtext.ScrolledText(self.root, wrap=tk.WORD, height=20, state=tk.DISABLED)
 		self.msg_area.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-		# area input
+		# input area
 		self.input_area = tk.Entry(self.root)
 		self.input_area.pack(fill=tk.X, padx=5, pady=5)
 		self.input_area.bind("<Return>", self._on_enter)
 
-		# avvia poll periodico della queue
+		# periodic queue polling
 		self.root.after(100, self._poll_queue)
 
 	def _on_enter(self, event=None):
@@ -40,14 +40,14 @@ class TkChatUI:
 
 	def _poll_queue(self):
 		"""
-		Chiamato periodicamente dal mainloop Tkinter.
-		Legge i messaggi dalla queue e li mostra.
+		Periodically called by Tkinter's mainloop.
+		Reads and displays messages from the queue.
 		"""
 		if self.stop:
 			return
 
 		while not self.msg_queue.empty():
-            # messaggio dal nodo
+			# message from the node
 			msg = self.msg_queue.get()
 
 			self.msg_area.config(state=tk.NORMAL)
@@ -55,7 +55,7 @@ class TkChatUI:
 			self.msg_area.config(state=tk.DISABLED)
 			self.msg_area.see(tk.END)
 
-		self.root.after(100, self._poll_queue)  # richiama tra 100ms
+		self.root.after(100, self._poll_queue)  # schedule next poll
 
 	def start(self):
 		self.root.mainloop()
