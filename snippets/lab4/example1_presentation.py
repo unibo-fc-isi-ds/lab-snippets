@@ -9,7 +9,7 @@ class Request:
     """
     A container for RPC requests: a name of the function to call and its arguments.
     """
-
+    
     name: str
     args: tuple
 
@@ -24,7 +24,7 @@ class Response:
     When error is None, it means there was no error.
     Result may be None, if the function returns None.
     """
-
+    
     result: object | None
     error: str | None
 
@@ -46,12 +46,14 @@ class Serializer:
             return [self._to_ast(item) for item in obj]
         if isinstance(obj, dict):
             return {key: self._to_ast(value) for key, value in obj.items()}
+
         # selects the appropriate method to convert the object to AST via reflection
         method_name = f'_{type(obj).__name__.lower()}_to_ast'
         if hasattr(self, method_name):
             data = getattr(self, method_name)(obj)
             data['$type'] = type(obj).__name__
             return data
+
         raise ValueError(f"Unsupported type {type(obj)}")
 
     def _user_to_ast(self, user: User):
@@ -77,7 +79,7 @@ class Serializer:
         }
 
     def _datetime_to_ast(self, dt: datetime):
-        raise NotImplementedError("Missing implementation for datetime serialization")
+        return {"value": dt.isoformat()}
 
     def _role_to_ast(self, role: Role):
         return {'name': role.name}
@@ -110,9 +112,12 @@ class Deserializer:
             method_name = f'_ast_to_{data["$type"].lower()}'
             if hasattr(self, method_name):
                 return getattr(self, method_name)(data)
+
             raise ValueError(f"Unsupported type {data['type']}")
+
         if isinstance(data, list):
             return [self._ast_to_obj(item) for item in data]
+
         return data
 
     def _ast_to_user(self, data):
@@ -138,7 +143,7 @@ class Deserializer:
         )
 
     def _ast_to_datetime(self, data):
-        raise NotImplementedError("Missing implementation for datetime deserialization")
+        return datetime.fromisoformat(data["value"])
 
     def _ast_to_role(self, data):
         return Role[self._ast_to_obj(data['name'])]
@@ -169,7 +174,9 @@ def deserialize(string):
 
 
 if __name__ == '__main__':
-    from snippets.lab4.example0_users import gc_user, gc_credentials_wrong
+    from example0_users import gc_user, gc_credentials_wrong
+
+    now = datetime.now()
 
     request = Request(
         name='my_function',
@@ -179,6 +186,7 @@ if __name__ == '__main__':
             ["a string", 42, 3.14, True, False], # a list, containing various primitive types
             {'key': 'value'}, # a dictionary
             Response(None, 'an error'), # a Response, which contains a None field
+            now, # a datetime instance
         )
     )
     serialized = serialize(request)
