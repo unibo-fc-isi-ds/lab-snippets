@@ -66,10 +66,7 @@ class GroupPeer:
             )
             if cleaned:
                 print(cleaned)
-        elif event == "error":
-            print(f"{RED_CLR}Connection error on {connection}: {error}{RESET_CLR}")
-            self._remove_peer(connection)
-        elif event == "close":
+        elif event in ["close", "error"]:
             self._remove_peer(connection)
 
     def on_server_event(self, event, connection, address, error):
