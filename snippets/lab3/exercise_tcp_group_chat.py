@@ -3,6 +3,7 @@ from datetime import datetime
 import threading
 import sys
 import socket
+import psutil
 
 localport = sys.argv[1].strip() #porta su cui ascoltare 
 peer = None
@@ -28,26 +29,37 @@ def message(text: str, sender: str, timestamp: datetime=None):
         timestamp = datetime.now()
     return f"[{timestamp.isoformat()}] {sender}:\n\t{text}"
 
+# Ottiene tutti gli indirizzi IP locali della macchina
+def local_ips():
+    for interface in psutil.net_if_addrs().values(): #itera su tutte le interfacce di rete (wifi, ethernet, ecc.)
+        for addr in interface: #esamina ogni indirizzo associato
+            if addr.family == socket.AF_INET: #controlla se l'indirizzo è di tipo IPv4
+                    yield addr.address #restituisce l'indirizzo IPv4 trovato
+
 # Classe Peer per la comunicazione TCP tra peer
 class Peer :
 
     # ------ COSTRUTTORE ------
     def __init__(self, port, peer=None):
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #socket TCP
-        self.__socket.bind(address(port=port)) #bind del socket alla porta specificata in argv[1]
+        self.__socketConn = None #socket per la connessione al peer remoto
+        self.__listPeers = [] #lista dei peer connessi
 
+        try:
+            self.__socket.bind(address(port=port))
+        except OSError as e:
+            print(f"Errore nel bind del socket sulla porta {port}: {e}")
+    
         if peer is not None:
             self.connectPeer(peer) #provo a connettermi al peer remoto
         
-        self.__listPeers = [] #lista dei peer connessi
-
         self.__listener_thread = threading.Thread(target=self.__handle_incoming_connections, daemon=True) #thread per gestire le connessioni in ingresso
-        self.__callbackListener = self.on_message_received
-        self.__listener_thread.start()
+        self.__callbackListener = self.on_message_received #callback per l'ascolto delle connessioni
+        self.__listener_thread.start() #avvio del thread di ascolto connessioni
         
         self.__receiver_thread = threading.Thread(target=self.__handle_incoming_messages, daemon=True) #thread per gestire la ricezione dei messaggi
         self.__callbackReceiver = self.on_new_connection
-        self.__receiver_thread.start()
+        #la partenza del thread di ricezione messaggi avviene quando viene settato __socketConn
 
     # ---- GETTER ----
     @property #getter per la callback ascolto connessioni
@@ -66,6 +78,15 @@ class Peer :
     def listPeers(self):
         return self.__listPeers
     
+    @property 
+    def connectionSocket(self):
+        return self.__socketConn    
+    
+    @connectionSocket.setter
+    def connectionSocket(self, value):
+        self.__socketConn = value
+        self.__receiver_thread.start()
+
     # ---- METODO THREAD ASCOLTO CONNESSIONI----
     #serve al thread per gestire le connessioni in ingresso e notifica gli eventi alla callback
     def __handle_incoming_connections(self):
@@ -73,7 +94,9 @@ class Peer :
         self.on_eventListen('listen', address=self.__socket.getsockname())
         try:
             while not self.__socket._closed: #finché il socket non è chiuso
-                socket, address = self.__socket.accept() #accetta una connessione in ingresso
+                socketConn, address = self.__socket.accept() #accetta una connessione in ingresso
+                self.connectionSocket = socketConn #setta il socket di connessione
+                print(f"Debug: accepted connection from {address}")
                 self.on_eventListen('connect', address) 
         except ConnectionAbortedError as e:
             pass # silently ignore error, because this is simply the socket being closed locally
@@ -88,6 +111,7 @@ class Peer :
         try:
             while not self.closed: # finché la connessione non è chiusa
                 message = self.receive() #BLOCCANTE --> attende la ricezione di un messaggio
+                print(f"Debug: received message: {message}")
                 if message is None:
                     break
                 self.on_eventReceive('message', message)
@@ -109,7 +133,7 @@ class Peer :
     # --- CALLBACK : ----
 
     #gestione delle nuove connessioni in arrivo
-    def on_new_connection(event, address, error):
+    def on_new_connection(self, event, address, error):
         match event:
             case 'listen':
                 print(f"Server listening on port {address[0]} at {', '.join(local_ips())}")
@@ -121,10 +145,10 @@ class Peer :
             case 'stop':
                 print(f"Stop listening for new connections")
             case 'error':
-                print(error)
+                print(f"Errore accettazione connessioni :{error}")
 
     #gestione dei messaggi ricevuti
-    def on_message_received(event, payload, error):
+    def on_message_received(self, event, payload, error):
         match event:
             case 'message': 
                 print(payload)
@@ -133,7 +157,7 @@ class Peer :
                 global remote_peer #cambio il valore della variabile globale
                 remote_peer = None #non c'è più nessun peer connesso
             case 'error':
-                print(error)
+                print(f"Errore ricezione di messaggi :{error}")
 
     # ---- METODO DI INVIO MESSAGGI ----
     def send_message(self, msg, sender):
@@ -149,15 +173,15 @@ class Peer :
         if not isinstance(message, bytes): #se il messaggio non è in bytes, lo converto
             message = message.encode()
             message = int.to_bytes(len(message), 2, 'big') + message
-        self.__socket.sendall(message) # invia tutti i byte finché non sono stati inviati
+        self.__socketConn.sendall(message) # invia tutti i byte finché non sono stati inviati
         #__socket.send invece restituisce il numero di byte effettivamente inviati, quindi potrebbe essere necessario richiamarlo più volte 
 
     # riceve un messaggio dalla connessione
     def receive(self):
-        length = int.from_bytes(self.__socket.recv(2), 'big') #carica la lunghezza del messaggio
+        length = int.from_bytes(self.__socketConn.recv(2), 'big') #carica la lunghezza del messaggio
         if length == 0:
             return None
-        return self.__socket.recv(length).decode() # riceve il messaggio e lo decodifica
+        return self.__socketConn.recv(length).decode() # riceve il messaggio e lo decodifica
     
     ## -- METODO PER CONNETERSI A UN PEER
     def connectPeer(self, peer):
@@ -173,8 +197,10 @@ class Peer :
         self.__socket.close()
 
 ######################################################
-remote_peer: Peer | None = None 
 
+# ---- MAIN ----
+remote_peer: Peer | None = None 
+peer = None
 
 if len(sys.argv) > 2:
     peer = sys.argv[2].strip() #ip:porta del peer a cui connettersi
@@ -182,6 +208,10 @@ if len(sys.argv) > 2:
 p = Peer(localport, peer) 
 
 #controllo se il peer a cui voglio connettermi è a sua volta connesso ad altri peer
+
+#problema : La lista sarà sempre vuota all'inizio, perché il peer non ha ancora avuto il tempo di connettersi agli altri peer
+
+"""
 if not p.listPeers:
     print("No connected peers found.")
 else: 
@@ -189,6 +219,9 @@ else:
     for peer in p.listPeers:
         print(f"- {peer}")  
         p.connectPeer(peer)
+"""
+if peer is not None:    
+    p.connectPeer(peer)
 
 username = input('Enter your username to start the chat:\n')
 print('Type your message and press Enter to send it. Messages from other peers will be displayed below.')
