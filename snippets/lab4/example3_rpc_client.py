@@ -28,6 +28,17 @@ class ClientStub:
             client.close()
             print('# Disconnected from %s:%d' % client.remote_address)
 
+class RemoteAuthenticationService(ClientStub):
+    def __init__(self, server_address):
+            super().__init__(server_address)
+    def authenticate(self, credentials: Credentials, duration=None) -> Token:
+        args = (credentials,)
+        if duration is not None:
+            args += (duration,)
+        return self.rpc('authenticate', *args)
+
+    def validate_token(self, token: Token) -> bool:
+        return self.rpc('validate_token', (token,))
 
 class RemoteUserDatabase(ClientStub, UserDatabase):
     def __init__(self, server_address):
@@ -49,6 +60,7 @@ if __name__ == '__main__':
 
 
     user_db = RemoteUserDatabase(address(sys.argv[1]))
+    auth_client = RemoteAuthenticationService(address(sys.argv[1]))
 
     # Trying to get a user that does not exist should raise a KeyError
     try:
