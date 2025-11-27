@@ -39,7 +39,7 @@ def local_ips():
 
 class Peer:
 
-    def __init__(self, port, peer=None):
+    def __init__(self, port):
         # socket SOLO per ascoltare (server)
         self.__listen_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.__listen_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -59,10 +59,6 @@ class Peer:
             daemon=True
         )
         self.__listener_thread.start()
-
-        # se è specificato un peer iniziale, prova a connetterti
-        if peer is not None:
-            self.connectPeer(peer)
 
     # ---- PROPRIETÀ ----
 
@@ -257,14 +253,13 @@ class Peer:
 ######################################################
 
 # ---- MAIN ----
-remote_peer: Peer | None = None 
 localport = sys.argv[1].strip() #porta su cui ascoltare 
 peer = None
 
 if len(sys.argv) > 2:
     peer = sys.argv[2].strip() #ip:porta del peer a cui connettersi
 
-p = Peer(localport) 
+p = Peer(localport) # andrebbe fatto il check che la porta non sia già in uso e che sia un numero valido
 
 #controllo se il peer a cui voglio connettermi è a sua volta connesso ad altri peer
 
@@ -289,6 +284,6 @@ while True:
         content = input() #leggo da stdin il messaggio da inviare
         p.send_message(content, username) #invio il messaggio
     except (EOFError, KeyboardInterrupt): #eccezioni : ctrl+D o ctrl+C
-        if remote_peer: #se c'è un peer connesso
-            remote_peer.close() #chiudo la connessione
-        break 
+        print("\nExiting chat...")
+        p.close()
+        break
