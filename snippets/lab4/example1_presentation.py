@@ -1,5 +1,5 @@
 from .users import User, Credentials, Token, Role
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 from dataclasses import dataclass
 
@@ -87,6 +87,13 @@ class Serializer:
             'microsecond': self._to_ast(dt.microsecond),
         }
 
+    def _timedelta_to_ast(self, td: timedelta):
+        return {
+            "days": self._to_ast(td.days),
+            "seconds": self._to_ast(td.seconds),
+            "microseconds": self._to_ast(td.microseconds),
+        }
+
     def _role_to_ast(self, role: Role):
         return {'name': role.name}
 
@@ -154,7 +161,13 @@ class Deserializer:
             minute = self._ast_to_obj(data['minute']),
             second = self._ast_to_obj(data['second']),
             microsecond = self._ast_to_obj(data['microsecond']),
+        )
 
+    def _ast_to_timedelta(self, data):
+        return timedelta(
+            days=self._ast_to_obj(data["days"]),
+            seconds=self._ast_to_obj(data["seconds"]),
+            microseconds=self._ast_to_obj(data["microseconds"]),
         )
 
     def _ast_to_role(self, data):

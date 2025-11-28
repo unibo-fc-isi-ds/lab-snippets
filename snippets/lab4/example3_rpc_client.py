@@ -1,3 +1,5 @@
+import time
+
 from snippets.lab3 import Client, address
 from snippets.lab4.users import *
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
@@ -48,7 +50,10 @@ class RemoteAuthenticationService(ClientStub, AuthenticationService):
         super().__init__(server_address)
 
     def authenticate(self, credentials: Credentials, duration: timedelta = None) -> Token:
-        return self.rpc('authenticate', credentials)
+        return self.rpc('authenticate', credentials, duration)
+
+    def validate_token(self, token: Token) -> bool:
+        return self.rpc('validate_token', token)
 
 
 if __name__ == '__main__':
@@ -97,3 +102,14 @@ if __name__ == '__main__':
     assert gc_token.user == gc_user_hidden_password
     # The token should expire in the future
     assert gc_token.expiration > datetime.now()
+
+    # A genuine, unexpired token should be valid
+    assert auth_service.validate_token(gc_token) == True
+    # A token with wrong signature should be invalid
+    gc_token_wrong_signature = gc_token.copy(signature='wrong signature')
+    assert auth_service.validate_token(gc_token_wrong_signature) == False
+
+    # A token with expiration in the past should be invalid
+    gc_token_expired = auth_service.authenticate(gc_credentials_ok[0], timedelta(milliseconds=10))
+    time.sleep(0.1)
+    assert auth_service.validate_token(gc_token_expired) == False
