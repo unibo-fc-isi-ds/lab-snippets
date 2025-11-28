@@ -43,12 +43,21 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
         return self.rpc('check_password', credentials)
 
 
+class RemoteAuthenticationService(ClientStub, AuthenticationService):
+    def __init__(self, server_address):
+        super().__init__(server_address)
+
+    def authenticate(self, credentials: Credentials, duration: timedelta = None) -> Token:
+        return self.rpc('authenticate', credentials)
+
+
 if __name__ == '__main__':
     from snippets.lab4.example0_users import gc_user, gc_credentials_ok, gc_credentials_wrong
     import sys
 
-
-    user_db = RemoteUserDatabase(address(sys.argv[1]))
+    remote_endpoint = address(sys.argv[1])
+    user_db = RemoteUserDatabase(remote_endpoint)
+    auth_service = RemoteAuthenticationService(remote_endpoint)
 
     # Trying to get a user that does not exist should raise a KeyError
     try:
@@ -75,3 +84,9 @@ if __name__ == '__main__':
 
     # Checking credentials should fail if the password is wrong
     assert user_db.check_password(gc_credentials_wrong) == False
+
+    # Authenticating with wrong credentials should raise a RuntimeError
+    try:
+        auth_service.authenticate(gc_credentials_wrong)
+    except RuntimeError as e:
+        assert 'Invalid credentials' in str(e)
