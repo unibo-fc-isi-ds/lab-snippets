@@ -52,7 +52,7 @@ class RemoteAuthenticationService(ClientStub, AuthenticationService):
 
 
 if __name__ == '__main__':
-    from snippets.lab4.example0_users import gc_user, gc_credentials_ok, gc_credentials_wrong
+    from snippets.lab4.example0_users import gc_user, gc_credentials_ok, gc_credentials_wrong, gc_user_hidden_password
     import sys
 
     remote_endpoint = address(sys.argv[1])
@@ -90,3 +90,10 @@ if __name__ == '__main__':
         auth_service.authenticate(gc_credentials_wrong)
     except RuntimeError as e:
         assert 'Invalid credentials' in str(e)
+
+    # Authenticating with correct credentials should work
+    gc_token = auth_service.authenticate(gc_credentials_ok[0])
+    # The token should contain the user, but not the password
+    assert gc_token.user == gc_user_hidden_password
+    # The token should expire in the future
+    assert gc_token.expiration > datetime.now()
