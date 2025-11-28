@@ -1,5 +1,6 @@
 from snippets.lab3 import Server
 from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService
+from snippets.lab4.users.__init__ import Role
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 import traceback
 
@@ -38,6 +39,14 @@ class ServerStub(Server):
                 print('[%s:%d] Close connection' % connection.remote_address)
     
     def __handle_request(self, request):
+        if request.name == 'get_user':
+            if request.metadata is None:
+                return Response(None, "Authentication required to read user data")
+            if not self.__auth_service.validate_token(request.metadata):
+                return Response(None, "Invalid or expired authentication token")
+            token_user = request.metadata.user
+            if token_user.role.name != Role.ADMIN.name:
+                return Response(None, "Admin privileges required to read user data" )
         try:
            if hasattr(self.__user_db, request.name):
                method = getattr(self.__user_db, request.name)

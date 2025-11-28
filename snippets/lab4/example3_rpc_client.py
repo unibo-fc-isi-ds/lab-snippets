@@ -6,12 +6,16 @@ from snippets.lab4.example1_presentation import serialize, deserialize, Request,
 class ClientStub:
     def __init__(self, server_address: tuple[str, int]):
         self.__server_address = address(*server_address)
+        self.__token: Token | None = None
+
+    def set_token(self, token: Token):
+            self.__token = token
 
     def rpc(self, name, *args):
         client = Client(self.__server_address)
         try:
             print('# Connected to %s:%d' % client.remote_address)
-            request = Request(name, args)
+            request = Request(name, args, metadata=self.__token)
             print('# Marshalling', request, 'towards', "%s:%d" % client.remote_address)
             request = serialize(request)
             print('# Sending message:', request.replace('\n', '\n# '))
@@ -32,10 +36,9 @@ class RemoteAuthenticationService(ClientStub):
     def __init__(self, server_address):
             super().__init__(server_address)
     def authenticate(self, credentials: Credentials, duration=None) -> Token:
-        args = (credentials,)
-        if duration is not None:
-            args += (duration,)
-        return self.rpc('authenticate', *args)
+        token = super().rpc('authenticate', credentials, duration)
+        self.set_token(token)
+        return token
 
     def validate_token(self, token: Token) -> bool:
         return self.rpc('validate_token', (token,))
