@@ -2,7 +2,6 @@ from .example3_rpc_client import *
 import argparse
 import sys
 
-
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(
@@ -11,13 +10,15 @@ if __name__ == '__main__':
         exit_on_error=False,
     )
     parser.add_argument('address', help='Server address in the form ip:port')
-    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check', 'authenticate'])
+    parser.add_argument('command', help='Method to call',
+                        choices=['add', 'get', 'check', 'authenticate', 'validate_token'])
     parser.add_argument('--user', '-u', help='Username')
     parser.add_argument('--email', '--address', '-a', nargs='+', help='Email address')
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
-    parser.add_argument('--duration', '-d', help='Duration')
+    parser.add_argument('--duration', '-d', help='Duration (milliseconds)')
+    parser.add_argument('--token', '-t', help='Token (json file)')
 
     if len(sys.argv) > 1:
         args = parser.parse_args()
@@ -29,7 +30,7 @@ if __name__ == '__main__':
     user_db = RemoteUserDatabase(args.address)
     auth_service = RemoteAuthenticationService(args.address)
 
-    try :
+    try:
         ids = (args.email or []) + [args.user]
         if len(ids) == 0:
             raise ValueError("Username or email address is required")
@@ -48,12 +49,18 @@ if __name__ == '__main__':
                 print(user_db.check_password(credentials))
             case 'authenticate':
                 credentials = Credentials(ids[0], args.password)
-                if not args.duration:
-                    duration = None
-                else:
-                    duration = timedelta(milliseconds=int(args.duration))
+                duration = None if not args.duration else timedelta(milliseconds=int(args.duration))
                 token = auth_service.authenticate(credentials, duration)
-                print(token)
+                token_serialized = serialize(token)
+                with open("token.json", "w") as f:
+                    f.write(token_serialized)
+                print(token_serialized)
+            case 'validate_token':
+                if not args.token:
+                    raise ValueError("Token is required")
+                with open(args.token) as f:
+                    token = deserialize(f.read())
+                print(auth_service.validate_token(token))
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:
