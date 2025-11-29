@@ -17,6 +17,7 @@ if __name__ == '__main__':
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
+    parser.add_argument('--duration', '-d', help='Duration')
 
     if len(sys.argv) > 1:
         args = parser.parse_args()
@@ -47,7 +48,11 @@ if __name__ == '__main__':
                 print(user_db.check_password(credentials))
             case 'authenticate':
                 credentials = Credentials(ids[0], args.password)
-                token = auth_service.authenticate(credentials)
+                if not args.duration:
+                    duration = None
+                else:
+                    duration = timedelta(milliseconds=int(args.duration))
+                token = auth_service.authenticate(credentials, duration)
                 print(token)
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
