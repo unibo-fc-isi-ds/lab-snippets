@@ -3,6 +3,7 @@ import threading
 import sys
 import time
 from datetime import datetime
+import hashlib
 
 ###############################################################################
 # Utility functions
@@ -12,9 +13,7 @@ def parse_address(s: str):
     host, port = s.split(":")
     return (host, int(port))
 
-
 def local_ips():
-    """Return list of local IPs (same as in provided example)."""
     result = []
     hostname = socket.gethostname()
     try:
@@ -27,6 +26,9 @@ def local_ips():
         pass
     return list(set(result))
 
+def generate_msg_id(msg: str):
+    """Generate a short hash for the message"""
+    return hashlib.md5(msg.encode("utf-8")).hexdigest()
 
 ###############################################################################
 # Connection class — handles one TCP connection with a peer
@@ -39,13 +41,10 @@ class Connection:
         self.callback = callback
         self.alive = True
         self.lock = threading.Lock()
-
-        # background thread for incoming messages
         self.thread = threading.Thread(target=self._receive_loop, daemon=True)
         self.thread.start()
 
     def send(self, msg: str):
-        """Send UTF-8 encoded message with newline terminator."""
         try:
             data = (msg + "\n").encode("utf-8")
             with self.lock:
@@ -77,20 +76,15 @@ class Connection:
                 if not chunk:
                     break
                 buffer += chunk
-
-                # handle lines
                 while b"\n" in buffer:
                     line, buffer = buffer.split(b"\n", 1)
                     text = line.decode("utf-8", errors="ignore")
                     if self.callback:
                         self.callback("message", text, self, None)
-
         except Exception as e:
             if self.callback:
                 self.callback("error", str(e), self, None)
-
         self.close()
-
 
 ###############################################################################
 # Peer class — this is BOTH a server and a client
@@ -102,12 +96,11 @@ class Peer:
         self.known_peers = known_peers
         self.connections = {}  # (ip,port) -> Connection
         self.running = True
+        self.received_msg_ids = set()  # prevent message loops
 
-        # Start listening server
         self.server_thread = threading.Thread(target=self._server_loop, daemon=True)
         self.server_thread.start()
 
-        # Try to connect to known peers
         for addr in known_peers:
             self.connect_to_peer(addr)
 
@@ -116,11 +109,9 @@ class Peer:
     ############################################################################
     def _server_loop(self):
         print(f"[SERVER] Listening on port {self.listen_port} at {', '.join(local_ips())}")
-
         srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         srv.bind(("0.0.0.0", self.listen_port))
         srv.listen()
-
         while self.running:
             try:
                 sock, addr = srv.accept()
@@ -139,7 +130,6 @@ class Peer:
     def connect_to_peer(self, addr):
         if addr in self.connections:
             return
-
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.connect(addr)
@@ -154,6 +144,11 @@ class Peer:
     ############################################################################
     def _on_message(self, event, payload, conn, error):
         if event == "message":
+            msg_id = generate_msg_id(payload)
+            if msg_id in self.received_msg_ids:
+                return  # already processed
+            self.received_msg_ids.add(msg_id)
+
             print(payload)
 
             # Broadcast message to all except the sender
@@ -173,10 +168,12 @@ class Peer:
     # PUBLIC API
     ############################################################################
     def broadcast(self, msg: str):
-        """Send a message to all peers."""
+        msg_id = generate_msg_id(msg)
+        if msg_id in self.received_msg_ids:
+            return
+        self.received_msg_ids.add(msg_id)
         for conn in list(self.connections.values()):
             conn.send(msg)
-
 
 ###############################################################################
 # MAIN — CLI interface
@@ -189,10 +186,7 @@ def main():
         sys.exit(1)
 
     listen_port = int(sys.argv[1])
-    known = []
-
-    for s in sys.argv[2:]:
-        known.append(parse_address(s))
+    known = [parse_address(s) for s in sys.argv[2:]]
 
     peer = Peer(listen_port, known)
 
@@ -214,4 +208,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
