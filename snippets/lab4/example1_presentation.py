@@ -77,15 +77,7 @@ class Serializer:
         }
 
     def _datetime_to_ast(self, dt: datetime):
-        return {
-            'year': self._to_ast(dt.year),
-            'month': self._to_ast(dt.month),
-            'day': self._to_ast(dt.day),
-            'hour': self._to_ast(dt.hour),
-            'minute': self._to_ast(dt.minute),
-            'second': self._to_ast(dt.second),
-            'microsecond': self._to_ast(dt.microsecond),
-        }
+        return {"datetime": dt.isoformat()}
 
     def _timedelta_to_ast(self, td: timedelta):
         return {
@@ -153,15 +145,7 @@ class Deserializer:
         )
 
     def _ast_to_datetime(self, data):
-        return datetime(
-            year = self._ast_to_obj(data['year']),
-            month = self._ast_to_obj(data['month']),
-            day = self._ast_to_obj(data['day']),
-            hour = self._ast_to_obj(data['hour']),
-            minute = self._ast_to_obj(data['minute']),
-            second = self._ast_to_obj(data['second']),
-            microsecond = self._ast_to_obj(data['microsecond']),
-        )
+        return datetime.fromisoformat(data['datetime'])
 
     def _ast_to_timedelta(self, data):
         return timedelta(
