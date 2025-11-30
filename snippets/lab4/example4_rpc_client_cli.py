@@ -7,16 +7,18 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(
         prog=f'python -m snippets -l 4 -e 4',
-        description='RPC client for user database',
+        description='RPC client for user database and authentication service',
         exit_on_error=False,
     )
     parser.add_argument('address', help='Server address in the form ip:port')
-    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check'])
+    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check', 'auth', 'validate'])
     parser.add_argument('--user', '-u', help='Username')
     parser.add_argument('--email', '--address', '-a', nargs='+', help='Email address')
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
+    parser.add_argument('--signature', '-s', help='Signature')
+    parser.add_argument('--expiration', help='Expiration (YYYY-MM-DDTHH:MM:SS)')
 
     if len(sys.argv) > 1:
         args = parser.parse_args()
@@ -26,6 +28,7 @@ if __name__ == '__main__':
 
     args.address = address(args.address)
     user_db = RemoteUserDatabase(args.address)
+    auth_service = RemoteAuthenticationService(args.address)
 
     try :
         ids = (args.email or []) + [args.user]
@@ -44,6 +47,15 @@ if __name__ == '__main__':
             case 'check':
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
+            case 'auth':
+                credentials = Credentials(ids[0], args.password)
+                token = auth_service.authenticate(credentials)
+                print(token)
+            case 'validate':
+                user = user_db.get_user(ids[0])
+                token = Token(user, datetime.fromisoformat(args.expiration), args.signature)
+                is_token_valid = auth_service.validate_token(token)
+                print(is_token_valid)
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:
