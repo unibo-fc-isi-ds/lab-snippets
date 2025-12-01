@@ -138,7 +138,6 @@ if __name__ == '__main__':
     except RuntimeError as e:
         assert str(e) in ('Admin role required')
     
-    
     # Tampering with the token will be detected
     import copy
     tampered_token = copy.deepcopy(token)
@@ -152,6 +151,7 @@ if __name__ == '__main__':
         assert str(e) in ('Invalid token')
     
     # As expected, the user 'gciatto' is able to get information about anyone since he is authorized
+    # Subsequent action do not require the token again since it's saved in the client
     token = auth_service.authenticate(gc_credentials_ok[0])
     user_db.token = token
     user_db.get_user('gciatto')
