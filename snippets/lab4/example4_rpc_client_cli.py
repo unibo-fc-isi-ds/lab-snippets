@@ -1,4 +1,4 @@
-from .example3_rpc_client import *
+from snippets.lab4.example3_rpc_client import *
 import argparse
 import sys
 
@@ -11,7 +11,9 @@ if __name__ == '__main__':
         exit_on_error=False,
     )
     parser.add_argument('address', help='Server address in the form ip:port')
-    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check', 'login'])
+    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check'])
+    parser.add_argument('--login-id', help='ID of the Admin for authentication')
+    parser.add_argument('--login-password', help='Password of the Admin for authentication')
     parser.add_argument('--user', '-u', help='Username')
     parser.add_argument('--email', '--address', '-a', nargs='+', help='Email address')
     parser.add_argument('--name', '-n', help='Full name')
@@ -25,7 +27,15 @@ if __name__ == '__main__':
         sys.exit(0)
 
     args.address = address(args.address)
-    user_db = RemoteUserDatabase(args.address)
+
+    auth = RemoteUserAuthentication(args.address)
+    token = auth.authenticate(Credentials(
+        id=args.login_id, 
+        password=args.login_password, 
+    ))
+
+
+    user_db = RemoteUserDatabase(args.address, token)
 
     try :
         ids = (args.email or []) + [args.user]

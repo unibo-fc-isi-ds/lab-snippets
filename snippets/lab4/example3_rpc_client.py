@@ -1,17 +1,24 @@
+from typing import Any
 from snippets.lab3 import Client, address
 from snippets.lab4.users import *
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
+from snippets.lab4.example2_rpc_server import admin_user
+from snippets.lab4.users import Token
 
 
 class ClientStub:
-    def __init__(self, server_address: tuple[str, int]):
+    def __init__(self, server_address: tuple[str, int], token: Token | None):
         self.__server_address = address(*server_address)
+        self.__token = token
 
-    def rpc(self, name, *args):
+    def update_token(self, token: Token | None): 
+        self.__token = token
+
+    def rpc(self, name, *args) -> Any:
         client = Client(self.__server_address)
         try:
             print('# Connected to %s:%d' % client.remote_address)
-            request = Request(name, args)
+            request = Request(name, args, self.__token)
             print('# Marshalling', request, 'towards', "%s:%d" % client.remote_address)
             request = serialize(request)
             print('# Sending message:', request.replace('\n', '\n# '))
@@ -30,8 +37,8 @@ class ClientStub:
 
 
 class RemoteUserDatabase(ClientStub, UserDatabase):
-    def __init__(self, server_address):
-        super().__init__(server_address)
+    def __init__(self, server_address, token: Token | None):
+        super().__init__(server_address, token)
 
     def add_user(self, user: User):
         return self.rpc('db/add_user', user)
@@ -44,6 +51,10 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
 
 
 class RemoteUserAuthentication(ClientStub, AuthenticationService): 
+
+    def __init__(self, server_address: tuple[str, int]):
+        super().__init__(server_address, None)
+
     def authenticate(self, credentials: Credentials, duration: timedelta | None = None) -> Token:
         result =  self.rpc('auth/authenticate', credentials, duration)
         if not isinstance(result, Token):
@@ -60,18 +71,33 @@ class RemoteUserAuthentication(ClientStub, AuthenticationService):
 if __name__ == '__main__':
     from snippets.lab4.example0_users import gc_user, gc_credentials_ok, gc_credentials_wrong
     import sys
+    addr = address(sys.argv[1])
+    user_db = RemoteUserDatabase(addr, None)
 
+    try:
+        # If we are not authenticated, we cannot add a user
+        user_db.add_user(gc_user)
+        assert False, ""
+    except RuntimeError as e:
+        assert "unauthenticated" in str(e).lower()
 
-    user_db = RemoteUserDatabase(address(sys.argv[1]))
-    auth = RemoteUserAuthentication(address(sys.argv[1]))
+    auth = RemoteUserAuthentication(addr)
+    assert admin_user.password is not None
+
+    # Authenticate using admin user
+    token = auth.authenticate(Credentials(admin_user.username, password=admin_user.password))
+    user_db.update_token(token)
 
     # Trying to get a user that does not exist should raise a KeyError
     try:
         user_db.get_user('gciatto')
     except RuntimeError as e:
+        print(e)
         assert 'User with ID gciatto not found' in str(e)
 
-    # Adding a novel user should work
+    
+
+    # Adding a novel user should now work as we are authenticated
     user_db.add_user(gc_user)
 
     # Trying to add a user that already exist should raise a ValueError
