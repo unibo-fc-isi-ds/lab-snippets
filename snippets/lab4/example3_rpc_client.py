@@ -34,13 +34,27 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
         super().__init__(server_address)
 
     def add_user(self, user: User):
-        return self.rpc('add_user', user)
+        return self.rpc('db/add_user', user)
 
     def get_user(self, id: str) -> User:
-        return self.rpc('get_user', id)
+        return self.rpc('db/get_user', id)
 
     def check_password(self, credentials: Credentials) -> bool:
-        return self.rpc('check_password', credentials)
+        return self.rpc('db/check_password', credentials)
+
+
+class RemoteUserAuthentication(ClientStub, AuthenticationService): 
+    def authenticate(self, credentials: Credentials, duration: timedelta | None = None) -> Token:
+        result =  self.rpc('auth/authenticate', credentials, duration)
+        if not isinstance(result, Token):
+            raise ValueError("Got invalid response")
+        return result
+
+    def validate_token(self, token: Token) -> bool:
+        result = self.rpc('auth/validate_token', token)
+        if not isinstance(result, bool):
+            raise ValueError("Got invalid response")
+        return result
 
 
 if __name__ == '__main__':
@@ -49,6 +63,7 @@ if __name__ == '__main__':
 
 
     user_db = RemoteUserDatabase(address(sys.argv[1]))
+    auth = RemoteUserAuthentication(address(sys.argv[1]))
 
     # Trying to get a user that does not exist should raise a KeyError
     try:
