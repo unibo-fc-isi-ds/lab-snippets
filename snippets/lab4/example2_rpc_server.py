@@ -1,5 +1,5 @@
 from snippets.lab3 import Server
-from snippets.lab4.users.impl import InMemoryUserDatabase
+from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 import traceback
 
@@ -8,6 +8,7 @@ class ServerStub(Server): # RPC server stub --> caso particolare di server
     def __init__(self, port):
         super().__init__(port, self.__on_connection_event)
         self.__user_db = InMemoryUserDatabase() #inizializziamo una nuova istanza del database utenti in memoria
+        self.__auth_service = InMemoryAuthenticationService(self.__user_db) #inizializziamo il servizio di autenticazione in memoria
         # self.__user_db.add_user(u) #opzionale: aggiungiamo un utente di test
         # self.__user_db.get_user(id) --> user #opzionale: aggiungiamo le credenziali di test
         # self.__user_db.check_password(creds) --> bool
@@ -41,20 +42,22 @@ class ServerStub(Server): # RPC server stub --> caso particolare di server
             case 'close':
                 print('[%s:%d] Close connection' % connection.remote_address)
     
+    #Metodo per gestire una richiesta RPC
     def __handle_request(self, request):
-        #request.name = get_user | add_user | check_password
-        #sono le tre funzioni del database utenti
+        #request.name = get_user | add_user | check_password (metodi di UserDatabase)
+        #request.name = autenticate | validate_token (metodi di AuthenticationService)
+
         try:
-            method = getattr(self.__user_db, request.name) #es. self.__user_db.add_user
-            #gettattr --> prende in input un oggetto e una stringa che rappresenta il nome di un attributo
-            #restituisce (se esiste) l'attributo dell'oggetto con quel nome
-            result = method(*request.args)
+            method = getattr(self.__user_db, request.name) #ottiene l'attributo di un oggetto (dato il nome come stringa)
+            result = method(*request.args) #chiama il metodo con gli argomenti forniti 
             error = None
         except Exception as e:
             result = None
             error = " ".join(e.args)
         return Response(result, error)
 
+
+#argv[1] rappresenta la tupla ip:porta del server --> stub
 
 if __name__ == '__main__':
     import sys

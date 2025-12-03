@@ -12,9 +12,8 @@ class Role(Enum):
 
 #Base comune per le dataclass
 class Datum:
-    def copy(self, **kwargs):
+    def copy(self, **kwargs): # crea una nuova istanza della dataclass,
         return replace(self, **kwargs)
-# crea una nuova istanza della dataclass,
 # copiando tutti i campi dall’istanza originale e sostituendo quelli passati come keyword argument.
 
 @dataclass # --> Decoratore che indica a python che questa classe serve sopratutto per immagazzinare dati
@@ -35,7 +34,7 @@ class User(Datum): #Classe che rappresenta un utente
         if not self.emails:
             raise ValueError("Email address is required")   
 
-    @property # --> Decoratore possiamo accedere a questo metodo come se fosse un attributo
+    @property # --> Decoratore : possiamo accedere a questo metodo come se fosse un attributo
     def ids(self):
         return {self.username} | self.emails 
     # {self.username} crea un set con l'username

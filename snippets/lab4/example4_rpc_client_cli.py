@@ -18,7 +18,7 @@ if __name__ == '__main__':
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
 
-    if len(sys.argv) > 1:
+    if len(sys.argv) > 1: 
         args = parser.parse_args()
     else:
         parser.print_help()

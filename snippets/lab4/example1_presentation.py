@@ -3,33 +3,27 @@ from datetime import datetime
 import json
 from dataclasses import dataclass
 
+#Questo file definisce le classi e le funzioni per serializzare e deserializzare
+#oggetti relativi al sistema di autenticazione e gestione utenti in formato JSON.
 
 #Serializzazione --> {"$type": "Request", "name":"...", "args":[...]}
 @dataclass
-class Request:
-    """
-    A container for RPC requests: a name of the function to call and its arguments.
-    """
+class Request: #Richiesta RPC
 
-    name: str
-    args: tuple
+    name: str #nome del metodo da chiamare
+    args: tuple #argomenti del metodo
 
-    def __post_init__(self):
+    def __post_init__(self): #Converte args in tupla se non lo è già
         self.args = tuple(self.args)
 
 #Deserializzazione --> {"$type": "Response", "result": {...}, "error": "..."}
 @dataclass
-class Response:
-    """
-    A container for RPC responses: a result of the function call or an error message.
-    When error is None, it means there was no error.
-    Result may be None, if the function returns None.
-    """
+class Response: #Risposta RPC
 
-    result: object | None
-    error: str | None
+    result: object | None #risultato della chiamata
+    error: str | None #messaggio di errore, None se non c'è errore
 
-
+#Classe per Serializzare
 class Serializer:
     primitive_types = (int, float, str, bool, type(None))
     container_types = (list, set)
@@ -95,7 +89,7 @@ class Serializer:
             'error': self._to_ast(response.error),
         }
 
-
+#Classe per Deserializzare
 class Deserializer:
     def deserialize(self, string):
         return self._ast_to_obj(self._string_to_ast(string))
@@ -161,13 +155,14 @@ DEFAULT_SERIALIZER = Serializer()
 DEFAULT_DESERIALIZER = Deserializer()
 
 
-def serialize(obj):
+def serialize(obj): #serializza un oggetto in stringa
     return DEFAULT_SERIALIZER.serialize(obj)
 
 
-def deserialize(string):
+def deserialize(string): #deserializza una stringa in oggetto
     return DEFAULT_DESERIALIZER.deserialize(string)
 
+# Esempio di utilizzo : serializzazione e deserializzazione di una Request
 
 if __name__ == '__main__':
     from snippets.lab4.example0_users import gc_user, gc_credentials_wrong
@@ -175,14 +170,14 @@ if __name__ == '__main__':
     request = Request(
         name='my_function',
         args=(
-            gc_credentials_wrong, # an instance of Credentials
-            gc_user, # an instance of User
-            ["a string", 42, 3.14, True, False], # a list, containing various primitive types
-            {'key': 'value'}, # a dictionary
-            Response(None, 'an error'), # a Response, which contains a None field
+            gc_credentials_wrong, # un istanza di Credentials
+            gc_user, # un istanza di User
+            ["a string", 42, 3.14, True, False], # una lista, contenente vari tipi primitivi
+            {'key': 'value'}, # un dizionario
+            Response(None, 'an error'), # una Response, che contiene un campo None
         )
     )
-    serialized = serialize(request)
+    serialized = serialize(request) 
     print("Serialized", "=", serialized)
     deserialized = deserialize(serialized)
     print("Deserialized", "=", deserialized)

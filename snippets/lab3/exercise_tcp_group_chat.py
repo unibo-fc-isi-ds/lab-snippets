@@ -5,6 +5,7 @@ import sys
 import socket
 from unittest import case
 import psutil
+import time
 
 # ---- CONFIGURAZIONE ----
 # Fa il parsing di un indirizzo IP e porta 
@@ -206,7 +207,6 @@ class Peer:
         peer: stringa 'ip:port'
         retries: quante volte ritentare in caso di ConnectionRefusedError
         """
-        import time
 
         for attempt in range(retries):
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

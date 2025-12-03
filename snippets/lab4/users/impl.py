@@ -58,7 +58,7 @@ class InMemoryUserDatabase(UserDatabase, _Debuggable):
         self._log(f"Checking {credentials}: {'correct' if result else 'incorrect'}")
         return result
     
-
+#Implementazione in memoria di AuthenticationService
 class InMemoryAuthenticationService(AuthenticationService, _Debuggable):
     def __init__(self, database: UserDatabase, secret: str = None, debug: bool = True):
         _Debuggable.__init__(self, debug) #Inizializza la parte di debug
@@ -70,17 +70,17 @@ class InMemoryAuthenticationService(AuthenticationService, _Debuggable):
         self._log(f"Authentication service initialized with secret {secret}")
     
     #Implementazione del metodo authenticate dell'interfaccia AuthenticationService
-    def authenticate(self, credentials: Credentials, duration: timedelta = None) -> Token:
+    def authenticate(self, credentials: Credentials, duration: timedelta = None) -> Token: #restituisce un Token
         if duration is None: #se non è stata fornita una durata
             duration = timedelta(days=1) #imposta la durata di default a 1 giorno
         if self.__database.check_password(credentials): #se le credenziali sono corrette
             expiration = datetime.now() + duration #calcola la data di scadenza del token
-            user = self.__database.get_user(credentials.id)
+            user = self.__database.get_user(credentials.id) #ottiene l'utente dal database
             signature = _compute_sha256_hash(f"{user}{expiration}{self.__secret}") #calcola la firma del token --> hash di user, expiration e secret
             result = Token(user, expiration, signature) #crea il token
             self._log(f"Generate token for user {credentials.id}: {result}")
             return result
-        raise ValueError("Invalid credentials")
+        raise ValueError("Invalid credentials") #se le credenziali sono errate
     
     #Metodo privato per validare la firma del token
     def __validate_token_signature(self, token: Token) -> bool:
