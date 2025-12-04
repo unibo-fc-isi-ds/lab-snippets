@@ -20,7 +20,8 @@ if __name__ == '__main__':
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
-    parser.add_argument('--token', '-t', help='Authentication token string')
+    parser.add_argument('--tokensig', '-ts', help='token signature string')
+    parser.add_argument('--tokenexp', '-te', help='Token expiration string')
 
     if len(sys.argv) > 1: 
         args = parser.parse_args() #args contiene tutti gli argomenti passati da linea di comando
@@ -59,10 +60,16 @@ if __name__ == '__main__':
                 token = auth_service.authenticate(credentials)
                 print('Autentication successful - Token:', token)
             case 'validate': #posso validare un token solo dopo essermi autenticato : lo copio e incollo dall'output del comando precedente
-                if not args.token:
-                    raise ValueError("Token string is required")
+                if not args.tokensig:
+                    raise ValueError("Token signature is required")
                 
-                if auth_service.validate_token(args.token):
+                if not args.tokenexp:
+                    raise ValueError("Token expiration is required")
+                
+                user = User(username=args.user, emails=set(args.email or []), full_name=None, role=Role.USER, password=None)
+                token = Token(user=user, expiration=args.tokenexp, signature=args.tokensig)
+
+                if auth_service.validate_token(token):
                     print('Token is valid')
                 else:
                     print('Token is invalid or expired')
