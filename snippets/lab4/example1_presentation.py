@@ -10,6 +10,7 @@ from dataclasses import dataclass
 @dataclass
 class Request: #Richiesta RPC
 
+    service : str #nome del servizio (UserDatabase o AuthenticationService)
     name: str #nome del metodo da chiamare
     args: tuple #argomenti del metodo
 
@@ -24,7 +25,7 @@ class Response: #Risposta RPC
     error: str | None #messaggio di errore, None se non c'è errore
 
 #Classe per Serializzare
-class Serializer:
+class Serializer: # oggetto --> ast --> stringa
     primitive_types = (int, float, str, bool, type(None))
     container_types = (list, set)
 
@@ -49,7 +50,9 @@ class Serializer:
             return data
         raise ValueError(f"Unsupported type {type(obj)}")
 
-    def _user_to_ast(self, user: User):
+    # Metodi specifici per convertire ogni tipo di oggetto in AST (dictionary)
+
+    def _user_to_ast(self, user: User): 
         return {
             'username': self._to_ast(user.username),
             'emails': [self._to_ast(email) for email in user.emails],
@@ -71,7 +74,7 @@ class Serializer:
             'expiration': self._to_ast(token.expiration),
         }
 
-    def _datetime_to_ast(self, dt: datetime):
+    def _datetime_to_ast(self, dt: datetime): # DA FARE
         raise NotImplementedError("Missing implementation for datetime serialization")
 
     def _role_to_ast(self, role: Role):
@@ -79,6 +82,7 @@ class Serializer:
 
     def _request_to_ast(self, request: Request):
         return {
+            'service': self._to_ast(request.service), #aggiunto 
             'name': self._to_ast(request.name),
             'args': [self._to_ast(arg) for arg in request.args],
         }
@@ -89,7 +93,7 @@ class Serializer:
             'error': self._to_ast(response.error),
         }
 
-#Classe per Deserializzare
+#Classe per Deserializzare stringa --> ast --> oggetto
 class Deserializer:
     def deserialize(self, string):
         return self._ast_to_obj(self._string_to_ast(string))
@@ -140,6 +144,7 @@ class Deserializer:
 
     def _ast_to_request(self, data):
         return Request(
+            service=self._ast_to_obj(data['service']), #aggiunto
             name=self._ast_to_obj(data['name']),
             args=tuple(self._ast_to_obj(arg) for arg in data['args']),
         )
@@ -168,6 +173,7 @@ if __name__ == '__main__':
     from snippets.lab4.example0_users import gc_user, gc_credentials_wrong
 
     request = Request(
+        service='UserDatabase', # aggiunto
         name='my_function',
         args=(
             gc_credentials_wrong, # un istanza di Credentials
