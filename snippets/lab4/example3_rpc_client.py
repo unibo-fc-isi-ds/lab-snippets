@@ -10,11 +10,11 @@ class ClientStub:
         self.__server_address = address(*server_address) #transforma in tupla (ip, port)
 
     # Metodo generico per effettuare una chiamata di procedura remota
-    def rpc(self, name, *args):
+    def rpc(self, service, name, *args):
         client = Client(self.__server_address) #crea un client TCP che si connette al server all'indirizzo specificato
         try:
             print('# Connected to %s:%d' % client.remote_address) 
-            request = Request(name, args) #creo un istanza di Request con il nome del metodo e gli argomenti
+            request = Request(service, name, args) #creo un istanza di Request con il nome del metodo e gli argomenti
             print('# Marshalling', request, 'towards', "%s:%d" % client.remote_address)
             request = serialize(request) #la serializzo in stringa (ricorda : obj -> AST -> stringa)
             print('# Sending message:', request.replace('\n', '\n# '))
@@ -34,18 +34,33 @@ class ClientStub:
 #Ricorda che python supporta l'ereditarietà multipla
 #Qui implementiamo le funzioni add_user, get_user e check_password in modo remoto
 class RemoteUserDatabase(ClientStub, UserDatabase):
+    service = 'UserDatabase'
+
     def __init__(self, server_address):
         super().__init__(server_address) #fa riferimento al costruttore di ClientStub
-
+    
     #mi appello al metodo rpc della superclasse ClientStub
     def add_user(self, user: User):
-        return self.rpc('add_user', user)
+        return self.rpc(self.service , 'add_user', user)
 
     def get_user(self, id: str) -> User:
-        return self.rpc('get_user', id)
+        return self.rpc(self.service, 'get_user', id)
 
     def check_password(self, credentials: Credentials) -> bool:
-        return self.rpc('check_password', credentials)
+        return self.rpc(self.service, 'check_password', credentials)
+
+#Qui implementiamo le funzioni authenticate e validate_token in modo remoto
+class RemoteAuthenticationService(ClientStub, AuthenticationService):
+    service = 'AuthenticationService'
+    
+    def __init__(self, server_address):
+        super().__init__(server_address)
+
+    def authenticate(self, credentials: Credentials) -> Token:
+        return self.rpc(self.service,'authenticate', credentials)
+
+    def validate_token(self, token: Token) -> bool:
+        return self.rpc(self.service,'validate_token', token)
 
 if __name__ == '__main__':
     from snippets.lab4.example0_users import gc_user, gc_credentials_ok, gc_credentials_wrong
@@ -53,7 +68,8 @@ if __name__ == '__main__':
 
     # Qua entra in gioco la distribuzione
     user_db = RemoteUserDatabase(address(sys.argv[1]))
-
+    auth_service = RemoteAuthenticationService(address(sys.argv[1])) #utile per testare il servizio di autenticazione
+    
     #Cercando di ottenere un utente che non esiste dovrebbe sollevare un RuntimeError
     try:
         user_db.get_user('gciatto') #non esiste ancora

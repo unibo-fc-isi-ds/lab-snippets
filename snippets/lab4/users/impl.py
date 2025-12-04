@@ -70,6 +70,7 @@ class InMemoryAuthenticationService(AuthenticationService, _Debuggable):
         self._log(f"Authentication service initialized with secret {secret}")
     
     #Implementazione del metodo authenticate dell'interfaccia AuthenticationService
+    #Autentica un utente e genera un token
     def authenticate(self, credentials: Credentials, duration: timedelta = None) -> Token: #restituisce un Token
         if duration is None: #se non è stata fornita una durata
             duration = timedelta(days=1) #imposta la durata di default a 1 giorno
@@ -87,6 +88,7 @@ class InMemoryAuthenticationService(AuthenticationService, _Debuggable):
         return token.signature == _compute_sha256_hash(f"{token.user}{token.expiration}{self.__secret}")
 
     #Implementazione del metodo validate_token dell'interfaccia AuthenticationService
+    #Valida un token
     def validate_token(self, token: Token) -> bool:
         result = token.expiration > datetime.now() and self.__validate_token_signature(token)
         #Se il token non è scaduto e la firma è valida --> è ancora valido

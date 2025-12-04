@@ -46,9 +46,14 @@ class ServerStub(Server): # RPC server stub --> caso particolare di server
     def __handle_request(self, request):
         #request.name = get_user | add_user | check_password (metodi di UserDatabase)
         #request.name = autenticate | validate_token (metodi di AuthenticationService)
-        
+
         try:
-            method = getattr(self.__user_db, request.name) #ottiene l'attributo di un oggetto (dato il nome come stringa)
+            if request.service == 'AuthenticationService':
+                method = getattr(self.__auth_service, request.name) #ottiene l'attributo di un oggetto (dato il nome come stringa)
+            elif request.service == 'UserDatabase':
+                method = getattr(self.__user_db, request.name)
+            else: raise ValueError(f"Unknown service {request.service}")
+
             result = method(*request.args) #chiama il metodo con gli argomenti forniti 
             error = None
         except Exception as e:

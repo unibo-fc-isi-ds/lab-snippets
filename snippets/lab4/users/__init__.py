@@ -43,7 +43,7 @@ class User(Datum): #Classe che rappresenta un utente
 
 @dataclass
 class Credentials(Datum): #Classe che rappresenta le credenziali di un utente
-    id: str
+    id: str #cioè username
     password: str
 
     def __post_init__(self):
