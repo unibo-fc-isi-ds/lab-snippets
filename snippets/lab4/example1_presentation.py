@@ -1,15 +1,11 @@
 from .users import User, Credentials, Token, Role
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 from dataclasses import dataclass
 
 
 @dataclass
 class Request:
-    """
-    A container for RPC requests: a name of the function to call and its arguments.
-    """
-
     name: str
     args: tuple
 
@@ -19,12 +15,6 @@ class Request:
 
 @dataclass
 class Response:
-    """
-    A container for RPC responses: a result of the function call or an error message.
-    When error is None, it means there was no error.
-    Result may be None, if the function returns None.
-    """
-
     result: object | None
     error: str | None
 
@@ -46,7 +36,7 @@ class Serializer:
             return [self._to_ast(item) for item in obj]
         if isinstance(obj, dict):
             return {key: self._to_ast(value) for key, value in obj.items()}
-        # selects the appropriate method to convert the object to AST via reflection
+        # Метод для кастомных типов
         method_name = f'_{type(obj).__name__.lower()}_to_ast'
         if hasattr(self, method_name):
             data = getattr(self, method_name)(obj)
@@ -54,6 +44,7 @@ class Serializer:
             return data
         raise ValueError(f"Unsupported type {type(obj)}")
 
+    # ===== User / Credentials / Token / Role / Request / Response =====
     def _user_to_ast(self, user: User):
         return {
             'username': self._to_ast(user.username),
@@ -77,7 +68,11 @@ class Serializer:
         }
 
     def _datetime_to_ast(self, dt: datetime):
-        raise NotImplementedError("Missing implementation for datetime serialization")
+        return {'value': dt.isoformat()}
+
+    def _timedelta_to_ast(self, td: timedelta):
+        # Сериализуем как количество секунд
+        return {'seconds': td.total_seconds()}
 
     def _role_to_ast(self, role: Role):
         return {'name': role.name}
@@ -106,15 +101,15 @@ class Deserializer:
         if isinstance(data, dict):
             if '$type' not in data:
                 return {key: self._ast_to_obj(value) for key, value in data.items()}
-            # selects the appropriate method to convert the AST to object via reflection
             method_name = f'_ast_to_{data["$type"].lower()}'
             if hasattr(self, method_name):
                 return getattr(self, method_name)(data)
-            raise ValueError(f"Unsupported type {data['type']}")
+            raise ValueError(f"Unsupported type {data['$type']}")
         if isinstance(data, list):
             return [self._ast_to_obj(item) for item in data]
         return data
 
+    # ===== User / Credentials / Token / Role / Request / Response =====
     def _ast_to_user(self, data):
         return User(
             username=self._ast_to_obj(data['username']),
@@ -138,7 +133,10 @@ class Deserializer:
         )
 
     def _ast_to_datetime(self, data):
-        raise NotImplementedError("Missing implementation for datetime deserialization")
+        return datetime.fromisoformat(data['value'])
+
+    def _ast_to_timedelta(self, data):
+        return timedelta(seconds=data['seconds'])
 
     def _ast_to_role(self, data):
         return Role[self._ast_to_obj(data['name'])]
@@ -166,23 +164,3 @@ def serialize(obj):
 
 def deserialize(string):
     return DEFAULT_DESERIALIZER.deserialize(string)
-
-
-if __name__ == '__main__':
-    from snippets.lab4.example0_users import gc_user, gc_credentials_wrong
-
-    request = Request(
-        name='my_function',
-        args=(
-            gc_credentials_wrong, # an instance of Credentials
-            gc_user, # an instance of User
-            ["a string", 42, 3.14, True, False], # a list, containing various primitive types
-            {'key': 'value'}, # a dictionary
-            Response(None, 'an error'), # a Response, which contains a None field
-        )
-    )
-    serialized = serialize(request)
-    print("Serialized", "=", serialized)
-    deserialized = deserialize(serialized)
-    print("Deserialized", "=", deserialized)
-    assert request == deserialized
