@@ -22,13 +22,17 @@ def expect_error(fn, expected):
 
 def main():
 	if len(sys.argv) != 2:
-		print("Usage: python test_lab4_auth_secure.py ip:port")
+		print("Usage: python -m snippets.lab4.test_lab4_auth_secure ip:port")
 		sys.exit(1)
 
 	server_addr = address(sys.argv[1])
+
+	# Create client stubs
 	user_db = RemoteUserDatabase(server_addr)
-	auth = RemoteAuthenticationService(server_address=server_addr)
-	auth._linked_user_db = user_db  # Link stubs to share token
+	auth = RemoteAuthenticationService(server_addr)
+
+	# Link per propagazione token
+	auth._linked_user_db = user_db
 
 	# Create admin
 	print_step("ADD ADMIN USER")
@@ -49,8 +53,6 @@ def main():
 	print_step("ADMIN LOGIN")
 	admin_token = auth.authenticate(Credentials("admin", "secret"))
 	print("Admin token =", admin_token)
-
-	# Nota: authenticate() imposta automaticamente il token nello stub
 
 	# Get with valid admin token -> OK
 	print_step("GET WITH VALID ADMIN TOKEN")
@@ -73,8 +75,6 @@ def main():
 	print_step("LOGIN NORMAL USER")
 	bob_token = auth.authenticate(Credentials("bob", "pass"))
 	print("Bob token =", bob_token)
-
-	# Dopo login, lo stub user_db ha ora token di Bob
 
 	# Normal user tries to get admin data -> FAIL
 	print_step("NORMAL USER SHOULD NOT BE ABLE TO GET USER DATA")

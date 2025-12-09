@@ -51,23 +51,21 @@ class ServerStub(Server):
 
 	def __handle_request(self, request):
 		try:
-			# service: UserDatabase
+			# USER DB SERVICE
 			if hasattr(self.__user_db, request.name):
-				# authorization for read operations
-				if request.name == 'get_user':
+				if request.name == "get_user":
 					self.__require_admin(request)
 
 				method = getattr(self.__user_db, request.name)
 				result = method(*request.args)
 				return Response(result, None)
 
-			# service: AuthenticationService
+			# AUTH SERVICE
 			if hasattr(self.__auth, request.name):
 				method = getattr(self.__auth, request.name)
 				result = method(*request.args)
 				return Response(result, None)
 
-			# unknown method
 			return Response(None, f"Unknown method {request.name}")
 
 		except Exception as e:

@@ -2,11 +2,16 @@ from .example3_rpc_client import *
 import argparse
 import sys
 
+from snippets.lab4.users import User, Credentials, Role, Token
+from snippets.lab4.example1_presentation import serialize, deserialize
+from snippets.lab3 import address
+
+
 
 if __name__ == '__main__':
 
 	parser = argparse.ArgumentParser(
-		prog=f'python -m snippets -l 4 -e 4',
+		prog='python -m snippets -l 4 -e 4',
 		description='RPC client for user database and authentication service',
 		exit_on_error=False,
 	)
@@ -43,26 +48,31 @@ if __name__ == '__main__':
 	user_db = RemoteUserDatabase(args.address)
 	auth = RemoteAuthenticationService(args.address)
 
+	# link stubs so that authenticate() propagates tokens
+	auth._linked_user_db = user_db
+
 	# preload token if provided
 	preloaded_token = None
 	if args.token_file:
 		with open(args.token_file) as f:
-			token_data = f.read()
-		preloaded_token = deserialize(token_data)
+			preloaded_token = deserialize(f.read())
 	elif args.token:
 		preloaded_token = deserialize(args.token)
 
 	if preloaded_token is not None:
 		if not isinstance(preloaded_token, Token):
 			raise ValueError("Invalid token format")
-		user_db._ClientStub__token = preloaded_token
-		auth._ClientStub__token = preloaded_token
+
+		# load token into both stubs (session restore)
+		auth._set_token(preloaded_token)
+		user_db._set_token(preloaded_token)
 
 	try:
 		ids = (args.email or []) + [args.user]
 		ids = [x for x in ids if x]
 
 		match args.command:
+
 			case 'add':
 				if not args.password:
 					raise ValueError("Password is required")
@@ -70,6 +80,7 @@ if __name__ == '__main__':
 					raise ValueError("Full name is required")
 				if not args.user:
 					raise ValueError("Username is required")
+
 				user = User(
 					args.user,
 					args.email,
@@ -89,6 +100,7 @@ if __name__ == '__main__':
 					raise ValueError("Username or email address is required")
 				if not args.password:
 					raise ValueError("Password is required")
+
 				credentials = Credentials(ids[0], args.password)
 				print(user_db.check_password(credentials))
 
@@ -97,18 +109,20 @@ if __name__ == '__main__':
 					raise ValueError("Username or email address is required")
 				if not args.password:
 					raise ValueError("Password is required")
+
 				credentials = Credentials(ids[0], args.password)
 				token = auth.authenticate(credentials)
 				print(token)
+
 				if args.save_token:
 					with open(args.save_token, 'w') as f:
 						f.write(serialize(token))
 
 			case 'validate':
+				# explicit token takes priority
 				if args.token_file:
 					with open(args.token_file) as f:
-						token_data = f.read()
-					token = deserialize(token_data)
+						token = deserialize(f.read())
 				elif args.token:
 					token = deserialize(args.token)
 				elif preloaded_token is not None:
