@@ -50,11 +50,18 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
 class RemoteAuthenticationService(ClientStub):
 	def __init__(self, server_address):
 		super().__init__(server_address)
+		self._linked_user_db: RemoteUserDatabase | None = None
 
 	def authenticate(self, credentials: Credentials) -> Token:
 		token = self.rpc('authenticate', credentials)
-		# memorizza il token per le chiamate successive
-		self._ClientStub__token = token
+
+		# Set token inside this stub (auth)
+		self._set_token(token)
+
+		# Propagate token to linked user_db if present
+		if self._linked_user_db is not None:
+			self._linked_user_db._set_token(token)
+
 		return token
 
 	def validate_token(self, token: Token) -> bool:
@@ -67,6 +74,9 @@ if __name__ == '__main__':
 
 	user_db = RemoteUserDatabase(address(sys.argv[1]))
 	auth = RemoteAuthenticationService(address(sys.argv[1]))
+
+	# COLLEGO GLI STUB (serve per propagare token)
+	auth._linked_user_db = user_db
 
 	# aggiungo l'admin nel DB
 	user_db.add_user(gc_user)

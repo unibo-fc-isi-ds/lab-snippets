@@ -43,7 +43,7 @@ if __name__ == '__main__':
 	user_db = RemoteUserDatabase(args.address)
 	auth = RemoteAuthenticationService(args.address)
 
-	# optional: preload token into client stubs, so that RPC calls include metadata
+	# preload token if provided
 	preloaded_token = None
 	if args.token_file:
 		with open(args.token_file) as f:
@@ -55,7 +55,6 @@ if __name__ == '__main__':
 	if preloaded_token is not None:
 		if not isinstance(preloaded_token, Token):
 			raise ValueError("Invalid token format")
-		# set token into both client stubs, so subsequent RPC calls carry metadata
 		user_db._ClientStub__token = preloaded_token
 		auth._ClientStub__token = preloaded_token
 
@@ -71,7 +70,13 @@ if __name__ == '__main__':
 					raise ValueError("Full name is required")
 				if not args.user:
 					raise ValueError("Username is required")
-				user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
+				user = User(
+					args.user,
+					args.email,
+					args.name,
+					Role[args.role.upper()],
+					args.password
+				)
 				print(user_db.add_user(user))
 
 			case 'get':
@@ -95,14 +100,11 @@ if __name__ == '__main__':
 				credentials = Credentials(ids[0], args.password)
 				token = auth.authenticate(credentials)
 				print(token)
-
 				if args.save_token:
 					with open(args.save_token, 'w') as f:
 						f.write(serialize(token))
 
 			case 'validate':
-				# qui usiamo esplicitamente il token passato o caricato,
-				# indipendentemente dal pre-caricamento negli stub
 				if args.token_file:
 					with open(args.token_file) as f:
 						token_data = f.read()
@@ -116,7 +118,6 @@ if __name__ == '__main__':
 
 				if not isinstance(token, Token):
 					raise ValueError("Invalid token format")
-
 				print(auth.validate_token(token))
 
 			case _:
