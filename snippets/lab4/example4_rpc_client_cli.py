@@ -21,7 +21,13 @@ if __name__ == '__main__':
 	parser.add_argument('--user', '-u', help='Username')
 	parser.add_argument('--email', '--address', '-a', nargs='+', help='Email address')
 	parser.add_argument('--name', '-n', help='Full name')
-	parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
+	parser.add_argument(
+		'--role',
+		'-r',
+		help='Role (defaults to "user")',
+		choices=['admin', 'user'],
+		default='user',
+	)
 	parser.add_argument('--password', '-p', help='Password')
 	parser.add_argument('--token', '-t', help='Serialized token (JSON string)')
 	parser.add_argument('--token-file', help='Read token from file')
@@ -36,6 +42,22 @@ if __name__ == '__main__':
 	args.address = address(args.address)
 	user_db = RemoteUserDatabase(args.address)
 	auth = RemoteAuthenticationService(args.address)
+
+	# optional: preload token into client stubs, so that RPC calls include metadata
+	preloaded_token = None
+	if args.token_file:
+		with open(args.token_file) as f:
+			token_data = f.read()
+		preloaded_token = deserialize(token_data)
+	elif args.token:
+		preloaded_token = deserialize(args.token)
+
+	if preloaded_token is not None:
+		if not isinstance(preloaded_token, Token):
+			raise ValueError("Invalid token format")
+		# set token into both client stubs, so subsequent RPC calls carry metadata
+		user_db._ClientStub__token = preloaded_token
+		auth._ClientStub__token = preloaded_token
 
 	try:
 		ids = (args.email or []) + [args.user]
@@ -79,12 +101,16 @@ if __name__ == '__main__':
 						f.write(serialize(token))
 
 			case 'validate':
+				# qui usiamo esplicitamente il token passato o caricato,
+				# indipendentemente dal pre-caricamento negli stub
 				if args.token_file:
 					with open(args.token_file) as f:
 						token_data = f.read()
 					token = deserialize(token_data)
 				elif args.token:
 					token = deserialize(args.token)
+				elif preloaded_token is not None:
+					token = preloaded_token
 				else:
 					raise ValueError("Token or --token-file is required")
 
