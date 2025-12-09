@@ -1,3 +1,4 @@
+from importlib import metadata
 from .users import User, Credentials, Token, Role
 from datetime import datetime
 import json
@@ -12,6 +13,7 @@ class Request:
     
     name: str
     args: tuple
+    metadata: object | None = None
 
     def __post_init__(self):
         self.args = tuple(self.args)
@@ -85,10 +87,15 @@ class Serializer:
         return {'name': role.name}
 
     def _request_to_ast(self, request: Request):
-        return {
+        data = {
             'name': self._to_ast(request.name),
             'args': [self._to_ast(arg) for arg in request.args],
         }
+        if request.metadata is not None:
+            data['metadata'] = self._to_ast(request.metadata)
+        return data
+
+
 
     def _response_to_ast(self, response: Response):
         return {
@@ -152,7 +159,9 @@ class Deserializer:
         return Request(
             name=self._ast_to_obj(data['name']),
             args=tuple(self._ast_to_obj(arg) for arg in data['args']),
+            metadata=self._ast_to_obj(data['metadata']) if 'metadata' in data else None,
         )
+
 
     def _ast_to_response(self, data):
         return Response(
@@ -173,24 +182,38 @@ def deserialize(string):
     return DEFAULT_DESERIALIZER.deserialize(string)
 
 
-if __name__ == '__main__':
-    from example0_users import gc_user, gc_credentials_wrong
+if __name__ == "__main__":
+    from snippets.lab4.example0_users import gc_user, gc_credentials_wrong
+    from datetime import timedelta
+
+    # Create a simple token to test metadata serialization
+    token = Token(
+        signature="testsig",
+        user=gc_user.copy(password=None),
+        expiration=datetime.now() + timedelta(hours=1),
+    )
 
     now = datetime.now()
 
     request = Request(
-        name='my_function',
+        name="my_function",
         args=(
-            gc_credentials_wrong, # an instance of Credentials
-            gc_user, # an instance of User
-            ["a string", 42, 3.14, True, False], # a list, containing various primitive types
-            {'key': 'value'}, # a dictionary
-            Response(None, 'an error'), # a Response, which contains a None field
-            now, # a datetime instance
-        )
+            gc_credentials_wrong,  # Credentials
+            gc_user,               # User
+            ["a string", 42, 3.14, True, False],  # list
+            {"key": "value"},      # dict
+            Response(None, "an error"),  # nested Response
+            now,                    # datetime
+        ),
+        metadata=token,            # NEW: include token to test metadata serialization
     )
+
     serialized = serialize(request)
-    print("Serialized", "=", serialized)
+    print("Serialized =", serialized)
+
     deserialized = deserialize(serialized)
-    print("Deserialized", "=", deserialized)
+    print("Deserialized =", deserialized)
+
     assert request == deserialized
+    print("\nOK: Serialization and deserialization (including metadata) work correctly.")
+
