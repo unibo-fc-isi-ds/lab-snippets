@@ -1,5 +1,7 @@
 from .example3_rpc_client import *
 import argparse
+import ast
+from datetime import datetime
 import sys
 
 
@@ -66,8 +68,15 @@ if __name__ == '__main__':
                 if not args.tokenexp:
                     raise ValueError("Token expiration is required")
                 
-                user = User(username=args.user, emails=set(args.email or []), full_name=None, role=Role.USER, password=None)
-                token = Token(user=user, expiration=args.tokenexp, signature=args.tokensig)
+                utente = User(username=args.user, emails=set(args.email or []), full_name=None, role=Role.USER, password=None)
+                
+                stringa_datetime = args.tokenexp
+                t = ast.literal_eval(stringa_datetime) #converte la stringa in tupla
+                dt = datetime(*t[:6], microsecond=t[6])
+
+                token = Token(utente, expiration=dt, signature=args.tokensig)
+                
+
 
                 if auth_service.validate_token(token):
                     print('Token is valid')
