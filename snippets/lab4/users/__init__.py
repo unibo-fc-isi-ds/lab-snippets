@@ -61,6 +61,9 @@ class Token(Datum):
             raise ValueError(f"Expected object of type {datetime.__name__}, got: {self.expiration}")
         if not self.signature:
             raise ValueError("Signature is required")
+        
+    def __hash__(self):
+        return super().__hash__(self.user, self.expiration, self.signature)
     
 
 class UserDatabase(Protocol):

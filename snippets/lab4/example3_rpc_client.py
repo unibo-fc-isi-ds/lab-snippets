@@ -37,8 +37,8 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
     def add_user(self, user: User):
         return self.rpc('add_user', user)
 
-    def get_user(self, id: str) -> User:
-        return self.rpc('get_user', id)
+    def get_user(self, id: str, token: Token) -> User:
+        return self.rpc('get_user', id, token)
 
     def check_password(self, credentials: Credentials) -> bool:
         return self.rpc('check_password', credentials)
@@ -49,20 +49,52 @@ class RemoteAuthenticationService(ClientStub, AuthenticationService):
 
     def authenticate(self, credentials: Credentials, duration: timedelta = None) -> Token:
         return self.rpc('authenticate', credentials, duration)
+    
+class RemoteDatabaseServiceWithAuthentication(RemoteUserDatabase, RemoteAuthenticationService):
+    def __init__(self, server_address):
+        super().__init__(server_address)
+    
+    def add_user(self, user):
+        return super().add_user(user)
+    
+    def get_user(self, id, token):
+        return super().get_user(id=id, token=token)
+    
+    def check_password(self, credentials):
+        return super().check_password(credentials)
+    
+    def authenticate(self, credentials):
+        return super().authenticate(credentials)
 
 if __name__ == '__main__':
-    from snippets.lab4.example0_users import gc_user, gc_credentials_ok, gc_credentials_wrong
+    #from snippets.lab4.example0_users import gc_user, gc_credentials_ok, gc_credentials_wrong
     import sys
 
 
     user_db = RemoteUserDatabase(address(sys.argv[1]))
     auth_service = RemoteAuthenticationService(address(sys.argv[1]))
+    user_db_with_authentication = RemoteDatabaseServiceWithAuthentication(address(sys.argv[1]))
     login_token = ""
     try:
-        login_token = auth_service.authenticate(credentials=Credentials(id='alice', password='alice'))
+        login_token = user_db_with_authentication.authenticate(credentials=Credentials(id='alice', password='alice'))
     except ValueError as e:
         assert 'Invalid credentials' in str(e)
     
+    # This should return a valid result
+    user_db_with_authentication.get_user(id='alice', token=login_token)
+
+    # This should raise an exception
+    try:
+        user_db_with_authentication.get_user(id='bob', token=login_token)
+    except RuntimeError as e:
+        assert 'Access denied' in str(e)
+
+    print("ADMIN SESSION")
+    login_token_admin = user_db_with_authentication.authenticate(credentials=Credentials(id='admin', password='admin'))
+
+    #This should return a valid result since it's an admin
+    user_db_with_authentication.get_user(id='alice', token=login_token_admin)
+
 """
     # Trying to get a user that does not exist should raise a KeyError
     try:
