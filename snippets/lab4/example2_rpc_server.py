@@ -1,5 +1,6 @@
 from snippets.lab3 import Server
 from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService
+from snippets.lab4.users import Role
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 import traceback
 
@@ -40,6 +41,18 @@ class ServerStub(Server):
     
     def __handle_request(self, request):
         try:
+            # Check authorization for protected operations
+            if request.name == 'get_user':
+                token = request.metadata.get('token')
+                if not token:
+                    raise PermissionError("Token validation is required to get user info")
+                
+                if not self.__auth_service.validate_token(token):
+                    raise PermissionError("Invalid or expired token")
+                
+                if token.user.role != Role.ADMIN:
+                    raise PermissionError(f"User '{token.user.username}' does not have permission to get user '{request.args[0]}'")
+            
             # find the method across available services
             method = None
             for service in self.__services:

@@ -6,12 +6,20 @@ from snippets.lab4.example1_presentation import serialize, deserialize, Request,
 class ClientStub:
     def __init__(self, server_address: tuple[str, int]):
         self.__server_address = address(*server_address)
+        self.__token = None
+
+    def set_token(self, token: Token):
+        """Store the authentication token for subsequent requests."""
+        self.__token = token
 
     def rpc(self, name, *args):
         client = Client(self.__server_address)
         try:
             print('# Connected to %s:%d' % client.remote_address)
-            request = Request(name, args)
+            metadata = {}
+            if self.__token:
+                metadata['token'] = self.__token
+            request = Request(name, args, metadata)
             print('# Marshalling', request, 'towards', "%s:%d" % client.remote_address)
             request = serialize(request)
             print('# Sending message:', request.replace('\n', '\n# '))
