@@ -1,5 +1,6 @@
 from .users import User, Credentials, Token, Role
 from datetime import datetime
+from datetime import timedelta
 import json
 from dataclasses import dataclass
 
@@ -77,7 +78,16 @@ class Serializer:
         }
 
     def _datetime_to_ast(self, dt: datetime):
-        raise NotImplementedError("Missing implementation for datetime serialization")
+        return {
+            'value': dt.isoformat()
+        }
+        
+    def _timedelta_to_ast(self, td: timedelta):
+        return {
+            "days": self._to_ast(td.days),
+            "seconds": self._to_ast(td.seconds),
+            "microseconds": self._to_ast(td.microseconds),
+        }
 
     def _role_to_ast(self, role: Role):
         return {'name': role.name}
@@ -138,7 +148,15 @@ class Deserializer:
         )
 
     def _ast_to_datetime(self, data):
-        raise NotImplementedError("Missing implementation for datetime deserialization")
+        return datetime.fromisoformat(data['value'])
+
+    def _ast_to_timedelta(self, data):
+        return timedelta(
+            days=self._ast_to_obj(data["days"]),
+            seconds=self._ast_to_obj(data["seconds"]),
+            microseconds=self._ast_to_obj(data["microseconds"]),
+        )
+
 
     def _ast_to_role(self, data):
         return Role[self._ast_to_obj(data['name'])]

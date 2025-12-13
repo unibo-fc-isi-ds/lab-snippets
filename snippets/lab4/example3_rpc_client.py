@@ -41,14 +41,24 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
 
     def check_password(self, credentials: Credentials) -> bool:
         return self.rpc('check_password', credentials)
+    
+class RemoteAuthenticationService(ClientStub, AuthenticationService):
+    def __init__(self, server_address):
+        super().__init__(server_address)
+        
+    def authenticate(self, credentials: Credentials, duration: timedelta = None) -> Token:
+        return self.rpc('authenticate', credentials, duration)
+
+    def validate_token(self, token: Token) -> bool:
+        return self.rpc('validate_token', token)
 
 
 if __name__ == '__main__':
     from snippets.lab4.example0_users import gc_user, gc_credentials_ok, gc_credentials_wrong
     import sys
 
-
     user_db = RemoteUserDatabase(address(sys.argv[1]))
+    auth_service = RemoteAuthenticationService(address(sys.argv[1]))
 
     # Trying to get a user that does not exist should raise a KeyError
     try:
@@ -75,3 +85,30 @@ if __name__ == '__main__':
 
     # Checking credentials should fail if the password is wrong
     assert user_db.check_password(gc_credentials_wrong) == False
+    
+    # --- Authentication tests ---
+    from datetime import timedelta, datetime
+    from snippets.lab4.example1_presentation import serialize, deserialize
+    
+    print("-------------------------------------------------")
+
+    # Authenticate with valid credentials should return a token
+    for gc_cred in gc_credentials_ok:
+        token = auth_service.authenticate(gc_cred, timedelta(seconds=10))
+        assert token.user.username == user_db.get_user('gciatto').username
+        assert auth_service.validate_token(token) == True
+
+    # Token expiration test
+    token = auth_service.authenticate(gc_credentials_ok[0], timedelta(seconds=1))
+    assert auth_service.validate_token(token) == True
+
+    # Wait for token to expire
+    import time
+    time.sleep(1.5)
+    assert auth_service.validate_token(token) == False
+
+    # Test serialization/deserialization of token
+    token = auth_service.authenticate(gc_credentials_ok[0], timedelta(days=1))
+    serialized_token = serialize(token)
+    deserialized_token = deserialize(serialized_token)
+    assert auth_service.validate_token(deserialized_token) == True
