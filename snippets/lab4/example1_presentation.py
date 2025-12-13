@@ -8,6 +8,7 @@ from dataclasses import dataclass
 class Request:
     name: str
     args: tuple
+    metadata: dict | None = None
 
     def __post_init__(self):
         self.args = tuple(self.args)
@@ -17,6 +18,7 @@ class Request:
 class Response:
     result: object | None
     error: str | None
+    metadata: dict | None = None
 
 
 class Serializer:
@@ -81,7 +83,9 @@ class Serializer:
         return {
             'name': self._to_ast(request.name),
             'args': [self._to_ast(arg) for arg in request.args],
+            'metadata': self._to_ast(request.metadata) if request.metadata else None,
         }
+
 
     def _response_to_ast(self, response: Response):
         return {
@@ -112,25 +116,29 @@ class Deserializer:
     # ===== User / Credentials / Token / Role / Request / Response =====
     def _ast_to_user(self, data):
         return User(
-            username=self._ast_to_obj(data['username']),
-            emails=set(self._ast_to_obj(data['emails'])),
-            full_name=self._ast_to_obj(data['full_name']),
-            role=self._ast_to_obj(data['role']),
-            password=self._ast_to_obj(data['password']),
+            username=str(self._ast_to_obj(data['username'])),
+            emails=set(map(str, self._ast_to_obj(data['emails']))),
+            full_name=str(self._ast_to_obj(data['full_name'])) if self._ast_to_obj(data['full_name']) is not None else None,
+            role=self._ast_to_role(data['role']),
+            password=str(self._ast_to_obj(data['password'])),
         )
+
+
 
     def _ast_to_credentials(self, data):
         return Credentials(
-            id=self._ast_to_obj(data['id']),
-            password=self._ast_to_obj(data['password']),
+            id=str(self._ast_to_obj(data['id'])),
+            password=str(self._ast_to_obj(data['password'])),
         )
+
 
     def _ast_to_token(self, data):
         return Token(
-            signature=self._ast_to_obj(data['signature']),
-            user=self._ast_to_obj(data['user']),
-            expiration=self._ast_to_obj(data['expiration']),
+            signature=str(self._ast_to_obj(data['signature'])),
+            user=self._ast_to_user(self._ast_to_obj(data['user'])),  # используем метод _ast_to_user
+            expiration=self._ast_to_datetime(self._ast_to_obj(data['expiration'])),  # используем _ast_to_datetime
         )
+
 
     def _ast_to_datetime(self, data):
         return datetime.fromisoformat(data['value'])
@@ -139,19 +147,26 @@ class Deserializer:
         return timedelta(seconds=data['seconds'])
 
     def _ast_to_role(self, data):
-        return Role[self._ast_to_obj(data['name'])]
+        return Role[str(self._ast_to_obj(data['name']))]
 
     def _ast_to_request(self, data):
+        metadata = self._ast_to_obj(data['metadata']) if 'metadata' in data and data['metadata'] is not None else None
+        if metadata is not None and not isinstance(metadata, dict):
+            raise ValueError(f"Expected dict or None for metadata, got {type(metadata)}")
         return Request(
-            name=self._ast_to_obj(data['name']),
+            name=str(self._ast_to_obj(data['name'])),
             args=tuple(self._ast_to_obj(arg) for arg in data['args']),
+            metadata=metadata,
         )
+
+
 
     def _ast_to_response(self, data):
         return Response(
             result=self._ast_to_obj(data['result']) if data['result'] is not None else None,
-            error=self._ast_to_obj(data['error']),
+            error=str(self._ast_to_obj(data['error'])) if data['error'] is not None else None,
         )
+
 
 
 DEFAULT_SERIALIZER = Serializer()
@@ -164,3 +179,4 @@ def serialize(obj):
 
 def deserialize(string):
     return DEFAULT_DESERIALIZER.deserialize(string)
+

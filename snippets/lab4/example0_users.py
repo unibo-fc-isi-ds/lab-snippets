@@ -18,13 +18,27 @@ gc_user = User(
 gc_user_hidden_password = gc_user.copy(password=None)
 
 gc_credentials_ok = [
-    Credentials(id, gc_user.password) for id in gc_user.ids
+    Credentials(id, gc_user.password) 
+    for id in gc_user.ids 
+    if gc_user.password is not None
 ]
+
 
 gc_credentials_wrong = Credentials(
     id='zhumabay.adilet@unibo.it',
     password='wrong password',
 )
+
+def load_default_users(user_db):
+    """
+    Загружает в базу данных пользователей по умолчанию.
+    Используется RPC-сервером.
+    """
+    try:
+        user_db.add_user(gc_user)
+    except ValueError:
+        # пользователь уже есть — игнорируем
+        pass
 
 # ===============================
 # Тесты (только при запуске напрямую)
