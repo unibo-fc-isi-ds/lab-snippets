@@ -11,12 +11,15 @@ if __name__ == '__main__':
         exit_on_error=False,
     )
     parser.add_argument('address', help='Server address in the form ip:port')
-    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check'])
+    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check', 'val', 'auth'])
     parser.add_argument('--user', '-u', help='Username')
     parser.add_argument('--email', '--address', '-a', nargs='+', help='Email address')
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
+    parser.add_argument('--signature', '-s', help='Signature')
+    parser.add_argument('--expiration', '-x', help='Expiration')
+    parser.add_argument('--timedelta', '-t', help='Timedelta')
 
     if len(sys.argv) > 1:
         args = parser.parse_args()
@@ -26,6 +29,7 @@ if __name__ == '__main__':
 
     args.address = address(args.address)
     user_db = RemoteUserDatabase(args.address)
+    auth_service = RemoteAuthService(args.address)
 
     try :
         ids = (args.email or []) + [args.user]
@@ -44,6 +48,39 @@ if __name__ == '__main__':
             case 'check':
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
+            case 'val':
+
+                if not args.name:
+                    raise ValueError("Full name is required")
+                if not args.role:
+                    raise ValueError("Role is required")
+                if not args.email:
+                    raise ValueError("all the user's emails are required")
+                if not args.signature:
+                    raise ValueError("Signature is required")
+                if not args.expiration:
+                    raise ValueError("Expiration is required")
+
+                user = User(args.user, args.email, args.name, Role[args.role.upper()], password=None)
+                token = Token(user, datetime.fromisoformat(args.expiration), args.signature)
+                print(auth_service.validate_token(token))
+            case 'auth':
+                if not args.password:
+                    raise ValueError("Password is required")
+        
+                credentials = Credentials(ids[0], args.password)
+                token: None | Token
+                
+                if args.timedelta:
+                    token = auth_service.authenticate(credentials, args.timedelta)
+                else:
+                    token = auth_service.authenticate(credentials)
+
+                print(token)
+
+                if(token != None):
+                    print("Datetime to use to validate the token:", token.expiration.isoformat())
+
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:
