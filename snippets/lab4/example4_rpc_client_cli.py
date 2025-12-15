@@ -49,28 +49,21 @@ if __name__ == '__main__':
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
             case 'val':
-
-                if not args.name:
-                    raise ValueError("Full name is required")
-                if not args.role:
-                    raise ValueError("Role is required")
-                if not args.email:
-                    raise ValueError("all the user's emails are required")
                 if not args.signature:
                     raise ValueError("Signature is required")
                 if not args.expiration:
                     raise ValueError("Expiration is required")
 
-                user = User(args.user, args.email, args.name, Role[args.role.upper()], password=None)
+                user = user_db.get_user(ids[0])
                 token = Token(user, datetime.fromisoformat(args.expiration), args.signature)
                 print(auth_service.validate_token(token))
             case 'auth':
                 if not args.password:
                     raise ValueError("Password is required")
-        
+
                 credentials = Credentials(ids[0], args.password)
                 token: None | Token
-                
+
                 if args.timedelta:
                     token = auth_service.authenticate(credentials, args.timedelta)
                 else:

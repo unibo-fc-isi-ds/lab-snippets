@@ -1,4 +1,5 @@
 from snippets.lab3 import Server
+from snippets.lab4.users import Role
 from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 import traceback
@@ -44,6 +45,15 @@ class ServerStub(Server):
                 method = getattr(self.__user_db, request.name)
             elif hasattr(self.__auth_service, request.name):
                 method = getattr(self.__auth_service, request.name)
+
+            if request.name == 'get_user' and (request.token == None or request.token.user.role == Role.USER):
+                raise ValueError('You are not authorized!')
+            elif request.name == 'get_user' and request.token != None and request.token.user.role == Role.ADMIN:
+                validate_token = getattr(self.__auth_service, 'validate_token')
+                validation_result = validate_token(request.token)
+                if validation_result == False:
+                    raise Exception('Your token is expired, thus you are not authorized!')
+            
             result = method(*request.args)
             error = None
         except Exception as e:
