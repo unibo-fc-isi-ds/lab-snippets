@@ -11,12 +11,13 @@ if __name__ == '__main__':
         exit_on_error=False,
     )
     parser.add_argument('address', help='Server address in the form ip:port')
-    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check'])
+    parser.add_argument('command', help='Method call', choices=['add', 'get', 'check', 'authenticate', 'validate'])
     parser.add_argument('--user', '-u', help='Username')
     parser.add_argument('--email', '--address', '-a', nargs='+', help='Email address')
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
+    parser.add_argument('--token', '-t', help='Serialized token string')
 
     if len(sys.argv) > 1:
         args = parser.parse_args()
@@ -26,6 +27,7 @@ if __name__ == '__main__':
 
     args.address = address(args.address)
     user_db = RemoteUserDatabase(args.address)
+    auth_service = RemoteAuthenticationService(args.address)
 
     try :
         ids = (args.email or []) + [args.user]
@@ -37,8 +39,22 @@ if __name__ == '__main__':
                     raise ValueError("Password is required")
                 if not args.name:
                     raise ValueError("Full name is required")
-                user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
+                role_name = args.role.upper() if args.role else 'USER'
+                role_enum = Role[role_name]
+                user = User(args.user, args.email, args.name, role_enum, args.password)
                 print(user_db.add_user(user))
+            case 'authenticate':
+                if not args.password or (not args.user and not args.email):
+                    raise ValueError("Username or email and password are required")
+                credentials = Credentials(args.user, args.password)
+                token = auth_service.authenticate(credentials)
+                print('Serialized token:', serialize(token))
+            case 'validate':
+                if not args.token:
+                    raise ValueError("Token string is required")
+                token = deserialize(args.token)
+                is_valid = auth_service.validate_token(token)
+                print('Token is valid' if is_valid else 'Token is invalid')
             case 'get':
                 print(user_db.get_user(ids[0]))
             case 'check':
