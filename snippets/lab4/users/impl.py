@@ -1,3 +1,4 @@
+import ast
 from ..users import *
 import hashlib
 
@@ -90,7 +91,15 @@ class InMemoryAuthenticationService(AuthenticationService, _Debuggable):
     #Implementazione del metodo validate_token dell'interfaccia AuthenticationService
     #Valida un token
     def validate_token(self, token: Token) -> bool:
+
+        #Converte la stringa in datetime
+        te_tuple = ast.literal_eval(token.expiration)
+        self._log(f" Scadenza token : " + {te_tuple})
+        self._log(f" La data di scadenza è ancora valida ? : " + ('SI' if te_tuple > datetime.now() else 'NO'))
+        self._log(f" La firma è valida ? : " + ('SI' if self.__validate_token_signature(token) else 'NO'))
+
         result = token.expiration > datetime.now() and self.__validate_token_signature(token)
+        
         #Se il token non è scaduto e la firma è valida --> è ancora valido
         self._log(f"{token} is " + ('valid' if result else 'invalid'))
         return result
