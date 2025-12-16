@@ -42,15 +42,25 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
     def check_password(self, credentials: Credentials) -> bool:
         return self.rpc('check_password', credentials)
 
+class RemoteAuthenticationService(ClientStub, AuthenticationService):
+    def __init__(self, server_address):
+        super().__init__(server_address)
+    # There the methods "authenticate" and "validate_token" re implemented
+    def authenticate(self, credentials: Credentials, duration=None) -> Token:
+        return self.rpc('authenticate', credentials, duration)
+
+    def validate_token(self, token: Token) -> bool:
+        return self.rpc('validate_token', token)
+
+
 
 if __name__ == '__main__':
     from snippets.lab4.example0_users import gc_user, gc_credentials_ok, gc_credentials_wrong
     import sys
-
-
     user_db = RemoteUserDatabase(address(sys.argv[1]))
+    auth = RemoteAuthenticationService(address(sys.argv[1]))
 
-    # Trying to get a user that does not exist should raise a KeyError
+    #Trying to get a user that does not exist should raise a KeyError
     try:
         user_db.get_user('gciatto')
     except RuntimeError as e:
@@ -75,3 +85,18 @@ if __name__ == '__main__':
 
     # Checking credentials should fail if the password is wrong
     assert user_db.check_password(gc_credentials_wrong) == False
+
+    # Authentication with wrong credentials has to raise an errore
+    try:
+        auth.authenticate(gc_credentials_wrong)
+    except RuntimeError as e:
+        assert "invalid credentials" in str(e)
+
+    # Case authentication done correctly 
+    token = auth.authenticate(gc_credentials_ok[0])
+    print("Authentication success! The token has been recived:", token)
+    assert auth.validate_token(token) == True
+
+    # Case token with wrong isgnature
+    token_wrong_signature = token.copy(signature='wrong signature')
+    assert auth.validate_token(token_wrong_signature) == False
