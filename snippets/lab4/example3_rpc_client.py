@@ -42,6 +42,15 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
     def check_password(self, credentials: Credentials) -> bool:
         return self.rpc('check_password', credentials)
 
+class RemoteAuthenticationService(ClientStub, AuthenticationService):
+    def __init__(self, server_address):
+        super().__init__(server_address)
+
+    def authenticate(self, credentials: Credentials) -> Token:
+        return self.rpc('authenticate', credentials)
+
+    def validate_token(self, token: Token) -> bool:
+        return self.rpc('validate_token', token)
 
 if __name__ == '__main__':
     from snippets.lab4.example0_users import gc_user, gc_credentials_ok, gc_credentials_wrong
@@ -75,3 +84,15 @@ if __name__ == '__main__':
 
     # Checking credentials should fail if the password is wrong
     assert user_db.check_password(gc_credentials_wrong) == False
+    
+    auth_service = RemoteAuthenticationService(address(sys.argv[1]))
+
+    # Generating a token with valid credentials should work
+    token = auth_service.authenticate(gc_credentials_ok[0])
+    assert isinstance(token, Token)
+
+    # Validating the generated token should work
+    assert auth_service.validate_token(token) == True
+
+    # The token expiration date should be in the future
+    assert token.expiration > datetime.now()
