@@ -1,6 +1,25 @@
 from .example3_rpc_client import *
 import argparse
 import sys
+import os
+from snippets.lab4.example1_presentation import serialize, deserialize
+
+TOKEN_FILENAME = 'token.json'
+
+def save_token(token):
+    json_string = serialize(token)
+    with open(TOKEN_FILENAME, 'w') as f:
+        f.write(json_string)
+
+def load_token():
+    if os.path.exists(TOKEN_FILENAME):
+        with open(TOKEN_FILENAME, 'r') as f:
+            json_string = f.read()
+            try:
+                return deserialize(json_string)
+            except:
+                return None
+    return None
 
 
 if __name__ == '__main__':
@@ -28,6 +47,10 @@ if __name__ == '__main__':
     user_db = RemoteUserDatabase(args.address)
     auth_service = RemoteAuthenticationService(args.address)
 
+    cached_token = load_token()
+    if cached_token:
+        user_db.set_token(cached_token)
+        print(f"Loaded session for user: {cached_token.user.username}")
     try :
         ids = (args.email or []) + [args.user]
         if len(ids) == 0:
@@ -55,21 +78,28 @@ if __name__ == '__main__':
                 login_id = args.user if args.user else args.email[0]
                 creds = Credentials(login_id, args.password)
                 token = auth_service.authenticate(creds)
+                save_token(token)
                 print("Token:", token)
                 print("Signature:", token.signature)
             case 'validate':
-                if not args.user and not args.email:
-                    raise ValueError("Username or email is required")
-                if not args.password:
-                    raise ValueError("Password is required")
-                login_id = args.user if args.user else args.email[0]
-                creds = Credentials(login_id, args.password)
-                token = auth_service.authenticate(creds)
-                is_valid = auth_service.validate_token(token)
-                if is_valid:
-                    print("Token validated.")
+                target_token = None
+                if (args.user or args.email) and args.password:
+                    login_id = args.user if args.user else args.email[0]
+                    creds = Credentials(login_id, args.password)
+                    print(f"Generating fresh token for {login_id}...")
+                    target_token = auth_service.authenticate(creds)
+                elif cached_token:
+                    print(f"Using stored token from {TOKEN_FILENAME}...")
+                    target_token = cached_token
                 else:
-                    print("Token invalid.")
+                    raise ValueError("No stored token found. Please login first or provide credentials.")
+                print("Validating token...")
+                is_valid = auth_service.validate_token(target_token)
+                
+                if is_valid:
+                    print("SUCCESS: Token is valid.")
+                else:
+                    print("FAILURE: Token is invalid or expired.")
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:
