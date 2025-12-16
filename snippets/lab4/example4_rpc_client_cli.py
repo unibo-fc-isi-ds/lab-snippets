@@ -1,4 +1,4 @@
-from .example3_rpc_client import *
+from snippets.lab4.example3_rpc_client import *
 import argparse
 import sys
 
@@ -11,12 +11,14 @@ if __name__ == '__main__':
         exit_on_error=False,
     )
     parser.add_argument('address', help='Server address in the form ip:port')
-    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check'])
+    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check', 'login', 'validate'])
     parser.add_argument('--user', '-u', help='Username')
     parser.add_argument('--email', '--address', '-a', nargs='+', help='Email address')
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
+    parser.add_argument('--token', '-t', help='Serialized token')
+
 
     if len(sys.argv) > 1:
         args = parser.parse_args()
@@ -26,6 +28,7 @@ if __name__ == '__main__':
 
     args.address = address(args.address)
     user_db = RemoteUserDatabase(args.address)
+    auth = RemoteAuthenticationService(args.address)
 
     try :
         ids = (args.email or []) + [args.user]
@@ -44,6 +47,18 @@ if __name__ == '__main__':
             case 'check':
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
+            case 'login':
+                if not args.user or not args.password:
+                    raise ValueError("Username and password are required for login")
+                credentials = Credentials(args.user, args.password)
+                token = auth.authenticate(credentials)  
+                print(token)
+            case 'validate':
+                if not args.token:
+                    raise ValueError("Token is required")
+                token = deserialize(args.token)
+                print(auth.validate_token(token))
+
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:
