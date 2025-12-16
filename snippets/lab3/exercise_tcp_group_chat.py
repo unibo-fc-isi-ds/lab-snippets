@@ -113,13 +113,14 @@ def on_message_received(event: str,
             print(error)
 
 
+username = input('Enter your username to start to chat:\n')
+
 local_peer = Peer(port = int(sys.argv[1]),
                   peers = [address(peer) for peer in sys.argv[2:]],
                   callback = on_message_received)
 
 print(f'Bound to: {local_peer.local_address}')
-username = input('Enter your username to start to chat:\n')
-print('Type your message and press Enter to send it.')
+print('Type your message and press Enter to send it. Messages from other peers will be displayed below.')
 while True:
     try:
         content = input()
