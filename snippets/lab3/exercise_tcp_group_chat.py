@@ -5,9 +5,21 @@ import sys
 from typing import Iterable, Callable, TypeAlias
 
 
-Callback: TypeAlias = Callable[[str, str | None, Connection | None, Exception | None], None]
+Callback: TypeAlias = Callable[[
+    str,  # event
+    str | None,  # payload
+    Connection | None,  # connection
+    Exception | None  # error
+], None]
 
-EXIT_MESSAGE = "<LEAVES THE CHAT>"
+EXIT_MESSAGE = '<LEAVES THE CHAT>'
+
+INFO_MODE = False
+
+
+def info_print(*values: object, sep: str | None = ' ', end: str | None = '\n') -> None:
+    if INFO_MODE:
+        print(values, sep=sep, end=end)
 
 
 class Peer:
@@ -70,7 +82,7 @@ class Peer:
                              error: Exception | None) -> None:
             self.__callback(event, payload, connection, error)
             match event:
-                case 'close', 'error':
+                case 'close':
                     self.__forget_connection(conn)
         return wrapped_callback
 
@@ -84,6 +96,7 @@ class Peer:
     def send_all(self, msg: str | bytes) -> None:
         if not isinstance(msg, bytes):
             msg = msg.encode()  # perform encoding here so that we do it only once
+            msg = int.to_bytes(len(msg), 2, 'big') + msg
         for conn in self.__peer_connections:
             conn.send(msg)
 
@@ -94,10 +107,17 @@ class Peer:
                  error: Exception | None = None) -> None:
         self.__callback(event, conn, addr, error)
 
-    def close(self):
+    def close(self) -> None:
         self.__listener_socket.close()
-        for conn in self.__peer_connections:
+        for conn in self.__peer_connections.copy():
             conn.close()
+
+
+def send_message(msg: str, sender: str) -> None:
+    if msg:
+        local_peer.send_all(message(msg.strip(), sender))
+    else:
+        print('Empty message, not sent')
 
 
 def on_message_received(event: str,
@@ -108,9 +128,9 @@ def on_message_received(event: str,
         case 'message':
             print(payload)
         case 'close':
-            print(f'Connection with peer {conn.remote_address} closed')
+            info_print(f'Connection with peer {conn.remote_address} closed')
         case 'error':
-            print(error)
+            info_print(error)
 
 
 username = input('Enter your username to start to chat:\n')
@@ -119,14 +139,14 @@ local_peer = Peer(port = int(sys.argv[1]),
                   peers = [address(peer) for peer in sys.argv[2:]],
                   callback = on_message_received)
 
-print(f'Bound to: {local_peer.local_address}')
+info_print(f'Bound to: {local_peer.local_address}')
 print('Type your message and press Enter to send it. Messages from other peers will be displayed below.')
 while True:
     try:
         content = input()
-        local_peer.send_all(message(content, username))
+        send_message(content, username)
     except (EOFError, KeyboardInterrupt):
-        local_peer.send_all(message(EXIT_MESSAGE, username))
+        send_message(EXIT_MESSAGE, username)
         break
 local_peer.close()
-exit(0)  # explicit termination of the program with success
+exit(0)
