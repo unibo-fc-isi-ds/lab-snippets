@@ -29,7 +29,10 @@ def logout_user(username):
 # Now we just need whoami -u "username", for each autenticated users a new .token file will be created.
 # The function logout is used to delete the .token_"username" file 
 
-
+def first_user(u):
+    return u[0] if isinstance(u, list) else u
+# This function is used because now -u argument is a list but for mathods which re not
+# check or get, we have to have just one username.
 
 if __name__ == '__main__':
 
@@ -42,7 +45,7 @@ if __name__ == '__main__':
     parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check', 'auth', 'whoami', 'logout'])
     # New methods auth for authentication and whoami method which require token validation
     # logout for deleting user .token's file
-    parser.add_argument('--user', '-u', help='Username')
+    parser.add_argument('--user', '-u', action='append', help='Username(s)')
     parser.add_argument('--email', '--address', '-a', nargs='+', help='Email address')
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
@@ -61,24 +64,39 @@ if __name__ == '__main__':
     auth = RemoteAuthenticationService(args.address)
 
     try :
-        ids = (args.email or []) + [args.user]
-        if len(ids) == 0:
-            raise ValueError("Username or email address is required")
+        if not args.user:
+            raise ValueError("You must specify at least one -u")
         match args.command:
             case 'add':
                 if not args.password:
                     raise ValueError("Password is required")
                 if not args.name:
                     raise ValueError("Full name is required")
-                user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
+                username = first_user(args.user)
+                user = User(username, args.email, args.name, Role[args.role.upper()], args.password)
                 print(user_db.add_user(user))
-            case 'get':
-                print(user_db.get_user(ids[0]))
-            case 'check':
-                credentials = Credentials(ids[0], args.password)
-                print(user_db.check_password(credentials))
+            case 'get': # Now protected
+                if not args.user:
+                    raise ValueError("You must specify who re u and who do u want to read")
+                requester = args.user[0]
+                target = args.user[-1]
+                token = load_token(requester)
+                print(user_db.get_user(target, token=token))
+            case 'check': # Now protected
+                if not args.user:
+                    raise ValueError("You must specify who re u and who do u want to check")
+                requester = args.user[0]
+                target = args.user[-1]
+                print("DEBUG requester:", requester, type(requester))
+                print("DEBUG target:", target, type(target))
+                token = load_token(requester)
+                if not args.password:
+                    raise ValueError("Password is required for check")
+                credentials = Credentials(target, args.password)
+                print(user_db.check_password(credentials, token=token))
             case 'auth':
-                credentials = Credentials(ids[0], args.password)
+                username = first_user(args.user)
+                credentials = Credentials(username, args.password)
                 # Manage the case -d in interface or not (standard of the server in that case 1 day)
                 duration = None
                 if args.duration is not None:
@@ -89,7 +107,8 @@ if __name__ == '__main__':
                 print("The token generated expires at:", token.expiration)
                 save_token(token)
             case 'whoami':
-                token = load_token(args.user)
+                username = first_user(args.user)
+                token = load_token(username)
                 if auth.validate_token(token):
                     print("U re user:", token.user)
                 else:
@@ -97,7 +116,8 @@ if __name__ == '__main__':
             case 'logout':
                 if not args.user:
                     raise ValueError("Username is required for logout")
-                logout_user(args.user)
+                username = first_user(args.user)
+                logout_user(username)
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:

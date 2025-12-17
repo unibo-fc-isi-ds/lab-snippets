@@ -7,11 +7,11 @@ class ClientStub:
     def __init__(self, server_address: tuple[str, int]):
         self.__server_address = address(*server_address)
 
-    def rpc(self, name, *args):
+    def rpc(self, name, *args, metadata=None): # Adding metadata 
         client = Client(self.__server_address)
         try:
             print('# Connected to %s:%d' % client.remote_address)
-            request = Request(name, args)
+            request = Request(name, args, metadata=metadata) # metadata aswell now
             print('# Marshalling', request, 'towards', "%s:%d" % client.remote_address)
             request = serialize(request)
             print('# Sending message:', request.replace('\n', '\n# '))
@@ -36,11 +36,12 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
     def add_user(self, user: User):
         return self.rpc('add_user', user)
 
-    def get_user(self, id: str) -> User:
-        return self.rpc('get_user', id)
+# This 2 method now has to check for the token
+    def get_user(self, id: str, token=None) -> User:
+        return self.rpc('get_user', id, metadata=token)
 
-    def check_password(self, credentials: Credentials) -> bool:
-        return self.rpc('check_password', credentials)
+    def check_password(self, credentials: Credentials, token=None) -> bool:
+        return self.rpc('check_password', credentials, metadata=token)
 
 class RemoteAuthenticationService(ClientStub, AuthenticationService):
     def __init__(self, server_address):
@@ -90,7 +91,7 @@ if __name__ == '__main__':
     try:
         auth.authenticate(gc_credentials_wrong)
     except RuntimeError as e:
-        assert "invalid credentials" in str(e)
+        assert "invalid credentials or nor existing user" in str(e)
 
     # Case authentication done correctly 
     token = auth.authenticate(gc_credentials_ok[0])

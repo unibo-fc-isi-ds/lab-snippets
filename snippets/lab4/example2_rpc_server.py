@@ -54,7 +54,23 @@ class ServerStub(Server):
         # Now the server has to handle two type of service:
         # InMemoryUserDatabase and InMemoryAuthenticationService
         try:
+            token = None # Default value for a general method
             if hasattr(self.__user_db, request.name):
+                if request.name in ("get_user", "check_password"):
+                    token = request.metadata
+                    if token is None:
+                        raise RuntimeError("Unauthorized: missing token")
+                    if not self.__auth_service.validate_token(token):
+                        raise RuntimeError("Unauthorized: invalid or expired token")
+                    requester = token.user.username
+                    role = token.user.role.name
+                    if request.name == "get_user":
+                        target = request.args[0]
+                    elif request.name == "check_password":
+                        credentials = request.args[0]
+                        target = credentials.id
+                    if role != "ADMIN" and requester != target:
+                        raise RuntimeError("Forbidden: non-admin users can only access their own data")
                 method = getattr(self.__user_db, request.name)
             elif hasattr(self.__auth_service, request.name):
                 method = getattr(self.__auth_service, request.name) # There the RPC request is
