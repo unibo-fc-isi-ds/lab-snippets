@@ -1,64 +1,53 @@
-from snippets.lab3 import *
 import sys
+import time
+import threading
+import queue
+from snippets.lab3 import *
 
+if len(sys.argv) < 3:
+    print("Too few arguments have been passed")
+    exit(1)
 
-mode = sys.argv[1].lower().strip()
-remote_peer: Client | None = None
+listen_port = int(sys.argv[1])
 
+peers = []
+for p in sys.argv[2:]:
+    ip, port = p.split(":")
+    peers.append((ip, int(port)))
 
-def send_message(msg, sender):
-    if remote_peer is None:
-        print("No peer connected, message is lost")
-    elif msg:
-        remote_peer.send(message(msg.strip(), sender))
-    else:
-        print("Empty message, not sent")
+username = input("Insert username:\n")
 
+peer = Peer(username, listen_port, peers)
 
-def on_message_received(event, payload, connection, error):
-    match event:
-        case 'message':
-            print(payload)
-        case 'close':
-            print(f"Connection with peer {connection.remote_address} closed")
-            global remote_peer; remote_peer = None
-        case 'error':
-            print(error)
+print("Chat initialized. Type a message and hit Enter")
 
+msg_queue = queue.Queue()
+running = True
 
-if mode == 'server':
-    port = int(sys.argv[2])
+def input_thread():
+    """Reads user input without blocking main thread."""
+    while running:
+        try:
+            msg = input()
+            msg_queue.put(msg)
+        except EOFError:
+            break
 
-    def on_new_connection(event, connection, address, error):
-        match event:
-            case 'listen':
-                print(f"Server listening on port {address[0]} at {', '.join(local_ips())}")
-            case 'connect':
-                print(f"Open ingoing connection from: {address}")
-                connection.callback = on_message_received
-                global remote_peer; remote_peer = connection
-            case 'stop':
-                print(f"Stop listening for new connections")
-            case 'error':
-                print(error)
+t = threading.Thread(target=input_thread, daemon=True)
+t.start()
 
-    server = Server(port, on_new_connection)
-elif mode == 'client':
-    remote_endpoint = sys.argv[2]
-
-    remote_peer = Client(address(remote_endpoint), on_message_received)
-    print(f"Connected to {remote_peer.remote_address}")
-
-
-username = input('Enter your username to start the chat:\n')
-print('Type your message and press Enter to send it. Messages from other peers will be displayed below.')
-while True:
-    try:
-        content = input()
-        send_message(content, username)
-    except (EOFError, KeyboardInterrupt):
-        if remote_peer:
-            remote_peer.close()
-        break
-if mode == 'server':
-    server.close()
+try:
+    while True:
+        try:
+            msg = msg_queue.get(timeout=0.1)
+            if msg.strip():
+                peer.broadcast(f"Message from {username}:\n\t{msg}")
+        except queue.Empty:
+            pass
+except KeyboardInterrupt:
+    print("\nExiting the chat...")
+finally:
+    running = False
+    peer.close()
+    time.sleep(0.1)
+    sys.exit(0)
