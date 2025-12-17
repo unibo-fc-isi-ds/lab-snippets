@@ -1,4 +1,5 @@
 from snippets.lab3 import Server
+from snippets.lab4.users import Role
 from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 import traceback
@@ -46,6 +47,13 @@ class ServerStub(Server):
                 method = getattr(self.__user_db, request.name)
             else:
                 raise ValueError(f"Unsupported method {request.name}")
+            secure_methods = ['get_user']
+            if request.name in secure_methods:
+                token = request.metadata.get('token') if request.metadata else None
+                if not token or not self.__auth_service.validate_token(token):
+                    raise PermissionError("Invalid or missing authentication token")
+                if token.user.role != Role.ADMIN:
+                    raise PermissionError("Insufficient permissions to call this method")
             result = method(*request.args)
             error = None
         except Exception as e:

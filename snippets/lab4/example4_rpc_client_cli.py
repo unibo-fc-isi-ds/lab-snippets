@@ -1,6 +1,20 @@
+import os
 from .example3_rpc_client import *
 import argparse
 import sys
+
+TOKEN_FILE = 'auth_token.json'
+
+def save_token_to_file(token: Token, filename: str = TOKEN_FILE):
+    with open(filename, 'w') as f:
+        f.write(serialize(token))
+
+def load_token_from_file(filename: str = TOKEN_FILE) -> Token:
+    if not os.path.exists(filename):
+        raise FileNotFoundError(f"Token file '{filename}' not found")
+    with open(filename, 'r') as f:
+        token_str = f.read()
+    return deserialize(token_str)
 
 
 if __name__ == '__main__':
@@ -29,6 +43,11 @@ if __name__ == '__main__':
     user_db = RemoteUserDatabase(args.address)
     auth_service = RemoteAuthenticationService(args.address)
 
+    cached_token = load_token_from_file() if os.path.exists(TOKEN_FILE) else None
+    if cached_token:
+        user_db.set_access_token(cached_token)
+        print(f"Loaded session for user: {cached_token.user.username}")
+
     try :
         ids = (args.email or []) + [args.user]
         if len(ids) == 0:
@@ -48,13 +67,25 @@ if __name__ == '__main__':
                     raise ValueError("Username or email and password are required")
                 credentials = Credentials(args.user, args.password)
                 token = auth_service.authenticate(credentials)
+                save_token_to_file(token)
                 print('Serialized token:', serialize(token))
             case 'validate':
-                if not args.token:
-                    raise ValueError("Token string is required")
-                token = deserialize(args.token)
+                token = None
+                if args.user or args.email and args.password:
+                    auth_ids = (args.email or []) + [args.user]
+                    credentials = Credentials(auth_ids[0], args.password)
+                    token = auth_service.authenticate(credentials)
+                elif cached_token:
+                    print('Using cached token for validation')
+                    token = cached_token
+                else:
+                    raise ValueError("Either username/email and password or a cached token is required for validation")
+                print('Validating token:', token, ' ...')
                 is_valid = auth_service.validate_token(token)
-                print('Token is valid' if is_valid else 'Token is invalid')
+                if is_valid:
+                    print('Token is valid')
+                else:
+                    print('Token is invalid or expired')
             case 'get':
                 print(user_db.get_user(ids[0]))
             case 'check':
