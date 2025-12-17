@@ -1,4 +1,4 @@
-# [A.Y. 2025/2026 Surname, Name] Exercise: RPC Auth Service 2
+# [A.Y. 2025/2026 Paradisi, Giovanni] Exercise: RPC Auth Service 2
 
 
 ## Overview
@@ -21,7 +21,7 @@ To implement role-based authorization, an optional `metadata` field was added to
 On the server side, specific authorization checks were added for the `get_user` operation. The server first verifies the presence of a token in the request metadata, then validates its correctness and expiration through the authentication service, and finally ensures the user associated with the token has the `ADMIN` role. Only then is access to user data granted.
 
 ## Usage
-**Copy and Run these commands in your project root directory**
+### **Copy and Run these commands in lab-snippets directory**
 1. Start the server in a terminal with:
 ```bash 
    poetry run python snippets -l 4 -e 2 8080
