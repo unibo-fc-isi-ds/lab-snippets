@@ -1,3 +1,4 @@
+import datetime
 from snippets.lab3 import Server
 from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService
 from snippets.lab4.users import Role, Token, User
@@ -10,11 +11,11 @@ class ServerStub(Server):
         self.__user_db = InMemoryUserDatabase()
         self.__auth_service = InMemoryAuthenticationService(self.__user_db)
         self.__routes = {
-            'add_user': self.__user_db.add_user,
-            'get_user': self.__user_db.get_user,
-            'check_password': self.__user_db.check_password,
-            'authenticate': self.__auth_service.authenticate,
-            'validate_token': self.__auth_service.validate_token,
+            'add_user': {'method': self.__user_db.add_user},
+            'get_user': {'method': self.__user_db.get_user, 'auth': Role.ADMIN},
+            'check_password': {'method': self.__user_db.check_password},
+            'authenticate': {'method': self.__auth_service.authenticate},
+            'validate_token': {'method': self.__auth_service.validate_token, 'auth': True},
         }
     
     def __on_connection_event(self, event, connection, address, error):
@@ -46,8 +47,21 @@ class ServerStub(Server):
     
     def __handle_request(self, request: Request) -> Response:
         if request.name in self.__routes:
-            method = self.__routes[request.name]
+            method = self.__routes[request.name]['method']
+            auth: bool | Role | None = self.__routes[request.name].get('auth', None)
             try:
+                if auth is not None and auth is not False:
+                    token = request.token
+                    if token is None:
+                        raise PermissionError("Authentication token is required")
+                    
+                    expired = not self.__auth_service.validate_token(token)
+                    if expired:
+                        raise PermissionError("Authentication token is expired")
+
+                    if auth is not True and auth is not token.user.role:
+                        raise PermissionError(f"User {token.user.username} does not have required role {auth.name}")
+                
                 result = method(*request.args)
                 error = None
             except Exception as e:
