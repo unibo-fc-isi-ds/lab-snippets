@@ -30,7 +30,7 @@ When the user types `/exit` or `Ctrl+C`:
 - Then it closes all connections and stops its local server.
 
 ## Usage
-
+### **Copy and Run these commands in lab3 directory**
 1. Start one peer with a chosen port:
 ```bash 
   poetry run python exercise_tcp_group_chat.py 8080
