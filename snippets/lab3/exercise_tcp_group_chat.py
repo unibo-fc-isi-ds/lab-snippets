@@ -5,7 +5,7 @@ remote_peers = set()
 
 
 def broadcast(msg, sender):
-    """Invia il messaggio formattato a tutti i peer attivi."""
+    """Send the formatted message to all active peers."""
     text = msg.strip()
     if not text:
         return
@@ -13,7 +13,7 @@ def broadcast(msg, sender):
         try:
             peer.send(message(text, sender))
         except Exception as e:
-            print(f"[WARN] invio fallito verso {peer.remote_address}: {e}")
+            print(f"[WARN] send failed to {peer.remote_address}: {e}")
             remote_peers.discard(peer)
 
 
@@ -23,23 +23,23 @@ def on_message_received(event, payload, connection, error):
             print(payload)
         case "close":
             remote_peers.discard(connection)
-            print(f"Connessione chiusa con {connection.remote_address}")
+            print(f"Connection closed with {connection.remote_address}")
         case "error":
-            print(f"[ERR] {error}")
+            print(f"[ERROR] {error}")
 
 
 def on_new_connection(event, connection, address, error):
     match event:
         case "listen":
-            print(f"Server in ascolto sulla porta {address[1]} su {', '.join(local_ips())}")
+            print(f"Server listening on port {address[1]} at {', '.join(local_ips())}")
         case "connect":
             connection.callback = on_message_received
             remote_peers.add(connection)
-            print(f"Connessione in ingresso da {address}")
+            print(f"Incoming connection from {address}")
         case "stop":
-            print("Stop ascolto")
+            print("Stop listening")
         case "error":
-            print(f"[ERR] {error}")
+            print(f"[ERROR] {error}")
 
 
 def connect_to_peers(endpoints):
@@ -47,36 +47,35 @@ def connect_to_peers(endpoints):
         try:
             peer = Client(address(ep), on_message_received)
             remote_peers.add(peer)
-            print(f"Connesso a {peer.remote_address}")
+            print(f"Connected to {peer.remote_address}")
         except Exception as e:
-            print(f"[WARN] non connesso a {ep}: {e}")
+            print(f"[WARN] not connected to {ep}: {e}")
 
 
 def parse_args(argv):
     if not argv:
-        raise SystemExit("Uso: python exercise_tcp_group_chat.py PORT [PEER1 PEER2 ...]")
+        raise SystemExit("Usage: python exercise_tcp_group_chat.py PORT [PEER1 PEER2 ...]")
     try:
         port = int(argv[0])
     except ValueError:
-        raise SystemExit("La porta deve essere un intero")
+        raise SystemExit("Port must be an integer")
     peers_list = argv[1:]
     return port, peers_list
 
 
-if __name__ == "__main__":
-    listen_port, peers_list = parse_args(sys.argv[1:])
+listen_port, peers_list = parse_args(sys.argv[1:])
 
-    server = Server(listen_port, on_new_connection)
-    connect_to_peers(peers_list)
+server = Server(listen_port, on_new_connection)
+connect_to_peers(peers_list)
 
-    username = input("Username: ")
-    print("Scrivi e premi Invio per inviare. Ctrl+C o EOF per uscire.")
-    try:
-        for line in sys.stdin:
-            broadcast(line, username)
-    except KeyboardInterrupt:
-        pass
-    finally:
-        for p in list(remote_peers):
-            p.close()
-        server.close()
+username = input("Username: ")
+print("Type and press Enter to send. Ctrl+C or EOF to quit.")
+try:
+    for line in sys.stdin:
+        broadcast(line, username)
+except KeyboardInterrupt:
+    pass
+finally:
+    for p in list(remote_peers):
+        p.close()
+    server.close()
