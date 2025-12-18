@@ -61,6 +61,8 @@ class RemoteAuthenticationService(ClientStub, AuthenticationService):
 if __name__ == '__main__':
     from snippets.lab4.example0_users import gc_user, gc_credentials_ok, gc_credentials_wrong
     import sys
+    from datetime import timedelta
+    from snippets.lab4.example1_presentation import serialize, deserialize
 
     user_db = RemoteUserDatabase(address(sys.argv[1]))
     auth_service = RemoteAuthenticationService(address(sys.argv[1]))
@@ -81,18 +83,12 @@ if __name__ == '__main__':
     except RuntimeError as e:
         assert 'Missing token' in str(e)
 
-    # Checking credentials should work if there exists a user with the same ID and password (no matter which ID is used)
+    # Checking credentials shouldn't work without authentication
     for gc_cred in gc_credentials_ok:
-        assert user_db.check_password(gc_cred) == True
-
-    # Checking credentials should fail if the password is wrong
-    assert user_db.check_password(gc_credentials_wrong) == False
-    
-    print("-------------------------------------------------")
-    
-    # --- Authentication tests ---
-    from datetime import timedelta, datetime
-    from snippets.lab4.example1_presentation import serialize, deserialize
+        try:
+            user_db.get_user(gc_cred)
+        except RuntimeError as e:
+            assert 'Missing token' in str(e)
 
     # Authenticate with valid credentials should return a token
     for gc_cred in gc_credentials_ok:
@@ -101,6 +97,10 @@ if __name__ == '__main__':
         user = user_db.get_user('gciatto') # the saved token should be loaded automatically by the client
         assert user.username == 'gciatto'
         assert auth_service.validate_token(token) == True
+        
+    # Checking credentials should work after the client's authentication
+    for gc_cred in gc_credentials_ok:
+        assert user_db.check_password(gc_cred) == True
 
     # Token expiration test
     token = auth_service.authenticate(gc_credentials_ok[0], timedelta(seconds=1))
@@ -119,5 +119,28 @@ if __name__ == '__main__':
     deserialized_token = deserialize(serialized_token)
     assert auth_service.validate_token(deserialized_token) == True
     
+
+    # Create client with role USER
+    user_user = User("regular_user", ["user@example.com"], "Regular User", Role.USER, "password123")
+    user_db.add_user(user_user)
+
+    # Authenticate as USER
+    credentials_user = Credentials("regular_user", "password123")
+    token_user = auth_service.authenticate(credentials_user, timedelta(seconds=10))
+    user_db.current_token = token_user
+    auth_service.current_token = token_user
+
+    # Trying to get another user or checking credentials shouldn't work because role is not ADMIN
+    try:
+        user_db.get_user('gciatto')
+    except RuntimeError as e:
+        assert str(e) == "User not authorized"
+
+    try:
+        user_db.check_password(Credentials("gciatto", "any"))
+    except RuntimeError as e:
+        assert str(e) == "User not authorized"
+
+        
     print("ALL TESTS PASSED")
-    
+        
