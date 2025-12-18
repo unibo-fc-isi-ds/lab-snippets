@@ -1,6 +1,22 @@
 from .example3_rpc_client import *
 import argparse
 import sys
+from pathlib import Path
+
+TOKEN_FILE = Path.home() / ".lab4_token.json"
+
+def load_token() -> Token | None:
+    try:
+        with open(TOKEN_FILE) as f:
+            return deserialize(f.read())
+    except FileNotFoundError:
+        return None
+
+def save_token(token: Token):
+    with open(TOKEN_FILE, "w") as f:
+        f.write(serialize(token))
+    print("Token saved to", TOKEN_FILE)
+
 
 
 if __name__ == '__main__':
@@ -30,6 +46,11 @@ if __name__ == '__main__':
     args.address = address(args.address)
     user_db = RemoteUserDatabase(args.address)
     auth_service = RemoteAuthenticationService(args.address)
+    
+    token = load_token()
+    if token:
+        user_db._token = token
+        auth_service._token = token
 
     try :
         ids = (args.email or []) + [args.user]
@@ -44,10 +65,10 @@ if __name__ == '__main__':
                 user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
                 print(user_db.add_user(user))
             case 'get':
-                print(user_db.get_user(ids[0]))
+                print(user_db.get_user(ids[0], metadata=token))
             case 'check':
                 credentials = Credentials(ids[0], args.password)
-                print(user_db.check_password(credentials))
+                print(user_db.check_password(credentials, metadata=token))
             case 'authenticate':
                 credentials = Credentials(ids[0], args.password)
                 if not args.duration:
@@ -55,7 +76,9 @@ if __name__ == '__main__':
                 else:
                     duration = timedelta(milliseconds=int(args.duration))
                 token = auth_service.authenticate(credentials, duration)
-                print(serialize(token))
+                save_token(token)
+                user_db.current_token = token
+                auth_service.current_token = token
             case 'validate':
                 if not args.token:
                     raise ValueError("Token is required for validation")

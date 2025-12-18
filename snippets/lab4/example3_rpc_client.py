@@ -6,12 +6,15 @@ from snippets.lab4.example1_presentation import serialize, deserialize, Request,
 class ClientStub:
     def __init__(self, server_address: tuple[str, int]):
         self.__server_address = address(*server_address)
+        self.current_token: Token = None
 
-    def rpc(self, name, *args):
+    def rpc(self, name, *args, metadata=None):
         client = Client(self.__server_address)
         try:
+            if metadata is None:
+                metadata = self.current_token
             print('# Connected to %s:%d' % client.remote_address)
-            request = Request(name, args)
+            request = Request(name, args=args, metadata=metadata)
             print('# Marshalling', request, 'towards', "%s:%d" % client.remote_address)
             request = serialize(request)
             print('# Sending message:', request.replace('\n', '\n# '))
@@ -36,18 +39,20 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
     def add_user(self, user: User):
         return self.rpc('add_user', user)
 
-    def get_user(self, id: str) -> User:
-        return self.rpc('get_user', id)
+    def get_user(self, id: str, metadata: Token = None) -> User:
+        return self.rpc('get_user', id, metadata=metadata)
 
-    def check_password(self, credentials: Credentials) -> bool:
-        return self.rpc('check_password', credentials)
+    def check_password(self, credentials: Credentials, metadata: Token = None) -> bool:
+        return self.rpc('check_password', credentials, metadata=metadata)
     
 class RemoteAuthenticationService(ClientStub, AuthenticationService):
     def __init__(self, server_address):
         super().__init__(server_address)
         
     def authenticate(self, credentials: Credentials, duration: timedelta = None) -> Token:
-        return self.rpc('authenticate', credentials, duration)
+        token = self.rpc('authenticate', credentials, duration)
+        self._current_token = token
+        return token
 
     def validate_token(self, token: Token) -> bool:
         return self.rpc('validate_token', token)
@@ -60,12 +65,6 @@ if __name__ == '__main__':
     user_db = RemoteUserDatabase(address(sys.argv[1]))
     auth_service = RemoteAuthenticationService(address(sys.argv[1]))
 
-    # Trying to get a user that does not exist should raise a KeyError
-    try:
-        user_db.get_user('gciatto')
-    except RuntimeError as e:
-        assert 'User with ID gciatto not found' in str(e)
-
     # Adding a novel user should work
     user_db.add_user(gc_user)
 
@@ -76,8 +75,11 @@ if __name__ == '__main__':
         assert str(e).startswith('User with ID')
         assert str(e).endswith('already exists')
 
-    # Getting a user that exists should work
-    assert user_db.get_user('gciatto') == gc_user.copy(password=None)
+    # Trying to get a user that exists without authentication should raise a KeyError
+    try:
+        user_db.get_user('gciatto')
+    except RuntimeError as e:
+        assert 'Missing token' in str(e)
 
     # Checking credentials should work if there exists a user with the same ID and password (no matter which ID is used)
     for gc_cred in gc_credentials_ok:
@@ -86,29 +88,36 @@ if __name__ == '__main__':
     # Checking credentials should fail if the password is wrong
     assert user_db.check_password(gc_credentials_wrong) == False
     
+    print("-------------------------------------------------")
+    
     # --- Authentication tests ---
     from datetime import timedelta, datetime
     from snippets.lab4.example1_presentation import serialize, deserialize
-    
-    print("-------------------------------------------------")
 
     # Authenticate with valid credentials should return a token
     for gc_cred in gc_credentials_ok:
         token = auth_service.authenticate(gc_cred, timedelta(seconds=10))
-        assert token.user.username == user_db.get_user('gciatto').username
+        user_db.current_token = token
+        user = user_db.get_user('gciatto') # the saved token should be loaded automatically by the client
+        assert user.username == 'gciatto'
         assert auth_service.validate_token(token) == True
 
     # Token expiration test
     token = auth_service.authenticate(gc_credentials_ok[0], timedelta(seconds=1))
-    assert auth_service.validate_token(token) == True
-
+    user_db.current_token = token
+    assert auth_service.validate_token(user_db.current_token) == True
+    
     # Wait for token to expire
     import time
     time.sleep(1.5)
-    assert auth_service.validate_token(token) == False
+    assert auth_service.validate_token(user_db.current_token) == False
 
     # Test serialization/deserialization of token
     token = auth_service.authenticate(gc_credentials_ok[0], timedelta(days=1))
+    user_db.current_token = token
     serialized_token = serialize(token)
     deserialized_token = deserialize(serialized_token)
     assert auth_service.validate_token(deserialized_token) == True
+    
+    print("ALL TESTS PASSED")
+    

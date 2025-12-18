@@ -13,6 +13,7 @@ class Request:
 
     name: str
     args: tuple
+    metadata: Token = None
 
     def __post_init__(self):
         self.args = tuple(self.args)
@@ -95,6 +96,7 @@ class Serializer:
     def _request_to_ast(self, request: Request):
         return {
             'name': self._to_ast(request.name),
+            'metadata': self._to_ast(request.metadata),
             'args': [self._to_ast(arg) for arg in request.args],
         }
 
@@ -165,6 +167,7 @@ class Deserializer:
         return Request(
             name=self._ast_to_obj(data['name']),
             args=tuple(self._ast_to_obj(arg) for arg in data['args']),
+            metadata=self._ast_to_obj(data['metadata'])
         )
 
     def _ast_to_response(self, data):
@@ -172,7 +175,6 @@ class Deserializer:
             result=self._ast_to_obj(data['result']) if data['result'] is not None else None,
             error=self._ast_to_obj(data['error']),
         )
-
 
 DEFAULT_SERIALIZER = Serializer()
 DEFAULT_DESERIALIZER = Deserializer()
