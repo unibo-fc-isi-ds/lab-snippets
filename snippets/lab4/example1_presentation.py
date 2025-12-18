@@ -27,7 +27,7 @@ class Response: #Risposta RPC
 #Classe per Serializzare
 class Serializer: # oggetto --> ast --> stringa
     primitive_types = (int, float, str, bool, type(None))
-    container_types = (list, set)
+    container_types = (list)
 
     def serialize(self, obj):
         return self._ast_to_string(self._to_ast(obj))
@@ -117,7 +117,7 @@ class Deserializer:
     def _ast_to_user(self, data):
         return User(
             username=self._ast_to_obj(data['username']),
-            emails=set(self._ast_to_obj(data['emails'])),
+            emails=list(self._ast_to_obj(data['emails'])),
             full_name=self._ast_to_obj(data['full_name']),
             role=self._ast_to_obj(data['role']),
             password=self._ast_to_obj(data['password']),

@@ -68,11 +68,11 @@ if __name__ == '__main__':
                 if not args.tokenexp:
                     raise ValueError("Token expiration is required")
                 
-                utente = User(username=args.user, emails=set(args.email or []), full_name=args.name, role=args.role, password=args.password)
+                utente = User(username=args.user, emails=list(args.email or []), full_name=args.name, role=args.role, password=args.password)
                 
                 #Converto la stringa in datetime
                 te_tuple = ast.literal_eval(args.tokenexp)
-                te_datetime = datetime(*te_tuple[:6], microsecond=te_tuple[6])
+                te_datetime = datetime(*te_tuple)
 
                 token = Token(utente, expiration=te_datetime, signature=args.tokensig)
                 

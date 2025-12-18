@@ -19,14 +19,14 @@ class Datum:
 @dataclass # --> Decoratore che indica a python che questa classe serve sopratutto per immagazzinare dati
 class User(Datum): #Classe che rappresenta un utente
     username: str 
-    emails: set[str] #set di stringhe --> collezione non ordinata di elementi unici
+    emails: list[str] #list di stringhe --> collezione non ordinata di elementi unici
     full_name: str | None = None #stringa o None, di default None
     role: Role = Role.USER #Ruolo di default USER
     password: str | None = None #stringa o None, di default None
 
     #Metodo chiamato automaticamente dopo l'inizializzazione dell'istanza
     def __post_init__(self):
-        self.emails = set(self.emails) #Assicura che emails sia un set
+        self.emails = list(self.emails) #Assicura che emails sia un set
         if self.role is None:
             self.role = Role.USER
         if not self.username:
@@ -36,7 +36,7 @@ class User(Datum): #Classe che rappresenta un utente
 
     @property # --> Decoratore : possiamo accedere a questo metodo come se fosse un attributo
     def ids(self):
-        return {self.username} | self.emails 
+        return {self.username} | set(self.emails) 
     # {self.username} crea un set con l'username
     # self.emails è già un set di email
     # | è l'operatore di unione per i set, quindi restituisce un set che contiene sia l'username che tutte le email
