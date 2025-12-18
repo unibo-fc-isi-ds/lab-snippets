@@ -1,3 +1,4 @@
+from typing import Dict, Optional
 from .users import User, Credentials, Token, Role
 from datetime import datetime,timedelta
 import json
@@ -12,7 +13,8 @@ class Request:
 
     name: str
     args: tuple
-
+    metadata: Optional[Dict[str,any]] = None
+    
     def __post_init__(self):
         self.args = tuple(self.args)
 
@@ -92,10 +94,14 @@ class Serializer:
         return {'name': role.name}
 
     def _request_to_ast(self, request: Request):
-        return {
+        ast = {
             'name': self._to_ast(request.name),
             'args': [self._to_ast(arg) for arg in request.args],
+            '$type': 'Request'
         }
+        if request.metadata is not None:
+            ast['metadata'] = self._to_ast(request.metadata)
+        return ast
 
     def _response_to_ast(self, response: Response):
         return {
@@ -156,9 +162,11 @@ class Deserializer:
         return Role[self._ast_to_obj(data['name'])]
 
     def _ast_to_request(self, data):
+        metadata = self._ast_to_obj(data.get('metadata'))
         return Request(
             name=self._ast_to_obj(data['name']),
             args=tuple(self._ast_to_obj(arg) for arg in data['args']),
+            metadata=metadata
         )
 
     def _ast_to_response(self, data):

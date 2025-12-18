@@ -2,6 +2,8 @@ from .example3_rpc_client import *
 import argparse
 import sys
 from datetime import timedelta
+import json
+import os
 
 if __name__ == '__main__':
 
@@ -44,9 +46,34 @@ if __name__ == '__main__':
                     raise ValueError("Full name is required")
                 user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
                 print(user_db.add_user(user))
-            case 'get':
+            case 'get': 
                 if not main_id:
-                    print(user_db.get_user(ids[0]))
+                    raise ValueError("Username or email address is required")
+                
+                json_string = None
+                if args.token:
+                    json_string = args.token
+                if not json_string and os.path.exists(".token.json"):
+                    with open(".token.json", "r") as f:
+                        json_string = f.read()
+                elif not sys.stdin.isatty():
+                    full_input = sys.stdin.read()
+                    
+                    filtered_lines = []
+                    for line in full_input.splitlines():
+                        if not line.strip().startswith('#') and line.strip(): 
+                            filtered_lines.append(line)
+                    
+                    json_string = '\n'.join(filtered_lines).strip()
+                
+                if json_string:
+                    try:
+                        token_obj = deserialize(json_string) 
+                        token_dict_data = json.loads(serialize(token_obj))
+                        user_db.set_auth_token(token_dict_data)
+                    except Exception as e:
+                        raise ValueError(f"Invalid token format provided to 'get': {e}")
+                print(user_db.get_user(main_id))
             case 'check':
                 if not main_id or not args.password:
                     raise ValueError("Username/email and password are required")
@@ -61,7 +88,14 @@ if __name__ == '__main__':
                 else:
                     duration = timedelta(seconds=int(args.duration))
                 token = auth_service.authenticate(credentials, duration)
+                token_json = serialize(token)
+                with open(".token.json", "w") as f:
+                    f.write(token_json)
+                print(serialize(token_json))
+                import json
+                token_dict_data = json.loads(serialize(token)) 
                 
+                user_db.set_auth_token(token_dict_data)
                 print(serialize(token))
             case 'validate':
                 json_string = None
