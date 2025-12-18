@@ -43,6 +43,8 @@ def on_new_connection(event, connection, address, error):
             print(f"New connection from {address}")
             connection.callback = on_message_received
             connections.add(connection)
+        case 'stop':
+                print(f"Stop listening for new connections")
         case 'error':
             print(error)
 
@@ -63,7 +65,7 @@ def main():
             print(f"Failed to connect to {peer_endpoint}: {e}")
 
     username = input("Enter your username to start the chat:\n")
-    print("Type your message and press Enter to send it.")
+    print("Type your message and press Enter to send it. Messages from other peers will be displayed below.")
 
     try:
         while True:
@@ -71,7 +73,7 @@ def main():
             if content.strip():
                 broadcast(content, username)
     except (EOFError, KeyboardInterrupt):
-        print("\nLeaving chat...")
+        print("\nLeaving chat")
     finally:
         for peer in list(connections):
             peer.close()
