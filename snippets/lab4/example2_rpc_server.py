@@ -1,4 +1,5 @@
 from snippets.lab3 import Server
+from snippets.lab4.users import Role
 from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService, Credentials, Token
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, AutenticatedRequest, Response
 import traceback
@@ -38,6 +39,9 @@ class ServerStub(Server):
                     if self.__auth_service.validate_token(obj.token) == False:
                         print("Access denied")
                         response = Response(None, "Token Expierd, reload application or access again")
+                    elif obj.request.name == 'get_user' and obj.token.user.role != Role.ADMIN:
+                        print("Access denied")
+                        response = Response(None, "Only an admin can get users")
                     else:
                         print("Access Granted")
                         print('[%s:%d] Unmarshall request:' % connection.remote_address, obj)
