@@ -3,8 +3,8 @@ import argparse
 import sys
 from datetime import timedelta
 import os
-from .example1_presentation import serialize, deserialize
-from .example3_rpc_client import ClientStub
+from snippets.lab4.example1_presentation import serialize, deserialize
+from snippets.lab4.example3_rpc_client import ClientStub
 
 TOKEN_PATH = ".snippets_token.json"
 
@@ -42,6 +42,7 @@ if __name__ == '__main__':
 
     if len(sys.argv) > 1:
         args = parser.parse_args()
+        load_token()
     else:
         parser.print_help()
         sys.exit(0)
@@ -49,7 +50,7 @@ if __name__ == '__main__':
     args.address = address(args.address)
     user_db = RemoteUserDatabase(args.address)
     auth_service = RemoteAuthenticationService(args.address)
-    load_token()
+    
 
     try:
         if args.command == 'add':
@@ -95,15 +96,11 @@ if __name__ == '__main__':
                 raise ValueError("Username or email address is required")
             if not args.password:
                 raise ValueError("Password is required")
-        
-        elif args.command == 'logout':
-            clear_token()
-            print("Logged out")
-
 
             credentials = Credentials(ids[0], args.password)
             duration = timedelta(seconds=args.duration) if args.duration is not None else None
             token = auth_service.authenticate(credentials, duration)
+
             save_token(token)
             print(f"# Token saved to {TOKEN_PATH}")
 
@@ -111,6 +108,11 @@ if __name__ == '__main__':
             print(token)
             print('# Copy/paste this for validation with --token')
             print(serialize(token))
+
+        elif args.command == 'logout':
+            clear_token()
+            print("Logged out")
+
     
         elif args.command == 'validate':
             if not args.token:

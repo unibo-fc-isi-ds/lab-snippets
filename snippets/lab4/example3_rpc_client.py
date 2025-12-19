@@ -8,9 +8,11 @@ class ClientStub:
     def __init__(self, server_address: tuple[str, int]):
         self.__server_address = address(*server_address)
 
+    @classmethod
     def set_token(cls, token):
         cls._token = token
     
+    @classmethod
     def get_token(cls):
         return cls._token
 

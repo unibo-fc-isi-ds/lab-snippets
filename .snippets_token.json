@@ -1,0 +1,21 @@
+{
+  "signature": "9c41147a282d4f9a9a9c5087dccffba4050bbcbe8610df5b21b0521579952567",
+  "user": {
+    "username": "admin1",
+    "emails": [
+      "admin1@example.com"
+    ],
+    "full_name": "Admin One",
+    "role": {
+      "name": "ADMIN",
+      "$type": "Role"
+    },
+    "password": null,
+    "$type": "User"
+  },
+  "expiration": {
+    "iso": "2025-12-19T15:48:03.393600",
+    "$type": "datetime"
+  },
+  "$type": "Token"
+}
