@@ -13,6 +13,7 @@ class Request: #Richiesta RPC
     service : str #nome del servizio (UserDatabase o AuthenticationService)
     name: str #nome del metodo da chiamare
     args: tuple #argomenti del metodo
+    authentication_token : Token | None = None  #La richiesta prevede un autenticazione ?
 
     def __post_init__(self): #Converte args in tupla se non lo è già
         self.args = tuple(self.args)
@@ -85,6 +86,7 @@ class Serializer: # oggetto --> ast --> stringa
             'service': self._to_ast(request.service), #aggiunto 
             'name': self._to_ast(request.name),
             'args': [self._to_ast(arg) for arg in request.args],
+            'authentication_token': self._to_ast(request.authentication_token) #aggiunto
         }
 
     def _response_to_ast(self, response: Response):
@@ -147,6 +149,7 @@ class Deserializer:
             service=self._ast_to_obj(data['service']), #aggiunto
             name=self._ast_to_obj(data['name']),
             args=tuple(self._ast_to_obj(arg) for arg in data['args']),
+            authentication_token=self._ast_to_obj(data['authentication_token']) #aggiunto
         )
 
     def _ast_to_response(self, data):
@@ -155,10 +158,8 @@ class Deserializer:
             error=self._ast_to_obj(data['error']),
         )
 
-
 DEFAULT_SERIALIZER = Serializer()
 DEFAULT_DESERIALIZER = Deserializer()
-
 
 def serialize(obj): #serializza un oggetto in stringa
     return DEFAULT_SERIALIZER.serialize(obj)

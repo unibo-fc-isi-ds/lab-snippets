@@ -1,4 +1,5 @@
 from .example3_rpc_client import *
+from .example1_presentation import Serializer
 import argparse
 import ast
 from datetime import datetime
@@ -47,9 +48,17 @@ if __name__ == '__main__':
                 if not args.name:
                     raise ValueError("Full name is required")
                 user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
-                print(user_db.add_user(user))
-            case 'get':
-                print(user_db.get_user(ids[0]))
+                print(user_db.add_user(user, None))
+            case 'get': # E' un operazione che richiede autenticazione
+                if args.role == Role.ADMIN :
+                    
+                    if not args.tokensig :
+                        raise ValueError("Token is required")
+                    else :
+                        print(user_db.get_user(ids[0]), args.tokensig)
+
+                else :
+                    raise ValueError("Reading user data is available only for ADMIN user")
             case 'check':
                 if not args.password:
                     raise ValueError("Password is required")
@@ -59,9 +68,14 @@ if __name__ == '__main__':
                 if not args.password:
                     raise ValueError("Password is required")
                 credentials = Credentials(ids[0], args.password)
+
                 token = auth_service.authenticate(credentials)
-                print('Autentication successful - Token:', token)
-            case 'validate': #posso validare un token solo dopo essermi autenticato : lo copio e incollo dall'output del comando precedente
+
+                authentication_token = Serializer.serialize(token) #serializzo l'oggetto token in una stringa JSON
+
+                print('Autentication successful :', authentication_token)
+
+            case 'validate': # E' un operazione che richiede autenticazione
                 if not args.tokensig:
                     raise ValueError("Token signature is required")
                 

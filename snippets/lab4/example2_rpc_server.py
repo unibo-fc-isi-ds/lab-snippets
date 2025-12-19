@@ -1,6 +1,7 @@
 from snippets.lab3 import Server
 from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
+from snippets.lab4.users import Role
 import traceback
 
 
@@ -48,11 +49,24 @@ class ServerStub(Server): # RPC server stub --> caso particolare di server
         #request.name = autenticate | validate_token (metodi di AuthenticationService)
 
         try:
+            #Seleziono il servizio che è stato richiesto dal client analizzando il campo request.service
             if request.service == 'AuthenticationService':
                 method = getattr(self.__auth_service, request.name) #ottiene l'attributo di un oggetto (dato il nome come stringa)
             elif request.service == 'UserDatabase':
                 method = getattr(self.__user_db, request.name)
             else: raise ValueError(f"Unknown service {request.service}")
+            
+            if request.name == "get_user" :
+                if not request.authentication_token: #se non è presente il Token di autenticazione
+                    return Response(None, "Authentication required")
+
+                token = request.authentication_token
+
+                if not self.__auth_service.validate_token(token):
+                    return Response(None, "Invalid token")
+
+                if token.user.role != Role.ADMIN:
+                    return Response(None, "Unauthorized")
 
             result = method(*request.args) #chiama il metodo con gli argomenti forniti 
             error = None

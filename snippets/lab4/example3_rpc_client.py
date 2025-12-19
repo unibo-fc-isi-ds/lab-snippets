@@ -10,11 +10,11 @@ class ClientStub:
         self.__server_address = address(*server_address) #transforma in tupla (ip, port)
 
     # Metodo generico per effettuare una chiamata di procedura remota
-    def rpc(self, service, name, *args):
+    def rpc(self, service, name, *args, authentication_token = None):
         client = Client(self.__server_address) #crea un client TCP che si connette al server all'indirizzo specificato
         try:
             print('# Connected to %s:%d' % client.remote_address) 
-            request = Request(service, name, args) #creo un istanza di Request con il nome del metodo e gli argomenti
+            request = Request(service, name, args, authentication_token) #creo un istanza di Request con il nome del metodo e gli argomenti
             print('# Marshalling', request, 'towards', "%s:%d" % client.remote_address)
             request = serialize(request) #la serializzo in stringa (ricorda : obj -> AST -> stringa)
             print('# Sending message:', request.replace('\n', '\n# '))
@@ -40,14 +40,14 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
         super().__init__(server_address) #fa riferimento al costruttore di ClientStub
     
     #mi appello al metodo rpc della superclasse ClientStub
-    def add_user(self, user: User):
-        return self.rpc(self.service , 'add_user', user)
+    def add_user(self, user: User, authentication_token = None):
+        return self.rpc(self.service , 'add_user', user, authentication_token = None)
 
     def get_user(self, id: str) -> User:
-        return self.rpc(self.service, 'get_user', id)
+        return self.rpc(self.service, 'get_user', id, self._token)
 
-    def check_password(self, credentials: Credentials) -> bool:
-        return self.rpc(self.service, 'check_password', credentials)
+    def check_password(self, credentials: Credentials, authentication_token = None) -> bool:
+        return self.rpc(self.service, 'check_password', credentials, authentication_token = None)
 
 #Qui implementiamo le funzioni authenticate e validate_token in modo remoto
 class RemoteAuthenticationService(ClientStub, AuthenticationService):
@@ -56,11 +56,11 @@ class RemoteAuthenticationService(ClientStub, AuthenticationService):
     def __init__(self, server_address):
         super().__init__(server_address)
 
-    def authenticate(self, credentials: Credentials) -> Token:
-        return self.rpc(self.service,'authenticate', credentials)
+    def authenticate(self, credentials: Credentials, authentication_token = None) -> Token:
+        return self.rpc(self.service,'authenticate', credentials, authentication_token = None)
 
-    def validate_token(self, token: Token) -> bool:
-        return self.rpc(self.service,'validate_token', token)
+    def validate_token(self, token: Token, authentication_token : str) -> bool:
+        return self.rpc(self.service,'validate_token', token, authentication_token)
 
 if __name__ == '__main__':
     from snippets.lab4.example0_users import gc_user, gc_credentials_ok, gc_credentials_wrong
