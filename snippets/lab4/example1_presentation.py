@@ -12,6 +12,7 @@ class Request:
 
     name: str
     args: tuple
+    metadata: object | None = None
 
     def __post_init__(self):
         self.args = tuple(self.args)
@@ -86,10 +87,13 @@ class Serializer:
         return {'name': role.name}
 
     def _request_to_ast(self, request: Request):
-        return {
+        data = {
             'name': self._to_ast(request.name),
             'args': [self._to_ast(arg) for arg in request.args],
         }
+        if request.metadata is not None:
+            data ['metadata'] = self._to_ast(request.metadata)
+        return data
 
     def _response_to_ast(self, response: Response):
         return {
@@ -154,6 +158,7 @@ class Deserializer:
         return Request(
             name=self._ast_to_obj(data['name']),
             args=tuple(self._ast_to_obj(arg) for arg in data['args']),
+             metadata=self._ast_to_obj(data['metadata']) if 'metadata' in data else None,
         )
 
     def _ast_to_response(self, data):
