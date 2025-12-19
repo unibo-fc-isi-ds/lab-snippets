@@ -38,9 +38,10 @@ class ServerStub(Server):
                     if self.__auth_service.validate_token(obj.token) == False:
                         print("Access denied")
                         response = Response(None, "Token Expierd, reload application or access again")
-                    print("Access Granted")
-                    print('[%s:%d] Unmarshall request:' % connection.remote_address, obj)
-                    response = self.__handle_request(obj.request)
+                    else:
+                        print("Access Granted")
+                        print('[%s:%d] Unmarshall request:' % connection.remote_address, obj)
+                        response = self.__handle_request(obj.request)
                 else:
                     assert isinstance(obj, Request)
                     print('[%s:%d] Unmarshall request:' % connection.remote_address, obj)
