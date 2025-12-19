@@ -1,6 +1,7 @@
 from snippets.lab3 import Server
 from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
+from snippets.lab4.users import Role, Token
 import traceback
 
 
@@ -10,6 +11,18 @@ class ServerStub(Server):
         self.__user_db = InMemoryUserDatabase()
         self.__auth_service = InMemoryAuthenticationService(self.__user_db)
         self.__services = (self.__user_db, self.__auth_service)
+
+    def __require_admin(self, request: Request):
+        token = request.metadata
+        if token is None:
+            raise PermissionError("Authentication required")
+        if not isinstance(token, Token):
+            raise PermissionError("Invalid token metadata")
+        if not self.__auth_service.validate_token(token):
+            raise PermissionError("Invalid or expired token")
+        if token.user.role != Role.ADMIN:
+            raise PermissionError("Admin role required")
+
     
     def __on_connection_event(self, event, connection, address, error):
         if event == 'listen':
@@ -49,6 +62,9 @@ class ServerStub(Server):
     
     def __handle_request(self, request):
         try:
+            protected = {"get_user", "get"}
+            if request.name in protected:
+                self.__require_admin(request)
             method = None
             for service in self.__services:
                 if hasattr(service, request.name):
