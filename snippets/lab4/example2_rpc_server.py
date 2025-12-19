@@ -1,6 +1,6 @@
 from snippets.lab3 import Server
-from snippets.lab4.users.impl import InMemoryUserDatabase
-from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
+from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService, Credentials, Token
+from snippets.lab4.example1_presentation import serialize, deserialize, Request, AutenticatedRequest, Response
 import traceback
 
 
@@ -8,6 +8,7 @@ class ServerStub(Server):
     def __init__(self, port):
         super().__init__(port, self.__on_connection_event)
         self.__user_db = InMemoryUserDatabase()
+        self.__auth_service = InMemoryAuthenticationService(self.__user_db)
     
     def __on_connection_event(self, event, connection, address, error):
         match event:
@@ -24,10 +25,29 @@ class ServerStub(Server):
         match event:
             case 'message':
                 print('[%s:%d] Open connection' % connection.remote_address)
-                request = deserialize(payload)
-                assert isinstance(request, Request)
-                print('[%s:%d] Unmarshall request:' % connection.remote_address, request)
-                response = self.__handle_request(request)
+                obj = deserialize(payload)
+                if isinstance(obj, Credentials):
+                    try:
+                        response = Response(self.__auth_service.authenticate(obj), None)
+                        print("Access Granted")
+                    except ValueError as e:
+                        response = Response(None, 'Invalid credentials')
+                        print("Access denied, invalid Credentials")
+                elif isinstance(obj, AutenticatedRequest):
+                    print("validating token for %s:%d" % connection.remote_address)
+                    if self.__auth_service.validate_token(obj.token) == False:
+                        print("Access denied")
+                        response = Response(None, "Token Expierd, reload application or access again")
+                    print("Access Granted")
+                    print('[%s:%d] Unmarshall request:' % connection.remote_address, obj)
+                    response = self.__handle_request(obj.request)
+                else:
+                    assert isinstance(obj, Request)
+                    print('[%s:%d] Unmarshall request:' % connection.remote_address, obj)
+                    if obj.name == 'add_user' or obj.name == 'check_password':
+                        response = self.__handle_request(obj)
+                    else:
+                        response = Response(None, "Autetication Required")
                 connection.send(serialize(response))
                 print('[%s:%d] Marshall response:' % connection.remote_address, response)
                 connection.close()
