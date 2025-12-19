@@ -2,6 +2,25 @@ from .example3_rpc_client import *
 import argparse
 import sys
 from datetime import timedelta
+import os
+from .example1_presentation import serialize, deserialize
+from .example3_rpc_client import ClientStub
+
+TOKEN_PATH = ".snippets_token.json"
+
+def load_token():
+    if os.path.exists(TOKEN_PATH):
+        with open(TOKEN_PATH, "r", encoding="utf-8") as f:
+            ClientStub.set_token(deserialize(f.read()))
+
+def save_token(token):
+    with open(TOKEN_PATH, "w", encoding="utf-8") as f:
+        f.write(serialize(token))
+
+def clear_token():
+    if os.path.exists(TOKEN_PATH):
+        os.remove(TOKEN_PATH)
+    ClientStub.set_token(None)
 
 
 if __name__ == '__main__':
@@ -12,7 +31,7 @@ if __name__ == '__main__':
         exit_on_error=False,
     )
     parser.add_argument('address', help='Server address in the form ip:port')
-    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check', 'login', 'validate'])
+    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check', 'login', 'validate', 'logout'])
     parser.add_argument('--user', '-u', help='Username')
     parser.add_argument('--email', '--address', '-a', nargs='+', help='Email address')
     parser.add_argument('--name', '-n', help='Full name')
@@ -30,6 +49,7 @@ if __name__ == '__main__':
     args.address = address(args.address)
     user_db = RemoteUserDatabase(args.address)
     auth_service = RemoteAuthenticationService(args.address)
+    load_token()
 
     try:
         if args.command == 'add':
@@ -75,10 +95,17 @@ if __name__ == '__main__':
                 raise ValueError("Username or email address is required")
             if not args.password:
                 raise ValueError("Password is required")
+        
+        elif args.command == 'logout':
+            clear_token()
+            print("Logged out")
+
 
             credentials = Credentials(ids[0], args.password)
             duration = timedelta(seconds=args.duration) if args.duration is not None else None
             token = auth_service.authenticate(credentials, duration)
+            save_token(token)
+            print(f"# Token saved to {TOKEN_PATH}")
 
             # Print the token both as an object and as a serialized JSON that can be reused with --token
             print(token)
