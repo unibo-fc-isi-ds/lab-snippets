@@ -52,7 +52,7 @@ class ServerStub(Server):
             method = None
             for service in self.__services:
                 if hasattr(service, request.name):
-                    method = getattr(self.__user_db, request.name)
+                    method = getattr(service, request.name)
                     break
             if method is None:
                 raise AttributeError(f"Unknown RPC method: {request.name}")
@@ -60,7 +60,7 @@ class ServerStub(Server):
             error = None
         except Exception as e:
             result = None
-            error = " ".join(e.args)
+            error = str(e) or repr(e)
         return Response(result, error)
 
 
