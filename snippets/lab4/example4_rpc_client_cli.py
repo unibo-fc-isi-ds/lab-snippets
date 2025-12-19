@@ -37,6 +37,9 @@ if __name__ == '__main__':
     user_db = RemoteUserDatabase(tuple_address)
     auth_service = RemoteAuthenticationService(tuple_address)
 
+    #Variabile per memorizzare il token della sessione
+    current_token = None
+
     try :
         ids = (args.email or []) + [args.user] #creo una lista di id (username + email)
         if len(ids) == 0:
@@ -48,17 +51,24 @@ if __name__ == '__main__':
                 if not args.name:
                     raise ValueError("Full name is required")
                 user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
-                print(user_db.add_user(user, None))
+                print(user_db.add_user(user))
             case 'get': # E' un operazione che richiede autenticazione
-                if args.role == Role.ADMIN :
-                    
-                    if not args.tokensig :
-                        raise ValueError("Token is required")
-                    else :
-                        print(user_db.get_user(ids[0]), args.tokensig)
 
-                else :
-                    raise ValueError("Reading user data is available only for ADMIN user")
+                # MODIFICATO: controlla se abbiamo un token, altrimenti richiedi autenticazione
+                if not args.tokensig or not args.tokenexp:
+                    raise ValueError("Token is required for get operation. Use --tokensig and --tokenexp")
+                
+                # Ricostruisci il token dai parametri
+                utente = User(username=args.user, emails=list(args.email or []), 
+                            full_name=args.name, role=Role[args.role.upper()], 
+                            password=args.password)
+                te_tuple = ast.literal_eval(args.tokenexp)
+                te_datetime = datetime(*te_tuple)
+                current_token = Token(utente, expiration=te_datetime, signature=args.tokensig)
+                
+                # Imposta il token e esegui get_user
+                user_db.set_token(current_token)
+                print(user_db.get_user(ids[0]))
             case 'check':
                 if not args.password:
                     raise ValueError("Password is required")
@@ -68,13 +78,11 @@ if __name__ == '__main__':
                 if not args.password:
                     raise ValueError("Password is required")
                 credentials = Credentials(ids[0], args.password)
-
-                token = auth_service.authenticate(credentials)
-
-                authentication_token = Serializer.serialize(token) #serializzo l'oggetto token in una stringa JSON
-
-                print('Autentication successful :', authentication_token)
-
+                current_token = auth_service.authenticate(credentials)
+                print('Authentication successful:', current_token)
+                print(f'Token signature: {current_token.signature}')
+                print(f'Token expiration: {current_token.expiration}')
+                
             case 'validate': # E' un operazione che richiede autenticazione
                 if not args.tokensig:
                     raise ValueError("Token signature is required")

@@ -32,7 +32,7 @@ class ServerStub(Server): # RPC server stub --> caso particolare di server
             case 'message':
                 print('[%s:%d] Open connection' % connection.remote_address)
                 request = deserialize(payload)
-                assert isinstance(request, Request)
+                assert isinstance(request, Request) #Si assicura che request sia un istanza di Request
                 print('[%s:%d] Unmarshall request:' % connection.remote_address, request)
                 response = self.__handle_request(request)
                 connection.send(serialize(response))
