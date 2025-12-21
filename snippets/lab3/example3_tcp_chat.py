@@ -1,60 +1,42 @@
 from snippets.lab3 import *
 import sys
 
-
-mode = sys.argv[1].lower().strip()
+import argparse
 
 def get_msg_str(msg, sender) -> str:
     return message(msg.strip(), sender)
 
-def run_client(remote_endpoint: str): 
-    remote_peer: Client | None = None
-    def on_message_received(event, payload, connection, error):
-        match event:
-            case 'message':
-                print(payload)
-            case 'close':
-                print(f"Connection with peer {connection.remote_address} closed")
-                nonlocal remote_peer
-                remote_peer = None
-            case 'error':
-                print(error)
-    
+def run(port: int, remote_endpoints: list[tuple[str, int]]):
     username = input('Enter your username to start the chat:\n')
     print('Type your message and press Enter to send it. Messages from other peers will be displayed below.')
-
-    remote_peer = Client(address(remote_endpoint), on_message_received)
-    print(f"Connected to {remote_peer.remote_address}")
-
-    while True:
-        try:
-            content = input()
-            if remote_peer is None:
-                print("Error: Disconnected from server")
-                break
-            if not content:
-                continue  # Empty message, skip
-            remote_peer.send(get_msg_str(content, username))
-        except (EOFError, KeyboardInterrupt):
-            if remote_peer is not None:
-                remote_peer.close()
-            break
-
-def run_server(port: int):
-    server_connections: dict[str, Connection] = {}
-
+    
+    server_connections: dict[str, Connection]
+    seen_messages = set()
+    
     def on_message_server(event, payload, connection, error):
         match event:
             case 'message':
+                # Check if we have already fowarded the message
+                if payload in seen_messages:
+                    return
+                seen_messages.add(payload)
                 for conn in server_connections.values():
                     if conn.remote_address == connection.remote_address:
                         continue  # Do not echo back to sender
                     conn.send(payload)
+                print(payload)
             case 'close':
                 print(f"Connection with peer {connection.remote_address} closed")
                 del server_connections[connection.remote_address]  # Remove peer
             case 'error':
                 print(error)
+
+    # Initial connections
+    clients = [Client(addr, on_message_server) for addr in remote_endpoints]
+    
+    server_connections: dict[str, Connection] = {
+        client.remote_address: client for client in clients
+    }
 
     def on_new_connection(event, connection, address, error):
         match event:
@@ -70,17 +52,33 @@ def run_server(port: int):
                 print(error)
 
     server = Server(port, on_new_connection)
-    try:
-        server.join()
-    except KeyboardInterrupt:
-        server.close()
+
+    while True:
+        try:
+            content = input()
+            if not content:
+                continue  # Empty message, skip
+            msg = get_msg_str(content, username)
+            for connection in server_connections.values():
+                connection.send(msg)
+        except (EOFError, KeyboardInterrupt):
+            server.close()
+            server.join()
+            break
+
 
 if __name__ == "__main__":
-    mode = sys.argv[1].lower().strip()
-    match mode:
-        case "server":
-            run_server(port=int(sys.argv[2]))
-        case "client":
-            run_client(remote_endpoint=sys.argv[2])
-        case _:
-            raise ValueError(f"Invalid mode: {mode}")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--port", type=int)
+    parser.add_argument("remote_peers", nargs="*", default=[])
+    args = parser.parse_args()
+
+    remote_endpoints: list[tuple[str, int]] = []
+    for addr in args.remote_peers:
+        splitted = addr.split(":")
+        if len(splitted) != 2:
+            raise ValueError(f"Invalid address: {addr}")
+        host, port = splitted
+        remote_endpoints.append((host, int(port)))
+
+    run(args.port, remote_endpoints)
