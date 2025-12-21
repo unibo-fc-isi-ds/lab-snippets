@@ -16,7 +16,7 @@ def run(port: int, remote_endpoints: list[tuple[str, int]]):
     def on_message_server(event, payload, connection, error):
         match event:
             case 'message':
-                # Check if we have already fowarded the message
+                # Check if we have already seen the message
                 if payload in seen_messages:
                     return
                 seen_messages.add(payload)
