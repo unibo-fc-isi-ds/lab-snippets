@@ -1,5 +1,5 @@
 from snippets.lab3 import Server
-from snippets.lab4.users.impl import InMemoryUserDatabase
+from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 import traceback
 
@@ -8,6 +8,7 @@ class ServerStub(Server):
     def __init__(self, port):
         super().__init__(port, self.__on_connection_event)
         self.__user_db = InMemoryUserDatabase()
+        self.__auth_service = InMemoryAuthenticationService(self.__user_db)
     
     def __on_connection_event(self, event, connection, address, error):
         match event:
@@ -16,7 +17,8 @@ class ServerStub(Server):
             case 'connect':
                 connection.callback = self.__on_message_event
             case 'error':
-                traceback.print_exception(error)
+                # traceback.print_exception(error)
+                print(error, file=sys.stderr)
             case 'stop':
                 print('Server stopped')
     
@@ -32,13 +34,19 @@ class ServerStub(Server):
                 print('[%s:%d] Marshall response:' % connection.remote_address, response)
                 connection.close()
             case 'error':
-                traceback.print_exception(error)
+                # traceback.print_exception(error)
+                print(error, file=sys.stderr)
             case 'close':
                 print('[%s:%d] Close connection' % connection.remote_address)
     
     def __handle_request(self, request):
         try:
-            method = getattr(self.__user_db, request.name)
+            if hasattr(self.__user_db, request.name) and not hasattr(self.__auth_service, request.name):
+                method = getattr(self.__user_db, request.name)
+            elif hasattr(self.__auth_service, request.name) and not hasattr(self.__user_db, request.name):
+                method = getattr(self.__auth_service, request.name)
+            else:
+                raise AttributeError(f"Method '{request.name}' not found or duplicated")
             result = method(*request.args)
             error = None
         except Exception as e:
