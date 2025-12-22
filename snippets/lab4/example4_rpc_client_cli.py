@@ -3,6 +3,19 @@ from .example3_rpc_client import *
 import argparse
 import sys
 
+_TOKEN_PATH = 'token.json'
+token: Token | None = None
+
+def get_token(path: str) -> Token | None:
+    token = None
+    try:
+        with open(path, 'r') as f:
+            token_serialized = f.read()
+        token = deserialize(token_serialized)
+        print(f'Token READ from "{Path(f.name).resolve()}"')
+    except Exception as e:
+        print(f'Unable to READ token from "{path}"')
+    return token
 
 if __name__ == '__main__':
 
@@ -12,12 +25,13 @@ if __name__ == '__main__':
         exit_on_error=False,
     )
     parser.add_argument('address', help='Server address in the form ip:port')
-    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check', 'authenticate', 'validate_token'])
+    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check', 'authenticate', 'validate'])
     parser.add_argument('--user', '-u', help='Username')
     parser.add_argument('--email', '--address', '-a', nargs='+', help='Email address')
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
+    parser.add_argument('--token', '-t', help=f'Token path (defaults "{_TOKEN_PATH}")')
     parser.add_argument('--days', '-d', help='Token validity in days (defaults to 1 day)')
     parser.add_argument('--seconds', '-s', help='Token validity in seconds (defaults to 1 day)')
 
@@ -31,10 +45,17 @@ if __name__ == '__main__':
     user_db = RemoteUserDatabase(args.address)
     auth_service = RemoteAuthenticationService(args.address)
 
-    try :
+    try:
         ids = (args.email or []) + [args.user]
         if len(ids) == 0:
             raise ValueError("Username or email address is required")
+        tokenPath = _TOKEN_PATH
+        if args.token:
+            tokenPath = args.token
+        token = get_token(tokenPath)
+        if token:
+            user_db.token = token
+            auth_service.token = token
         match args.command:
             case 'add':
                 if not args.password:
@@ -59,15 +80,17 @@ if __name__ == '__main__':
                 else:
                     token = auth_service.authenticate(credentials)
                 token_serialized = serialize(token)
-                with open('token.json', 'w') as f:
-                    f.write(token_serialized)
-                print(f'Token saved in "{Path(f.name).resolve()}"')
-            case 'validate_token':
-                token_file = 'token.json'
-                with open(token_file, 'r') as f:
-                    token_serialized = f.read()
-                token = deserialize(token_serialized)
-                print(auth_service.validate_token(token))
+                try:
+                    with open(tokenPath, 'w') as f:
+                        f.write(token_serialized)
+                    print(f'Token WROTE in "{Path(f.name).resolve()}"')
+                except Exception as e:
+                    print(f'Error while saving token in "{tokenPath}"', file=sys.stderr)
+            case 'validate':
+                if token:
+                    print(auth_service.validate_token(token))
+                else:
+                    print("Impossible to validate without a token", file=sys.stderr)
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:

@@ -1,7 +1,7 @@
 from snippets.lab3 import Server
+from snippets.lab4.users import Role, Token
 from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
-import traceback
 
 
 class ServerStub(Server):
@@ -9,6 +9,13 @@ class ServerStub(Server):
         super().__init__(port, self.__on_connection_event)
         self.__user_db = InMemoryUserDatabase()
         self.__auth_service = InMemoryAuthenticationService(self.__user_db)
+
+    def __check_token(self, request: Request):
+        token = request.metadata
+        if token is None:
+            raise PermissionError("Request missing token")
+        if not self.__auth_service.validate_token(token):
+            raise PermissionError("Invalid or expired token")
     
     def __on_connection_event(self, event, connection, address, error):
         match event:
@@ -39,14 +46,21 @@ class ServerStub(Server):
             case 'close':
                 print('[%s:%d] Close connection' % connection.remote_address)
     
-    def __handle_request(self, request):
+    def __handle_request(self, request: Request):
         try:
+            # If method not found yet, try auth service
+            method = None
             if hasattr(self.__user_db, request.name) and not hasattr(self.__auth_service, request.name):
+                if request.name == "get_user":
+                    self.__check_token(request)
+                    if request.metadata.user.role != Role.ADMIN:
+                        raise PermissionError("Only admin can perform this operation")
                 method = getattr(self.__user_db, request.name)
             elif hasattr(self.__auth_service, request.name) and not hasattr(self.__user_db, request.name):
-                method = getattr(self.__auth_service, request.name)
-            else:
-                raise AttributeError(f"Method '{request.name}' not found or duplicated")
+                    method = getattr(self.__auth_service, request.name)
+            if method is None: # If still not found, raise error
+                raise AttributeError(f"Invalid operation")
+            # Execute method
             result = method(*request.args)
             error = None
         except Exception as e:

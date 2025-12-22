@@ -7,12 +7,22 @@ from snippets.lab4.example1_presentation import serialize, deserialize, Request,
 class ClientStub:
     def __init__(self, server_address: tuple[str, int]):
         self.__server_address = address(*server_address)
+        self.__token: Token | None = None
+    
+    @property
+    def token(self):
+        return self.__token
+
+    @token.setter
+    def token(self, value: Token):
+        self.__token = value
 
     def rpc(self, name, *args):
         client = Client(self.__server_address)
         try:
             print('# Connected to %s:%d' % client.remote_address)
-            request = Request(name, args)
+            # If the client has a token, this should be always passed when talking to the server
+            request = Request(name, args, self.token)
             print('# Marshalling', request, 'towards', "%s:%d" % client.remote_address)
             request = serialize(request)
             print('# Sending message:', request.replace('\n', '\n '))

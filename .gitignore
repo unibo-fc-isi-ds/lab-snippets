@@ -6,7 +6,7 @@ tmp/
 .DS_Store
 *.data
 demo/
-token.json
+*token*.json
 
 *~
 *.jar
