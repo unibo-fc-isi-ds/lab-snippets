@@ -2,9 +2,30 @@ from .example3_rpc_client import *
 from .example1_presentation import Serializer
 import argparse
 import ast
-from datetime import datetime
 import sys
+import os
+from datetime import datetime
 
+TOKEN_FILE = 'token.json'
+
+def save_token(token: Token):
+    #Salva il token su file
+    with open(TOKEN_FILE, 'w') as f:
+        f.write(serialize(token).replace('\n', '').replace('  ', ''))
+    print(f'# Token saved to {TOKEN_FILE}')
+
+def load_token() -> Token | None:
+    #Carica il token dal file, se esiste
+    if not os.path.exists(TOKEN_FILE):
+        return None
+    try:
+        with open(TOKEN_FILE, 'r') as f:
+            token = deserialize(f.read())
+        print(f'# Token loaded from {TOKEN_FILE}')
+        return token
+    except Exception as e:
+        print(f'# Failed to load token: {e}')
+        return None
 
 if __name__ == '__main__':
 
@@ -23,8 +44,7 @@ if __name__ == '__main__':
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
-    parser.add_argument('--tokensig', '-ts', help='token signature string')
-    parser.add_argument('--tokenexp', '-te', help='Token expiration string')
+    parser.add_argument('--token', '-t', help='token in JSON string')
 
     if len(sys.argv) > 1: 
         args = parser.parse_args() #args contiene tutti gli argomenti passati da linea di comando
@@ -37,8 +57,11 @@ if __name__ == '__main__':
     user_db = RemoteUserDatabase(tuple_address)
     auth_service = RemoteAuthenticationService(tuple_address)
 
-    #Variabile per memorizzare il token della sessione
-    current_token = None
+    # CARICA IL TOKEN SE ESISTE
+    saved_token = load_token()
+    if saved_token:
+        user_db.set_token(saved_token)
+        auth_service.set_token(saved_token)
 
     try :
         ids = (args.email or []) + [args.user] #creo una lista di id (username + email)
@@ -54,21 +77,9 @@ if __name__ == '__main__':
                 print(user_db.add_user(user))
             case 'get': # E' un operazione che richiede autenticazione
 
-                # MODIFICATO: controlla se abbiamo un token, altrimenti richiedi autenticazione
-                if not args.tokensig or not args.tokenexp:
-                    raise ValueError("Token is required for get operation. Use --tokensig and --tokenexp")
-                
-                # Ricostruisci il token dai parametri
-                utente = User(username=args.user, emails=list(args.email or []), 
-                            full_name=args.name, role=Role[args.role.upper()], 
-                            password=args.password)
-                te_tuple = ast.literal_eval(args.tokenexp)
-                te_datetime = datetime(*te_tuple)
-                current_token = Token(utente, expiration=te_datetime, signature=args.tokensig)
-                
-                # Imposta il token e esegui get_user
-                user_db.set_token(current_token)
+                # Il token è già memorizzato in user_db dopo authenticate
                 print(user_db.get_user(ids[0]))
+
             case 'check':
                 if not args.password:
                     raise ValueError("Password is required")
@@ -78,30 +89,33 @@ if __name__ == '__main__':
                 if not args.password:
                     raise ValueError("Password is required")
                 credentials = Credentials(ids[0], args.password)
-                current_token = auth_service.authenticate(credentials)
-                print('Authentication successful:', current_token)
-                print(f'Token signature: {current_token.signature}')
-                print(f'Token expiration: {current_token.expiration}')
                 
-            case 'validate': # E' un operazione che richiede autenticazione
-                if not args.tokensig:
-                    raise ValueError("Token signature is required")
-                
-                if not args.tokenexp:
-                    raise ValueError("Token expiration is required")
-                
-                utente = User(username=args.user, emails=list(args.email or []), full_name=args.name, role=args.role, password=args.password)
-                
-                #Converto la stringa in datetime
-                te_tuple = ast.literal_eval(args.tokenexp)
-                te_datetime = datetime(*te_tuple)
+                 # Autentica e ottieni il token
+                token = auth_service.authenticate(credentials)
 
-                token = Token(utente, expiration=te_datetime, signature=args.tokensig)
+                # IMPORTANTE: Sincronizza il token con user_db
+                user_db.set_token(token)
                 
-                if auth_service.validate_token(token):
-                    print('Token is valid')
-                else:
-                    print('Token is invalid or expired')
+                # SALVA IL TOKEN SU FILE
+                save_token(token)
+                print(f"# Token saved to {TOKEN_FILE}")
+
+                # Print the token both as an object and as a serialized JSON that can be reused with --token
+                print(token)
+                print('Authentication successful:', token)
+                print(f'Token signature: {token.signature}')
+                print(f'Token expiration: {token.expiration}')
+                
+            case 'validate':
+                if not args.token:
+                    raise ValueError("E' richiesto un token in formato json")
+
+                token = deserialize(args.token)
+                if not isinstance(token, Token):
+                    raise ValueError("Il token deve essere una stringa JSON")
+
+                print(auth_service.validate_token(token))
+
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:

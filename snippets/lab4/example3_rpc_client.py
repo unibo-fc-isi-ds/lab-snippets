@@ -8,27 +8,38 @@ from snippets.lab4.example1_presentation import serialize, deserialize, Request,
 class ClientStub:
     def __init__(self, server_address: tuple[str, int]):
         self.__server_address = address(*server_address) #transforma in tupla (ip, port)
+        self.__token = None  # AGGIUNTO: memorizza il token della sessione
 
+    # AGGIUNTO: metodo per impostare il token
+    def set_token(self, token: Token):
+        self.__token = token
+        print(f'# Token memorized for future requests')
+
+    # AGGIUNTO: metodo per ottenere il token corrente
+    def get_token(self) -> Token | None:
+        return self.__token
+       
     # Metodo generico per effettuare una chiamata di procedura remota
-    def rpc(self, service, name, *args, autentication_token = None):
-        client = Client(self.__server_address) #crea un client TCP che si connette al server all'indirizzo specificato
+    def rpc(self, service, name, *args):
+        client = Client(self.__server_address)
         try:
-            print('# Connected to %s:%d' % client.remote_address) 
-            request = Request(service, name, args, authentication_token=autentication_token) #creo un istanza di Request con il nome del metodo e gli argomenti
+            print('# Connected to %s:%d' % client.remote_address)
+            # Crea la Request includendo il token memorizzato (se presente)
+            request = Request(service, name, args, authentication_token=self.__token)
             print('# Marshalling', request, 'towards', "%s:%d" % client.remote_address)
-            request = serialize(request) #la serializzo in stringa (ricorda : obj -> AST -> stringa)
+            request = serialize(request)
             print('# Sending message:', request.replace('\n', '\n# '))
-            client.send(request) #invio la richiesta serializzata al server
-            response = client.receive() #aspetto la risposta dal server (bloccante)
-            print('# Received message:', response.replace('\n', '\n# ')) #stampo la risposta ricevuta
-            response = deserialize(response) #deserializzo la risposta (ricorda: stringa -> AST -> obj)
-            assert isinstance(response, Response) #controllo che la risposta sia di tipo Response
+            client.send(request)
+            response = client.receive()
+            print('# Received message:', response.replace('\n', '\n# '))
+            response = deserialize(response)
+            assert isinstance(response, Response)
             print('# Unmarshalled', response, 'from', "%s:%d" % client.remote_address)
-            if response.error: #se c'è un errore nella risposta, lo rilancio come eccezione
+            if response.error:
                 raise RuntimeError(response.error)
             return response.result
         finally:
-            client.close() #chiudo la connessione (indipendentemente da successo o fallimento)
+            client.close()
             print('# Disconnected from %s:%d' % client.remote_address)
 
 #Ricorda che python supporta l'ereditarietà multipla
@@ -40,17 +51,13 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
         super().__init__(server_address) #fa riferimento al costruttore di ClientStub
         self.__token = None # Aggiunto --> Memorizza il token corrente
     
-    # Aggiunto : metodo per impostare il token
-    def set_token(self, token: Token):
-        self.__token = token
-
     #mi appello al metodo rpc della superclasse ClientStub
     def add_user(self, user: User):
         return self.rpc(self.service , 'add_user', user)
 
     # MODIFICATO: passa il token per get_user
     def get_user(self, id: str) -> User:
-        return self.rpc(self.service, 'get_user', id, authentication_token=self.__token)
+        return self.rpc(self.service, 'get_user', id)
 
     def check_password(self, credentials: Credentials) -> bool:
         return self.rpc(self.service, 'check_password', credentials)
@@ -63,8 +70,11 @@ class RemoteAuthenticationService(ClientStub, AuthenticationService):
         super().__init__(server_address)
 
     def authenticate(self, credentials: Credentials) -> Token:
-        return self.rpc(self.service,'authenticate', credentials)
-
+        token = self.rpc(self.service,'authenticate', credentials)
+         # Memorizza il token per le richieste future
+        self.set_token(token)
+        return token
+    
     def validate_token(self, token: Token) -> bool:
         return self.rpc(self.service,'validate_token', token)
 
