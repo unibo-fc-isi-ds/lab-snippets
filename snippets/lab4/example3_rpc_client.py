@@ -3,22 +3,17 @@ from snippets.lab4.users import *
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 
 # Implementazione del client RPC
-# Si occupa di marshallare e unmarshallare le richieste e risposte
-# e di gestire la connessione con il server RPC
+# Si occupa di marshallare e unmarshallare le richieste/risposte e di gestire la connessione con il server RPC
 class ClientStub:
     def __init__(self, server_address: tuple[str, int]):
         self.__server_address = address(*server_address) #transforma in tupla (ip, port)
-        self.__token = None  # AGGIUNTO: memorizza il token della sessione
+        self.__token = None  # Aggiunto : memorizza il token della sessione
 
-    # AGGIUNTO: metodo per impostare il token
+    #Aggiunto : setter del token
     def set_token(self, token: Token):
         self.__token = token
         print(f'# Token memorized for future requests')
 
-    # AGGIUNTO: metodo per ottenere il token corrente
-    def get_token(self) -> Token | None:
-        return self.__token
-       
     # Metodo generico per effettuare una chiamata di procedura remota
     def rpc(self, service, name, *args):
         client = Client(self.__server_address)
@@ -42,8 +37,6 @@ class ClientStub:
             client.close()
             print('# Disconnected from %s:%d' % client.remote_address)
 
-#Ricorda che python supporta l'ereditarietà multipla
-#Qui implementiamo le funzioni add_user, get_user e check_password in modo remoto
 class RemoteUserDatabase(ClientStub, UserDatabase):
     service = 'UserDatabase'
 
@@ -55,7 +48,6 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
     def add_user(self, user: User):
         return self.rpc(self.service , 'add_user', user)
 
-    # MODIFICATO: passa il token per get_user
     def get_user(self, id: str) -> User:
         return self.rpc(self.service, 'get_user', id)
 

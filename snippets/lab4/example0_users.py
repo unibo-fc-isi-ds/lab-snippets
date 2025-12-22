@@ -2,7 +2,6 @@ from .users import *
 from .users.impl import *
 import time
 
-
 _PRINT_LOGS = __name__ == '__main__'
 
 # Creazione di un database utenti in memoria e di un servizio di autenticazione

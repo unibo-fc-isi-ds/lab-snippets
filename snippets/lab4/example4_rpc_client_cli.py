@@ -6,12 +6,12 @@ import sys
 import os
 from datetime import datetime
 
-TOKEN_FILE = 'token.json'
+TOKEN_FILE = 'token.json' #Nome del file dove salvo il token
 
 def save_token(token: Token):
     #Salva il token su file
     with open(TOKEN_FILE, 'w') as f:
-        f.write(serialize(token).replace('\n', '').replace('  ', ''))
+        f.write(serialize(token).replace('\n', '').replace('  ', '')) #Lo salvo su un unica riga per essere più facile da incollare da terminale
     print(f'# Token saved to {TOKEN_FILE}')
 
 def load_token() -> Token | None:
@@ -57,7 +57,7 @@ if __name__ == '__main__':
     user_db = RemoteUserDatabase(tuple_address)
     auth_service = RemoteAuthenticationService(tuple_address)
 
-    # CARICA IL TOKEN SE ESISTE
+    #Carica il token (se esiste)
     saved_token = load_token()
     if saved_token:
         user_db.set_token(saved_token)
@@ -90,33 +90,29 @@ if __name__ == '__main__':
                     raise ValueError("Password is required")
                 credentials = Credentials(ids[0], args.password)
                 
-                 # Autentica e ottieni il token
+                # Autentica e ottieni il token
                 token = auth_service.authenticate(credentials)
 
-                # IMPORTANTE: Sincronizza il token con user_db
+                #Sincronizza il token con user_db
                 user_db.set_token(token)
                 
-                # SALVA IL TOKEN SU FILE
+                #Salva il token su file
                 save_token(token)
                 print(f"# Token saved to {TOKEN_FILE}")
-
-                # Print the token both as an object and as a serialized JSON that can be reused with --token
-                print(token)
-                print('Authentication successful:', token)
-                print(f'Token signature: {token.signature}')
-                print(f'Token expiration: {token.expiration}')
-                
+                            
             case 'validate':
                 if not args.token:
-                    raise ValueError("E' richiesto un token in formato json")
+                    raise ValueError("Token required as a JSON string via CLI")
 
                 token = deserialize(args.token)
+
                 if not isinstance(token, Token):
-                    raise ValueError("Il token deve essere una stringa JSON")
+                    raise ValueError("Token must be a JSON string")
 
                 print(auth_service.validate_token(token))
 
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
+    
     except RuntimeError as e:
         print(f'[{type(e).__name__}]', *e.args)

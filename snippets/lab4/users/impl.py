@@ -37,7 +37,6 @@ class InMemoryUserDatabase(UserDatabase, _Debuggable):
             self.__users[id] = user #aggiunge l'utente al dizionario per ogni suo id
         self._log(f"Add: {user}")
 
-    #Metodo privato per ottenere un utente dato un id
     def __get_user(self, id: str) -> User:
         if id not in self.__users:
             raise KeyError(f"User with ID {id} not found")
@@ -71,8 +70,7 @@ class InMemoryAuthenticationService(AuthenticationService, _Debuggable):
         self._log(f"Authentication service initialized with secret {secret}")
     
     #Implementazione del metodo authenticate dell'interfaccia AuthenticationService
-    #Autentica un utente e genera un token
-    def authenticate(self, credentials: Credentials, duration: timedelta = None) -> Token: #restituisce un Token
+    def authenticate(self, credentials: Credentials, duration: timedelta = None) -> Token: #Autentica un utente e genera un token
         if duration is None: #se non è stata fornita una durata
             duration = timedelta(days=1) #imposta la durata di default a 1 giorno
         if self.__database.check_password(credentials): #se le credenziali sono corrette
@@ -93,9 +91,10 @@ class InMemoryAuthenticationService(AuthenticationService, _Debuggable):
     def validate_token(self, token: Token) -> bool:
         te_datetime = token.expiration
 
-        self._log(f"Scadenza token: {te_datetime}")
-        self._log(f"La data di scadenza è ancora valida? {'SI' if te_datetime > datetime.now() else 'NO'}")
-        self._log(f"La firma è corretta? {'SI' if self.__validate_token_signature(token) else 'NO'}")
+        #DEBUG
+        #self._log(f"Scadenza token: {te_datetime}")
+        #self._log(f"La data di scadenza è ancora valida? {'SI' if te_datetime > datetime.now() else 'NO'}")
+        #self._log(f"La firma è corretta? {'SI' if self.__validate_token_signature(token) else 'NO'}")
 
         result = te_datetime > datetime.now() and self.__validate_token_signature(token)
         self._log(f"{token} is {'valid' if result else 'invalid'}")

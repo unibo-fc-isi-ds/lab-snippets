@@ -4,8 +4,7 @@ from snippets.lab4.example1_presentation import serialize, deserialize, Request,
 from snippets.lab4.users import Role
 import traceback
 
-
-class ServerStub(Server): # RPC server stub --> caso particolare di server
+class ServerStub(Server): # RPC server stub 
     def __init__(self, port):
         super().__init__(port, self.__on_connection_event)
         self.__user_db = InMemoryUserDatabase() #inizializziamo una nuova istanza del database utenti in memoria

@@ -16,17 +16,16 @@ class Datum:
         return replace(self, **kwargs)
 # copiando tutti i campi dall’istanza originale e sostituendo quelli passati come keyword argument.
 
-@dataclass # --> Decoratore che indica a python che questa classe serve sopratutto per immagazzinare dati
+@dataclass
 class User(Datum): #Classe che rappresenta un utente
     username: str 
-    emails: list[str] #list di stringhe --> collezione non ordinata di elementi unici
+    emails: set[str] #list di stringhe --> collezione non ordinata di elementi unici
     full_name: str | None = None #stringa o None, di default None
     role: Role = Role.USER #Ruolo di default USER
     password: str | None = None #stringa o None, di default None
 
-    #Metodo chiamato automaticamente dopo l'inizializzazione dell'istanza
     def __post_init__(self):
-        self.emails = list(self.emails) #Assicura che emails sia un set
+        self.emails = set(self.emails)
         if self.role is None:
             self.role = Role.USER
         if not self.username:
@@ -34,12 +33,9 @@ class User(Datum): #Classe che rappresenta un utente
         if not self.emails:
             raise ValueError("Email address is required")   
 
-    @property # --> Decoratore : possiamo accedere a questo metodo come se fosse un attributo
+    @property
     def ids(self):
         return {self.username} | set(self.emails) 
-    # {self.username} crea un set con l'username
-    # self.emails è già un set di email
-    # | è l'operatore di unione per i set, quindi restituisce un set che contiene sia l'username che tutte le email
 
 @dataclass
 class Credentials(Datum): #Classe che rappresenta le credenziali di un utente
