@@ -47,7 +47,7 @@ class Connection:
     
     def close(self):
         self.__socket.close()
-        if self.__receiver_thread.is_alive():
+        if self.__receiver_thread is not threading.current_thread() and self.__receiver_thread.is_alive():
             self.__receiver_thread.join(timeout=5)
 
     def __handle_incoming_messages(self):
@@ -119,5 +119,5 @@ class Server:
 
     def close(self):
         self.__socket.close()
-        if self.__listener_thread.is_alive():
+        if  self.__listener_thread is not threading.current_thread() and self.__listener_thread.is_alive():
             self.__listener_thread.join(timeout=5)
