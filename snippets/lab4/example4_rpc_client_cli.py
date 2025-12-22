@@ -1,7 +1,3 @@
-from .example3_rpc_client import *
-import argparse
-import sys
-
 # https://unibo-fc-isi-ds.github.io/slides-module2/presentation/#/exercise-rpc-auth-service
 #
 # Authenticate command:
@@ -10,6 +6,10 @@ import sys
 # Validate command:
 # python -m snippets -l 4 -e 4 SERVER_IP:PORT valid -i token
 
+
+from .example3_rpc_client import *
+import argparse
+import sys
 
 if __name__ == '__main__':
 
