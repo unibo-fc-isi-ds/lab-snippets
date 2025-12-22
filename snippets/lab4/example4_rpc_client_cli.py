@@ -2,6 +2,14 @@ from .example3_rpc_client import *
 import argparse
 import sys
 
+# https://unibo-fc-isi-ds.github.io/slides-module2/presentation/#/exercise-rpc-auth-service
+#
+# Authenticate command:
+# python -m snippets -l 4 -e 4 SERVER_IP:PORT auth -u gciatto -p "my secret password" -d 300 -o token
+#
+# Validate command:
+# python -m snippets -l 4 -e 4 SERVER_IP:PORT valid -i token
+
 
 if __name__ == '__main__':
 
@@ -11,12 +19,15 @@ if __name__ == '__main__':
         exit_on_error=False,
     )
     parser.add_argument('address', help='Server address in the form ip:port')
-    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check'])
+    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check', 'auth', 'valid'])
     parser.add_argument('--user', '-u', help='Username')
     parser.add_argument('--email', '--address', '-a', nargs='+', help='Email address')
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
+    parser.add_argument('--duration', '-d', help='Duration in seconds')
+    parser.add_argument('--output', '-o', help='Output file for received token')
+    parser.add_argument('--input', '-i', help='Input token file')
 
     if len(sys.argv) > 1:
         args = parser.parse_args()
@@ -26,6 +37,7 @@ if __name__ == '__main__':
 
     args.address = address(args.address)
     user_db = RemoteUserDatabase(args.address)
+    auth_service = RemoteAuthenticationService(args.address)
 
     try :
         ids = (args.email or []) + [args.user]
@@ -44,6 +56,15 @@ if __name__ == '__main__':
             case 'check':
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
+            case 'auth':
+                credentials = Credentials(ids[0], args.password)
+                token = auth_service.authenticate(credentials)
+                with open(args.output, 'wt') as f:
+                    f.write(serialize(token))
+            case 'valid':
+                with open(args.input, 'rt') as f:
+                    token = deserialize(f.read())
+                print(auth_service.validate_token(token))
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:
