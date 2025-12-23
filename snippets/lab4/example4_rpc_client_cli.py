@@ -51,13 +51,20 @@ if __name__ == '__main__':
                     raise ValueError("Password is required")
                 if not args.user:
                     raise ValueError("Username is required")
+
                 credentials = Credentials(args.user, args.password)
                 token = auth.authenticate(credentials)
-                print(serialize(token))
+                token_json = serialize(token)
+                token_path = args.token or 'token.json'
+                with open(token_path, 'w') as f:
+                    f.write(token_json)
+                print(f"Token saved to {token_path}")
             case 'validate':
                 if not args.token:
-                    raise ValueError("Token is required")
-                token = deserialize(args.token)
+                    raise ValueError("Token file path is required (-t)")
+                with open(args.token, 'r') as f:
+                    token_json = f.read()
+                token = deserialize(token_json)
                 print(auth.validate_token(token))
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
