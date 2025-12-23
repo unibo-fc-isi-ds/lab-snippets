@@ -11,12 +11,13 @@ if __name__ == '__main__':
         exit_on_error=False,
     )
     parser.add_argument('address', help='Server address in the form ip:port')
-    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check'])
+    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check', 'auth', 'validate'])
     parser.add_argument('--user', '-u', help='Username')
     parser.add_argument('--email', '--address', '-a', nargs='+', help='Email address')
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
+    parser.add_argument('--token', '-t', help='Token JSON (output of auth command)')
 
     if len(sys.argv) > 1:
         args = parser.parse_args()
@@ -26,6 +27,7 @@ if __name__ == '__main__':
 
     args.address = address(args.address)
     user_db = RemoteUserDatabase(args.address)
+    auth = RemoteAuthenticationService(args.address)
 
     try :
         ids = (args.email or []) + [args.user]
@@ -44,6 +46,19 @@ if __name__ == '__main__':
             case 'check':
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
+            case 'auth':
+                if not args.password:
+                    raise ValueError("Password is required")
+                if not args.user:
+                    raise ValueError("Username is required")
+                credentials = Credentials(args.user, args.password)
+                token = auth.authenticate(credentials)
+                print(serialize(token))
+            case 'validate':
+                if not args.token:
+                    raise ValueError("Token is required")
+                token = deserialize(args.token)
+                print(auth.validate_token(token))
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:
