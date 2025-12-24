@@ -11,7 +11,10 @@ class ClientStub:
         client = Client(self.__server_address)
         try:
             print('# Connected to %s:%d' % client.remote_address)
-            request = Request(name, args)
+            if False:  # TODO: load stored token if present
+                request = Request(name, args, metadata=token)
+            else:
+                request = Request(name, args)
             print('# Marshalling', request, 'towards', "%s:%d" % client.remote_address)
             request = serialize(request)
             print('# Sending message:', request.replace('\n', '\n# '))
@@ -48,7 +51,9 @@ class RemoteAuthenticationService(ClientStub, AuthenticationService):
         super().__init__(server_address)
 
     def authenticate(self, credentials: Credentials, duration: timedelta = None) -> Token:
-        return self.rpc('authenticate', credentials, duration)
+        token = self.rpc('authenticate', credentials, duration)
+        # TODO: store token
+        return token
 
     def validate_token(self, token: Token) -> bool:
         return self.rpc('validate_token', token)
