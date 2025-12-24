@@ -39,7 +39,7 @@ class InMemoryUserDatabase(UserDatabase, _Debuggable):
             raise KeyError(f"User with ID {id} not found")
         return self.__users[id]
     
-    def get_user(self, id: str) -> User:
+    def get_user(self, id: str, reader: str = None) -> User:
         result = self.__get_user(id).copy(password=None)
         self._log(f"Get user with ID {id}: {result}")
         return result
