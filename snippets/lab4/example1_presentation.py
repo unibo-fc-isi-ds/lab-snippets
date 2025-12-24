@@ -12,6 +12,7 @@ class Request:
 
     name: str
     args: tuple
+    metadata: dict | None = None
 
     def __post_init__(self):
         self.args = tuple(self.args)
@@ -86,6 +87,7 @@ class Serializer:
         return {
             'name': self._to_ast(request.name),
             'args': [self._to_ast(arg) for arg in request.args],
+            'metadata': self._to_ast(request.metadata),
         }
 
     def _response_to_ast(self, response: Response):

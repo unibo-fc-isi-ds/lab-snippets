@@ -1,4 +1,4 @@
-# https://unibo-fc-isi-ds.github.io/slides-module2/presentation/#/exercise-rpc-auth-service
+# https://unibo-fc-isi-ds.github.io/slides-module2/presentation/#/exercise-rpc-auth-service-secure
 #
 # Authenticate command:
 # python -m snippets -l 4 -e 4 SERVER_IP:PORT auth -u gciatto -p "my secret password" -d 300 -o token.json
