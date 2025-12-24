@@ -1,10 +1,10 @@
 # https://unibo-fc-isi-ds.github.io/slides-module2/presentation/#/exercise-rpc-auth-service
 #
 # Authenticate command:
-# python -m snippets -l 4 -e 4 SERVER_IP:PORT auth -u gciatto -p "my secret password" -d 300 -o token
+# python -m snippets -l 4 -e 4 SERVER_IP:PORT auth -u gciatto -p "my secret password" -d 300 -o token.json
 #
 # Validate command:
-# python -m snippets -l 4 -e 4 SERVER_IP:PORT valid -i token
+# python -m snippets -l 4 -e 4 SERVER_IP:PORT valid -i token.json
 
 
 from .example3_rpc_client import *
@@ -25,7 +25,7 @@ if __name__ == '__main__':
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
-    parser.add_argument('--duration', '-d', help='Duration in seconds')
+    parser.add_argument('--duration', '-d', help='Duration of token in seconds')
     parser.add_argument('--output', '-o', help='Output file for received token')
     parser.add_argument('--input', '-i', help='Input token file')
 
