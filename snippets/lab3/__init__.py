@@ -1,18 +1,12 @@
 from snippets.lab2 import *
 import threading
 
-
-# Uncomment this line to observe timeout errors more often.
-# Beware: short timeouts can make demonstrations more difficult to follow.
-# socket.setdefaulttimeout(5) # set default timeout for blocking operations to 5 seconds
-
-
 class Connection:
     def __init__(self, socket: socket.socket, callback=None):
         self.__socket = socket
         self.local_address = self.__socket.getsockname()
         self.remote_address = self.__socket.getpeername()
-        self.__notify_closed = False
+        #self.__notify_closed = False
         self.__callback = callback
         self.__receiver_thread = threading.Thread(target=self.__handle_incoming_messages, daemon=True)
         if self.__callback:
@@ -21,7 +15,7 @@ class Connection:
     @property
     def callback(self):
         return self.__callback or (lambda *_: None)
-    
+
     @callback.setter
     def callback(self, value):
         if self.__callback:
@@ -33,7 +27,7 @@ class Connection:
     @property
     def closed(self):
         return self.__socket._closed
-    
+
     def send(self, message):
         if not isinstance(message, bytes):
             message = message.encode()
@@ -45,12 +39,11 @@ class Connection:
         if length == 0:
             return None
         return self.__socket.recv(length).decode()
-    
+
     def close(self):
         self.__socket.close()
-        if not self.__notify_closed:
-            self.on_event('close')
-            self.__notify_closed = True
+        if self.__receiver_thread.is_alive() and self.__receiver_thread is not threading.current_thread():
+            self.__receiver_thread.join(timeout=5)
 
     def __handle_incoming_messages(self):
         try:
@@ -64,13 +57,12 @@ class Connection:
                 return # silently ignore error, because this is simply the socket being closed locally
             self.on_event('error', error=e)
         finally:
-            self.close()
+            self.on_event('close')
 
     def on_event(self, event: str, payload: str=None, connection: 'Connection'=None, error: Exception=None):
         if connection is None:
             connection = self
         self.callback(event, payload, connection, error)
-
 
 class Client(Connection):
     def __init__(self, server_address, callback=None):
@@ -78,7 +70,6 @@ class Client(Connection):
         sock.bind(address(port=0))
         sock.connect(address(*server_address))
         super().__init__(sock, callback)
-
 
 class Server:
     def __init__(self, port, callback=None):
@@ -92,7 +83,7 @@ class Server:
     @property
     def callback(self):
         return self.__callback or (lambda *_: None)
-    
+
     @callback.setter
     def callback(self, value):
         if self.__callback:
@@ -100,7 +91,7 @@ class Server:
         self.__callback = value
         if value:
             self.__listener_thread.start()
-    
+
     def __handle_incoming_connections(self):
         self.__socket.listen()
         self.on_event('listen', address=self.__socket.getsockname())
@@ -121,3 +112,5 @@ class Server:
 
     def close(self):
         self.__socket.close()
+        if self.__listener_thread.is_alive() and self.__listener_thread is not threading.current_thread():
+            self.__listener_thread.join(timeout=5)
