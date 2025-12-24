@@ -1,14 +1,14 @@
 from snippets.lab3 import Client, address
 from snippets.lab4.users import *
-from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
+from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response, AutenticatedRequest
 
 
 class ClientStub:
     def __init__(self, server_address: tuple[str, int]):
-        self.__server_address = address(*server_address)
+        self._server_address = address(*server_address)
 
     def rpc(self, name, *args):
-        client = Client(self.__server_address)
+        client = Client(self._server_address)
         try:
             print('# Connected to %s:%d' % client.remote_address)
             request = Request(name, args)
@@ -28,8 +28,67 @@ class ClientStub:
             client.close()
             print('# Disconnected from %s:%d' % client.remote_address)
 
+class AccessStub(ClientStub):
+    def __init__(self, server_address):
+        super().__init__(server_address)
+        self.__token = None
 
-class RemoteUserDatabase(ClientStub, UserDatabase):
+    def update_token(self, ntoken: Token):
+        self.__token = ntoken
+
+    def access(self, credentials: Credentials):
+        self.__token = None
+        client = Client(self._server_address)
+        try:
+            print('# Connected to %s:%d' % client.remote_address)
+            print('# Marshalling', credentials, 'towards', "%s:%d" % client.remote_address)
+            credentials = serialize(credentials)
+            print('# Sending credentials:', credentials.replace('\n', '\n# '))
+            client.send(credentials)
+            response = client.receive()
+            print('# Received message:', response.replace('\n', '\n# '))
+            response = deserialize(response)
+            assert isinstance(response, Response)
+            print('# Unmarshalled', response, 'from', "%s:%d" % client.remote_address)
+            if response.error:
+                raise RuntimeError(response.error)
+            assert isinstance(response.result, Token)
+            self.__token = response.result
+        finally:
+            client.close()
+            print('# Disconnected from %s:%d' % client.remote_address)
+        
+    def get_token(self):
+        return self.__token.copy()
+        
+    def rpc(self, name, *args):
+        if self.__token == None:
+            return super().rpc(name, *args)
+        else:
+            client = Client(self._server_address)
+            try:
+                print('# Connected to %s:%d' % client.remote_address)
+                request = Request(name, args)
+                aurequest = AutenticatedRequest(self.__token, request)
+                print('# Marshalling', request, 'towards', "%s:%d" % client.remote_address)
+                aurequest = serialize(aurequest)
+                print('# Sending message:', aurequest.replace('\n', '\n# '))
+                client.send(aurequest)
+                response = client.receive()
+                print('# Received message:', response.replace('\n', '\n# '))
+                response = deserialize(response)
+                assert isinstance(response, Response)
+                print('# Unmarshalled', response, 'from', "%s:%d" % client.remote_address)
+                if response.error:
+                    raise RuntimeError(response.error)
+                return response.result
+            finally:
+                client.close()
+                print('# Disconnected from %s:%d' % client.remote_address)
+
+
+
+class RemoteUserDatabase(AccessStub, UserDatabase):
     def __init__(self, server_address):
         super().__init__(server_address)
 
@@ -51,10 +110,10 @@ if __name__ == '__main__':
     user_db = RemoteUserDatabase(address(sys.argv[1]))
 
     # Trying to get a user that does not exist should raise a KeyError
-    try:
-        user_db.get_user('gciatto')
-    except RuntimeError as e:
-        assert 'User with ID gciatto not found' in str(e)
+    # try:
+    #     user_db.get_user('gciatto')
+    # except RuntimeError as e:
+    #     assert 'User with ID gciatto not found' in str(e)
 
     # Adding a novel user should work
     user_db.add_user(gc_user)
@@ -65,6 +124,28 @@ if __name__ == '__main__':
     except RuntimeError as e:
         assert str(e).startswith('User with ID')
         assert str(e).endswith('already exists')
+
+    # getting a user without access shouldn't work
+    try:
+        user_db.get_user('gciatto')
+    except RuntimeError as e:
+        assert 'Autetication Required' in str(e)
+
+    # wrond password doesn't work
+    try:
+        user_db.access(Credentials("gciatto", "wrong password"))
+    except RuntimeError as e:
+        assert 'Invalid credentials' in str(e)
+    try:
+        user_db.get_user('gciatto')
+    except RuntimeError as e:
+        assert 'Autetication Required' in str(e)
+    
+    #correct password works fine
+    try:
+        user_db.access(Credentials("gciatto", "my secret password"))
+    except RuntimeError as e:
+        assert 'Invalid credentials' in str(e)
 
     # Getting a user that exists should work
     assert user_db.get_user('gciatto') == gc_user.copy(password=None)
