@@ -1,6 +1,7 @@
 from snippets.lab3 import Server
-from snippets.lab4.users.impl import InMemoryUserDatabase
+from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
+from snippets.lab4.users import Role, Token
 import traceback
 
 
@@ -8,42 +9,74 @@ class ServerStub(Server):
     def __init__(self, port):
         super().__init__(port, self.__on_connection_event)
         self.__user_db = InMemoryUserDatabase()
+        self.__auth_service = InMemoryAuthenticationService(self.__user_db)
+        self.__services = (self.__user_db, self.__auth_service)
+
+    def __require_admin(self, request: Request):
+        token = request.metadata
+        if token is None:
+            raise PermissionError("Authentication required")
+        if not isinstance(token, Token):
+            raise PermissionError("Invalid token metadata")
+        if not self.__auth_service.validate_token(token):
+            raise PermissionError("Invalid or expired token")
+        if token.user.role != Role.ADMIN:
+            raise PermissionError("Admin role required")
+
     
     def __on_connection_event(self, event, connection, address, error):
-        match event:
-            case 'listen':
-                print('Server listening on %s:%d' % address)
-            case 'connect':
-                connection.callback = self.__on_message_event
-            case 'error':
-                traceback.print_exception(error)
-            case 'stop':
-                print('Server stopped')
+        if event == 'listen':
+            print('Server listening on %s:%d' % address)
+
+        elif event == 'connect':
+            connection.callback = self.__on_message_event
+
+        elif event == 'error':
+            traceback.print_exception(error)
+
+        elif event == 'stop':
+            print('Server stopped')
+
     
     def __on_message_event(self, event, payload, connection, error):
-        match event:
-            case 'message':
-                print('[%s:%d] Open connection' % connection.remote_address)
-                request = deserialize(payload)
-                assert isinstance(request, Request)
-                print('[%s:%d] Unmarshall request:' % connection.remote_address, request)
-                response = self.__handle_request(request)
-                connection.send(serialize(response))
-                print('[%s:%d] Marshall response:' % connection.remote_address, response)
-                connection.close()
-            case 'error':
-                traceback.print_exception(error)
-            case 'close':
-                print('[%s:%d] Close connection' % connection.remote_address)
+        if event == 'message':
+            print('[%s:%d] Open connection' % connection.remote_address)
+
+            request = deserialize(payload)
+            assert isinstance(request, Request)
+
+            print('[%s:%d] Unmarshall request:' % connection.remote_address, request)
+
+            response = self.__handle_request(request)
+            connection.send(serialize(response))
+
+            print('[%s:%d] Marshall response:' % connection.remote_address, response)
+            connection.close()
+
+        elif event == 'error':
+            traceback.print_exception(error)
+
+        elif event == 'close':
+            print('[%s:%d] Close connection' % connection.remote_address)
+
     
     def __handle_request(self, request):
         try:
-            method = getattr(self.__user_db, request.name)
+            protected = {"get_user", "get"}
+            if request.name in protected:
+                self.__require_admin(request)
+            method = None
+            for service in self.__services:
+                if hasattr(service, request.name):
+                    method = getattr(service, request.name)
+                    break
+            if method is None:
+                raise AttributeError(f"Unknown RPC method: {request.name}")
             result = method(*request.args)
             error = None
         except Exception as e:
             result = None
-            error = " ".join(e.args)
+            error = str(e) or repr(e)
         return Response(result, error)
 
 
