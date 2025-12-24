@@ -1,7 +1,8 @@
 from snippets.lab3 import Client, address
 from snippets.lab4.users import *
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
-
+from typing import cast
+import time
 
 class ClientStub:
     def __init__(self, server_address: tuple[str, int]):
@@ -41,14 +42,30 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
 
     def check_password(self, credentials: Credentials) -> bool:
         return self.rpc('check_password', credentials)
+    
+    
+class RemoteAuthenticationService(ClientStub, AuthenticationService):
+    def __init__(self, server_address):
+        super().__init__(server_address)
+        
+    def authenticate(self, credentials: Credentials, duration: timedelta | None = None) -> Token:
+        token = self.rpc('authenticate', credentials, duration)
+        assert isinstance(token, Token)
+        return cast(Token, token)
+
+    def validate_token(self, token: Token) -> bool:
+        valid = bool(self.rpc('validate_token', token))
+        assert isinstance(valid, bool)
+        return bool(valid)
 
 
 if __name__ == '__main__':
     from snippets.lab4.example0_users import gc_user, gc_credentials_ok, gc_credentials_wrong
     import sys
 
-
-    user_db = RemoteUserDatabase(address(sys.argv[1]))
+    server_address = address(sys.argv[1])
+    user_db = RemoteUserDatabase(server_address)
+    auth_service = RemoteAuthenticationService(server_address)
 
     # Trying to get a user that does not exist should raise a KeyError
     try:
@@ -75,3 +92,16 @@ if __name__ == '__main__':
 
     # Checking credentials should fail if the password is wrong
     assert user_db.check_password(gc_credentials_wrong) == False
+    
+    try: 
+        auth_service.authenticate(gc_credentials_wrong)
+    except RuntimeError as e:
+        assert 'Invalid credentials' in str(e)
+        
+    for credentials in gc_credentials_ok:
+        token = auth_service.authenticate(credentials, timedelta(days = 1))
+        assert  auth_service.validate_token(token) == True
+    
+    token_expired = auth_service.authenticate(gc_credentials_ok[0], timedelta(milliseconds = 10))
+    time.sleep(0.1)
+    assert  auth_service.validate_token(token_expired) == False

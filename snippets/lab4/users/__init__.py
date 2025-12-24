@@ -75,7 +75,7 @@ class UserDatabase(Protocol):
 
 
 class AuthenticationService(Protocol):
-    def authenticate(self, credentials: Credentials, duration: timedelta = None) -> Token:
+    def authenticate(self, credentials: Credentials, duration: timedelta | None = None) -> Token:
         ...
 
     def validate_token(self, token: Token) -> bool:
