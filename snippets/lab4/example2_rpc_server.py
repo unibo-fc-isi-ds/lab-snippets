@@ -1,4 +1,5 @@
 from snippets.lab3 import Server
+from snippets.lab4.users import Token
 from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 import traceback
@@ -43,6 +44,14 @@ class ServerStub(Server):
                     getattr(self.__auth_service, request.name, None)
             if method is None:
                 raise ValueError('Procedure %s not found' % request.name)
+            if hasattr(method, 'requires_auth') and method.requires_auth:
+                if not isinstance(request.metadata, Token):
+                    raise ValueError('Authentication is required')
+                token = request.metadata
+                if not self.__auth_service.validate_token(token):
+                    raise ValueError('Invalid token')
+                if hasattr(method, 'allowed_roles') and token.user.role not in method.allowed_roles:
+                    raise ValueError('Missing permission')
             result = method(*request.args)
             error = None
         except Exception as e:

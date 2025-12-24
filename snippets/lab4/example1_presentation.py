@@ -12,7 +12,7 @@ class Request:
 
     name: str
     args: tuple
-    metadata: dict | None = None
+    metadata: object | None = None
 
     def __post_init__(self):
         self.args = tuple(self.args)
