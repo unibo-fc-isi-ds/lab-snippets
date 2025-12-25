@@ -8,7 +8,7 @@ class Role(Enum):
     ADMIN = 1
     USER = 2
 
-
+@dataclass
 class Datum:
     def copy(self, **kwargs):
         return replace(self, **kwargs)
@@ -64,18 +64,18 @@ class Token(Datum):
     
 
 class UserDatabase(Protocol):
-    def add_user(self, user: User):
+    def add_user(self, user: User, token: Token | None = None):
         ...
     
-    def get_user(self, id: str) -> User:
+    def get_user(self, id: str, token: Token | None = None) -> User:
         ...
     
-    def check_password(self, credentials: Credentials) -> bool:
+    def check_password(self, credentials: Credentials, token: Token | None = None) -> bool:
         ...
 
 
 class AuthenticationService(Protocol):
-    def authenticate(self, credentials: Credentials, duration: timedelta = None) -> Token:
+    def authenticate(self, credentials: Credentials, duration: timedelta | None = None) -> Token:
         ...
 
     def validate_token(self, token: Token) -> bool:
