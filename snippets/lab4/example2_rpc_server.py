@@ -1,4 +1,5 @@
 from snippets.lab3 import Server
+from snippets.lab4.users import Role
 from snippets.lab4.users.impl import InMemoryAuthenticationService, InMemoryUserDatabase
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 import traceback
@@ -37,8 +38,20 @@ class ServerStub(Server):
             case 'close':
                 print('[%s:%d] Close connection' % connection.remote_address)
     
+    def __require_admin(self, request):
+        if not request.meta or 'token' not in request.meta:
+            raise PermissionError("Missing authentication token")
+        token = request.meta['token']
+        if not self.__auth.validate_token(token):
+            raise PermissionError("Invalid authentication token")
+        if token.user.role != Role.ADMIN:
+            raise PermissionError("Admin role required")
+
     def __handle_request(self, request):
         try:
+            if request.name == 'get_user':
+                self.__require_admin(request)
+
             if hasattr(self.__auth, request.name):
                 target = self.__auth
             elif hasattr(self.__user_db, request.name):
@@ -50,7 +63,7 @@ class ServerStub(Server):
             error = None
         except Exception as e:
             result = None
-            error = " ".join(map(str, e.args))
+            error = " ".join(map(str, e.args)) or str(e)
         return Response(result, error)
 
 
