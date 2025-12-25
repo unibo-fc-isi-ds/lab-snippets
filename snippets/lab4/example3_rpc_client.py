@@ -6,16 +6,24 @@ from snippets.lab4.example1_presentation import serialize, deserialize, Request,
 class ClientStub:
     def __init__(self, server_address: tuple[str, int]):
         self.__server_address = address(*server_address)
+        self.__token: Token | None = None
 
     def rpc(self, name, *args):
         client = Client(self.__server_address)
         try:
             print('# Connected to %s:%d' % client.remote_address)
-            request = Request(name, args)
+
+            meta = None
+            if self.__token is not None:
+                meta = {'token': self.__token}
+
+            request = Request(name, args, meta)
+
             print('# Marshalling', request, 'towards', "%s:%d" % client.remote_address)
             request = serialize(request)
             print('# Sending message:', request.replace('\n', '\n# '))
             client.send(request)
+
             response = client.receive()
             print('# Received message:', response.replace('\n', '\n# '))
             response = deserialize(response)
@@ -27,6 +35,9 @@ class ClientStub:
         finally:
             client.close()
             print('# Disconnected from %s:%d' % client.remote_address)
+
+    def set_token(self, token):
+        self.__token = token
 
 
 class RemoteUserDatabase(ClientStub, UserDatabase):
@@ -48,7 +59,9 @@ class RemoteAuthenticationService(ClientStub, AuthenticationService):
         super().__init__(server_address)
 
     def authenticate(self, credentials: Credentials, duration=None) -> Token:
-        return self.rpc('authenticate', credentials, duration)
+        token = self.rpc('authenticate', credentials, duration)
+        self.set_token(token)
+        return token
 
     def validate_token(self, token: Token) -> bool:
         return self.rpc('validate_token', token)
