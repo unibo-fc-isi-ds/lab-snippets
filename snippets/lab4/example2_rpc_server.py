@@ -9,6 +9,7 @@ class ServerStub(Server):
         super().__init__(port, self.__on_connection_event)
         self.__user_db = InMemoryUserDatabase()
         self.__auth_service = InMemoryAuthenticationService(self.__user_db)
+        self.__user_db.set_auth_service(self.__auth_service)
     
     def __on_connection_event(self, event, connection, address, error):
         match event:
@@ -41,9 +42,10 @@ class ServerStub(Server):
         try:
             if(hasattr(self.__user_db, request.name)):  
                 method = getattr(self.__user_db, request.name)
+                result = method(*request.args, request.token)
             else:
                 method = getattr(self.__auth_service, request.name)
-            result = method(*request.args)
+                result = method(*request.args)
             error = None
         except Exception as e:
             result = None

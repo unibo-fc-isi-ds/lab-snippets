@@ -1,7 +1,7 @@
 from .example3_rpc_client import *
 import argparse
 import sys
-
+from typing import cast
 
 if __name__ == '__main__':
 
@@ -43,7 +43,13 @@ if __name__ == '__main__':
                 user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
                 print(user_db.add_user(user))
             case 'get':
-                print(user_db.get_user(ids[0]))
+                token = None
+                if args.token != None:
+                    filename = args.token
+                    with open(filename, "r", encoding="utf-8") as f:
+                        content = f.read()
+                    token = cast(Token, deserialize(content))
+                print(user_db.get_user(ids[0], token))
             case 'check':
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
@@ -64,6 +70,7 @@ if __name__ == '__main__':
                 with open(filename, "r", encoding="utf-8") as f:
                     content = f.read()
                 token = deserialize(content)
+                assert isinstance(token, Token)
                 print(auth_service.validate_token(token))
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")

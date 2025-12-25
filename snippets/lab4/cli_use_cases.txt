@@ -6,3 +6,8 @@ python -m snippets -l 4 -e 4 127.0.0.1:8080 auth -u abaldazzi -p secretpassword 
 python -m snippets -l 4 -e 4 127.0.0.1:8080 auth -u abaldazzi -p secretpassword -d 1 -t expired_token.json
 python -m snippets -l 4 -e 4 127.0.0.1:8080 validate -t valid_token.json
 python -m snippets -l 4 -e 4 127.0.0.1:8080 validate -t expired_token.json
+
+python -m snippets -l 4 -e 4 127.0.0.1:8080 add -u gciatto -a gciatto@gmail.com -n GCiatto -r admin -p secretpassword2
+python -m snippets -l 4 -e 4 127.0.0.1:8080 auth -u gciatto -p secretpassword2 -d 86400 -t valid_token2.json
+python -m snippets -l 4 -e 4 127.0.0.1:8080 get -u abaldazzi -t valid_token.json
+python -m snippets -l 4 -e 4 127.0.0.1:8080 get -u abaldazzi -t valid_token2.json
