@@ -1,14 +1,15 @@
 from snippets.lab3 import Server
-from snippets.lab4.users.impl import InMemoryUserDatabase
+from snippets.lab4.users import Role
+from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 import traceback
-
 
 class ServerStub(Server):
     def __init__(self, port):
         super().__init__(port, self.__on_connection_event)
         self.__user_db = InMemoryUserDatabase()
-    
+        self.__auth_service = InMemoryAuthenticationService(self.__user_db)
+
     def __on_connection_event(self, event, connection, address, error):
         match event:
             case 'listen':
@@ -35,10 +36,17 @@ class ServerStub(Server):
                 traceback.print_exception(error)
             case 'close':
                 print('[%s:%d] Close connection' % connection.remote_address)
-    
-    def __handle_request(self, request):
+
+    def __handle_request(self, request : Request):
+        method = None
         try:
-            method = getattr(self.__user_db, request.name)
+            # Determine Method to Call
+            if hasattr(self.__user_db, request.name):
+                method = self.__handle_DB_request(request)
+            elif hasattr(self.__auth_service, request.name):
+                method = getattr(self.__auth_service, request.name)
+            else:
+                raise ValueError(f"Unsupported method {request.name}")
             result = method(*request.args)
             error = None
         except Exception as e:
@@ -46,6 +54,20 @@ class ServerStub(Server):
             error = " ".join(e.args)
         return Response(result, error)
 
+    def __handle_DB_request(self, request : Request):
+        if request.name == 'get_user':
+            if request.metadata is None:
+                raise ValueError("Missing authentication token")
+            token = request.metadata
+
+            # Validate User Authentication
+            if not self.__auth_service.validate_token(token):
+                raise ValueError("Invalid or expired token")
+
+            # Check for Admin Role
+            if token.user.role != Role.ADMIN:
+                raise PermissionError("Insufficient permissions to get user data")
+        return getattr(self.__user_db, request.name)
 
 if __name__ == '__main__':
     import sys
