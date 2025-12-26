@@ -19,6 +19,7 @@ if __name__ == '__main__':
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
     parser.add_argument('--duration', '-d', type=float, help='Duration of the token in seconds')
+    parser.add_argument('--getUser', '-gU', help='The username of the user to get informations about')
 
     if len(sys.argv) > 1:
         args = parser.parse_args()
@@ -43,7 +44,10 @@ if __name__ == '__main__':
                 user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
                 print(user_db.add_user(user))
             case 'user.get':
-                print(user_db.get_user(ids[0], token=load_token(ids[0])))
+                if args.getUser:
+                    print(user_db.get_user(args.getUser, token=load_token(ids[0])))
+                else:    
+                    print(user_db.get_user(ids[0], token=load_token(ids[0])))
             case 'user.check':
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
