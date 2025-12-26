@@ -60,9 +60,10 @@ if __name__ == '__main__':
                 save_token(token)
                 print(token)
             case 'auth.validate':
-                if user_auth.token is None:
+                token = load_token(ids[0])
+                if token is None:
                     raise ValueError("No token available, authenticate first.")
-                user_auth.validate_token(user_auth.token)
+                print(user_auth.validate_token(token))
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:
