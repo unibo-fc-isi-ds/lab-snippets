@@ -1,6 +1,8 @@
 from snippets.lab3 import Server
 from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
+from snippets.lab4.users import Role
+from datetime import timedelta
 import traceback
 
 
@@ -41,9 +43,21 @@ class ServerStub(Server):
         try:
             name = request.name
             if name.startswith("user."):
+                if name == 'user.get_user':
+                    if request.metadata is None:
+                        return Response(None, f"Token needed for {name} operations")
+                    if not self.__user_auth.validate_token(request.metadata):
+                        return Response(None, "Authorization FAILED: Token not valid") 
+                    if request.metadata.user.role != Role.ADMIN:
+                        return Response(None, f"Authorization FAILED: Role not valid for {name} operations")
                 method = getattr(self.__user_db, name[len("user."):])
             elif name.startswith("auth."):
                 method = getattr(self.__user_auth, name[len("auth."):])
+                if name == 'auth.authenticate' and len(request.args) > 1:
+                    credentials, duration = request.args
+                    if isinstance(duration, (int, float)):
+                        duration = timedelta(seconds=duration)
+                    request.args = (credentials, duration)
             else:
                 raise ValueError(f"Unknown service for {name}")
             result = method(*request.args)

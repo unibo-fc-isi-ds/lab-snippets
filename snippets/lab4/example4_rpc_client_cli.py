@@ -1,6 +1,7 @@
 from .example3_rpc_client import *
 import argparse
 import sys
+from snippets.lab4.users.impl import save_token, load_token
 
 
 if __name__ == '__main__':
@@ -11,7 +12,7 @@ if __name__ == '__main__':
         exit_on_error=False,
     )
     parser.add_argument('address', help='Server address in the form ip:port')
-    parser.add_argument('command', help='Method to call', choices=['user.add', 'user.get', 'user.check', 'auth.authenticate'])
+    parser.add_argument('command', help='Method to call', choices=['user.add', 'user.get', 'user.check', 'auth.authenticate', 'auth.validate'])
     parser.add_argument('--user', '-u', help='Username')
     parser.add_argument('--email', '--address', '-a', nargs='+', help='Email address')
     parser.add_argument('--name', '-n', help='Full name')
@@ -42,7 +43,7 @@ if __name__ == '__main__':
                 user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
                 print(user_db.add_user(user))
             case 'user.get':
-                print(user_db.get_user(ids[0]))
+                print(user_db.get_user(ids[0], token=load_token(ids[0])))
             case 'user.check':
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
@@ -50,9 +51,14 @@ if __name__ == '__main__':
                 if not args.password:
                     raise ValueError("Password is required")
                 credentials = Credentials(ids[0], args.password)
-                duration = timedelta(seconds=args.duration) if args.duration else None
+                duration = timedelta(seconds=float(args.duration)) if args.duration else None
                 token = user_auth.authenticate(credentials, duration)
+                save_token(token)
                 print(token)
+            case 'auth.validate':
+                if user_auth.token is None:
+                    raise ValueError("No token available, authenticate first.")
+                user_auth.validate_token(user_auth.token)
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:
