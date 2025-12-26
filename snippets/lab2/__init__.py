@@ -2,7 +2,7 @@ from datetime import datetime
 import psutil
 import socket
 
-
+# Fa il parsing di un indirizzo IP e porta 
 def address(ip='0.0.0.0:0', port=None):
     ip = ip.strip()
     if ':' in ip:
@@ -15,29 +15,33 @@ def address(ip='0.0.0.0:0', port=None):
     assert isinstance(ip, str), "IP address must be a string"
     return ip, port
 
-
+# Crea un messaggio formattato con timestamp, mittente e testo
 def message(text: str, sender: str, timestamp: datetime=None):
     if timestamp is None:
         timestamp = datetime.now()
     return f"[{timestamp.isoformat()}] {sender}:\n\t{text}"
 
 
+# Ottiene tutti gli indirizzi IP locali della macchina
 def local_ips():
-    for interface in psutil.net_if_addrs().values():
-        for addr in interface:
-            if addr.family == socket.AF_INET:
-                    yield addr.address
+    for interface in psutil.net_if_addrs().values(): #itera su tutte le interfacce di rete (wifi, ethernet, ecc.)
+        for addr in interface: #esamina ogni indirizzo associato
+            if addr.family == socket.AF_INET: #controlla se l'indirizzo è di tipo IPv4
+                    yield addr.address #restituisce l'indirizzo IPv4 trovato
 
-
+# Classe Peer per la comunicazione UDP tra peer
 class Peer:
     def __init__(self, port, peers=None):
         if peers is None:
             peers = set()
-        self.peers = {address(*peer) for peer in peers}
+        self.peers = {address(*peer) for peer in peers} #set comprehension 
+        ## trasforma ogni peer in una tupla (ip, port) usando la funzione address
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.__socket.bind(address(port=port))
 
-    @property
+    @property #decoratore per definire un metodo che può essere accessibile come se fosse un attributo della classe
+    #trasforma il metodo in una proprietà di sola lettura
+    #es: invece di chiamare peer.local_address(), si può semplicemente usare peer.local_address
     def local_address(self):
         return self.__socket.getsockname()
     
