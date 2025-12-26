@@ -55,6 +55,8 @@ if __name__ == '__main__':
                     raise ValueError("Password is required")
                 if not args.name:
                     raise ValueError("Full name is required")
+                if not args.role:
+                    args.role = 'user'
                 user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
                 print(user_db.add_user(user))
             case 'get':
