@@ -11,12 +11,13 @@ if __name__ == '__main__':
         exit_on_error=False,
     )
     parser.add_argument('address', help='Server address in the form ip:port')
-    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check'])
+    parser.add_argument('command', help='Method to call', choices=['user.add', 'user.get', 'user.check', 'auth.authenticate'])
     parser.add_argument('--user', '-u', help='Username')
     parser.add_argument('--email', '--address', '-a', nargs='+', help='Email address')
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
+    parser.add_argument('--duration', '-d', type=float, help='Duration of the token in seconds')
 
     if len(sys.argv) > 1:
         args = parser.parse_args()
@@ -26,24 +27,32 @@ if __name__ == '__main__':
 
     args.address = address(args.address)
     user_db = RemoteUserDatabase(args.address)
+    user_auth = RemoteUserAuthenticationService(args.address)
 
     try :
         ids = (args.email or []) + [args.user]
         if len(ids) == 0:
             raise ValueError("Username or email address is required")
         match args.command:
-            case 'add':
+            case 'user.add':
                 if not args.password:
                     raise ValueError("Password is required")
                 if not args.name:
                     raise ValueError("Full name is required")
                 user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
                 print(user_db.add_user(user))
-            case 'get':
+            case 'user.get':
                 print(user_db.get_user(ids[0]))
-            case 'check':
+            case 'user.check':
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
+            case 'auth.authenticate':
+                if not args.password:
+                    raise ValueError("Password is required")
+                credentials = Credentials(ids[0], args.password)
+                duration = timedelta(seconds=args.duration) if args.duration else None
+                token = user_auth.authenticate(credentials, duration)
+                print(token)
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:

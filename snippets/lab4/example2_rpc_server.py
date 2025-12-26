@@ -1,5 +1,5 @@
 from snippets.lab3 import Server
-from snippets.lab4.users.impl import InMemoryUserDatabase
+from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 import traceback
 
@@ -8,6 +8,7 @@ class ServerStub(Server):
     def __init__(self, port):
         super().__init__(port, self.__on_connection_event)
         self.__user_db = InMemoryUserDatabase()
+        self.__user_auth = InMemoryAuthenticationService(database=self.__user_db)
     
     def __on_connection_event(self, event, connection, address, error):
         match event:
@@ -38,7 +39,13 @@ class ServerStub(Server):
     
     def __handle_request(self, request):
         try:
-            method = getattr(self.__user_db, request.name)
+            name = request.name
+            if name.startswith("user."):
+                method = getattr(self.__user_db, name[len("user."):])
+            elif name.startswith("auth."):
+                method = getattr(self.__user_auth, name[len("auth."):])
+            else:
+                raise ValueError(f"Unknown service for {name}")
             result = method(*request.args)
             error = None
         except Exception as e:
