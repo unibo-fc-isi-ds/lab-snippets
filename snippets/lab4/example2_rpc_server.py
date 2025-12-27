@@ -2,7 +2,7 @@ from snippets.lab3 import Server
 from snippets.lab4.users.impl import InMemoryUserDatabase,InMemoryAuthenticationService
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 import traceback
-
+from .users import Role
 
 class ServerStub(Server):
     def __init__(self, port):
@@ -27,6 +27,7 @@ class ServerStub(Server):
                 print('[%s:%d] Open connection' % connection.remote_address)
                 request = deserialize(payload)
                 assert isinstance(request, Request)
+                token = request.metadata
                 print('[%s:%d] Unmarshall request:' % connection.remote_address, request)
                 response = self.__handle_request(request)
                 connection.send(serialize(response))
@@ -36,10 +37,25 @@ class ServerStub(Server):
                 traceback.print_exception(error)
             case 'close':
                 print('[%s:%d] Close connection' % connection.remote_address)
-    
+
+    def _require_auth(self, token):
+        if token is None:
+            raise PermissionError("Authentication required")
+        if not self.__auth_service.validate_token(token):
+            raise PermissionError("Invalid or expired token")
+        return token.user
+
+    def _require_admin(self, token):
+        user = self._require_auth(token)
+        if user.role != Role.ADMIN:
+            raise PermissionError("Admin privileges required")
+        return user
+
     def __handle_request(self, request):
         try:
             if hasattr(self.__user_db,request.name):
+                if request.name == "get_user":
+                    self._require_admin(request.metadata)
                 target = self.__user_db
             elif hasattr(self.__auth_service,request.name):
                 target = self.__auth_service
