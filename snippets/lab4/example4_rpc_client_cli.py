@@ -44,6 +44,9 @@ if __name__ == '__main__':
                 user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
                 print(user_db.add_user(user))
             case 'get':
+                if args.token:
+                    token = deserialize(args.token)
+                    user_db.set_token(token)
                 print(user_db.get_user(ids[0]))
             case 'check':
                 credentials = Credentials(ids[0], args.password)
@@ -54,6 +57,7 @@ if __name__ == '__main__':
                 credentials = Credentials(ids[0], args.password)
                 duration = timedelta(seconds=args.duration)
                 token = auth_service.authenticate(credentials, duration)
+                user_db.set_token(token)
                 print(token)
                 print("\nToken JSON (for validate):")
                 print(serialize(token))

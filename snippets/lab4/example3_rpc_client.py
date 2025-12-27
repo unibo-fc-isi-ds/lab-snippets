@@ -7,12 +7,22 @@ from datetime import timedelta
 class ClientStub:
     def __init__(self, server_address: tuple[str, int]):
         self.__server_address = address(*server_address)
+        self._token = None
+
+    def set_token(self, token: Token):
+        self._token = token
 
     def rpc(self, name, *args):
         client = Client(self.__server_address)
         try:
+
+            metadata = None
+            if self._token:
+                metadata = {'token': self._token}
+
             print('# Connected to %s:%d' % client.remote_address)
-            request = Request(name, args)
+            request = Request(name, args, metadata)
+
             print('# Marshalling', request, 'towards', "%s:%d" % client.remote_address)
             request = serialize(request)
             print('# Sending message:', request.replace('\n', '\n# '))
@@ -48,7 +58,9 @@ class RemoteAuthenticationService(ClientStub, AuthenticationService):
         super().__init__(server_address)
 
     def authenticate(self, credentials: Credentials, duration: timedelta = timedelta(hours=1)) -> Token:
-        return self.rpc('authenticate', credentials, duration)
+        token =  self.rpc('authenticate', credentials, duration)
+        self._token = token
+        return token
 
     def validate_token(self, token: Token) -> bool:
         return self.rpc('validate_token', token)
