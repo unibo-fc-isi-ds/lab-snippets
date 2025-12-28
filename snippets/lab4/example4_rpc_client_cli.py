@@ -29,6 +29,20 @@ if __name__ == '__main__':
     user_db = RemoteUserDatabase(args.address)
     auth_service = RemoteAuthenticationService(args.address)
 
+    def load_token(token_file: str) -> Token | None:
+        token = None
+        try:
+            with open(token_file, 'r') as f:
+                token_serialized = f.read()
+                token = deserialize(token_serialized)
+                user_db.set_token(token)
+                print(f'Token loaded from {token_file}')
+        except FileNotFoundError:
+            print(f'Token file {token_file} not found')
+        return token
+
+    cached_token = load_token(args.token_file or 'token.json')
+
     try :
         ids = (args.email or []) + [args.user]
         if len(ids) == 0:
@@ -57,9 +71,7 @@ if __name__ == '__main__':
                 print('Token generated and saved to token.json')
             case 'validate_token':
                 token_file = args.token_file or 'token.json'
-                with open(token_file, 'r') as f:
-                    token_serialized = f.read()
-                token = deserialize(token_serialized)
+                token = cached_token if cached_token else load_token(token_file)
                 print(auth_service.validate_token(token))
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
