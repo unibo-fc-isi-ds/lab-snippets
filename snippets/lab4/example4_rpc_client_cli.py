@@ -11,12 +11,15 @@ if __name__ == '__main__':
         exit_on_error=False,
     )
     parser.add_argument('address', help='Server address in the form ip:port')
-    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check'])
+    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check', 'authenticate', 'validate_token'])
     parser.add_argument('--user', '-u', help='Username')
     parser.add_argument('--email', '--address', '-a', nargs='+', help='Email address')
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
+    parser.add_argument('--duration', '-d', help='Token duration in seconds', type=int)
+    parser.add_argument('--token', '-t', help='Serialized token for validation')
+
 
     if len(sys.argv) > 1:
         args = parser.parse_args()
@@ -26,6 +29,7 @@ if __name__ == '__main__':
 
     args.address = address(args.address)
     user_db = RemoteUserDatabase(args.address)
+    user_auth = RemoteAuthenticationService(args.address)
 
     try :
         ids = (args.email or []) + [args.user]
@@ -44,6 +48,19 @@ if __name__ == '__main__':
             case 'check':
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
+            case 'authenticate':
+                credentials = Credentials(ids[0], args.password)
+                if args.duration:
+                    duration = timedelta(seconds=args.duration)
+                    print(user_auth.authenticate(credentials, duration))
+                else:   
+                    print(user_auth.authenticate(credentials))
+            case 'validate_token':
+                if not args.token:
+                    raise ValueError("Token is required for validation")
+                from snippets.lab4.example1_presentation import deserialize
+                token = deserialize(args.token)
+                print(user_auth.validate_token(token))
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:
