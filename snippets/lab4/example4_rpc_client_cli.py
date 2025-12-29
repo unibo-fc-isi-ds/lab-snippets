@@ -52,7 +52,7 @@ if __name__ == '__main__':
                 if not args.password:
                     raise ValueError("Password is required")
                 credentials = Credentials(ids[0], args.password)
-                print(auth_service.authenticate(Credentials(ids[0], args.password)))
+                print(auth_service.authenticate(credentials))
             case 'val_token':
                 if not args.expiration:
                     raise ValueError("Expiration date is required")
