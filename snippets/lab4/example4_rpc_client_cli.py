@@ -19,7 +19,6 @@ if __name__ == '__main__':
     parser.add_argument('--password', '-p', help='Password')
     parser.add_argument('--signature', '-s', help='the signature of the token')
     parser.add_argument('--expiration', '-E', help='The expiration date of the token (iso format)')
-    parser.add_argument('--duration', '-d', help='Token duration in minutes')
 
     if len(sys.argv) > 1:
         args = parser.parse_args()
