@@ -53,6 +53,9 @@ class InMemoryUserDatabase(UserDatabase, _Debuggable):
         self._log(f"Checking {credentials}: {'correct' if result else 'incorrect'}")
         return result
     
+    def count(self) -> int:
+        return len(self.__users)
+    
 
 class InMemoryAuthenticationService(AuthenticationService, _Debuggable):
     def __init__(self, database: UserDatabase, secret: str = None, debug: bool = True):
@@ -80,6 +83,8 @@ class InMemoryAuthenticationService(AuthenticationService, _Debuggable):
         return token.signature == _compute_sha256_hash(f"{token.user}{token.expiration}{self.__secret}")
 
     def validate_token(self, token: Token) -> bool:
+        if not isinstance(token, Token):
+            raise ValueError(f"Expected object of type {Token.__name__}, got: {token}")
         result = token.expiration > datetime.now() and self.__validate_token_signature(token)
         self._log(f"{token} is " + ('valid' if result else 'invalid'))
         return result

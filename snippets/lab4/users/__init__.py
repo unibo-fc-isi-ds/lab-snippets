@@ -72,7 +72,9 @@ class UserDatabase(Protocol):
     
     def check_password(self, credentials: Credentials) -> bool:
         ...
-
+        
+    def count(self) -> int:
+        ...
 
 class AuthenticationService(Protocol):
     def authenticate(self, credentials: Credentials, duration: timedelta = None) -> Token:

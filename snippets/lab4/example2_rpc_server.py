@@ -1,5 +1,6 @@
+from .users import Role
 from snippets.lab3 import Server
-from snippets.lab4.users.impl import InMemoryUserDatabase
+from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 import traceback
 
@@ -8,6 +9,7 @@ class ServerStub(Server):
     def __init__(self, port):
         super().__init__(port, self.__on_connection_event)
         self.__user_db = InMemoryUserDatabase()
+        self.__user_auth = InMemoryAuthenticationService(self.__user_db)
     
     def __on_connection_event(self, event, connection, address, error):
         match event:
@@ -38,14 +40,28 @@ class ServerStub(Server):
     
     def __handle_request(self, request):
         try:
-            method = getattr(self.__user_db, request.name)
-            result = method(*request.args)
-            error = None
+            if hasattr(self.__user_db, request.name):
+                method = getattr(self.__user_db, request.name)
+            elif hasattr(self.__user_auth, request.name):
+                method = getattr(self.__user_auth, request.name)
+
+            if self.__if_user_own_authorization(request):
+                result = method(*request.args)
+                error = None
+            else:
+                raise PermissionError("Unauthorized access to method '%s'" % request.name)
         except Exception as e:
             result = None
             error = " ".join(e.args)
         return Response(result, error)
-
+    
+    def __if_user_own_authorization(self, request):
+        if request.name in ['add_user', 'get_user', 'check_password']:
+            if (request.name == 'add_user' and self.__user_db.count() == 0):
+                return True
+            else:
+                return self.__user_auth.validate_token(request.metadata) and request.metadata.user.role == Role.ADMIN
+        return True    
 
 if __name__ == '__main__':
     import sys
