@@ -12,6 +12,7 @@ class Request:
 
     name: str
     args: tuple
+    metadata: Token | None = None
 
     def __post_init__(self):
         self.args = tuple(self.args)
@@ -93,6 +94,7 @@ class Serializer:
         return {
             'name': self._to_ast(request.name),
             'args': [self._to_ast(arg) for arg in request.args],
+            'metadata': self._to_ast(request.metadata)
         }
 
     def _response_to_ast(self, response: Response):
@@ -161,6 +163,7 @@ class Deserializer:
         return Request(
             name=self._ast_to_obj(data['name']),
             args=tuple(self._ast_to_obj(arg) for arg in data['args']),
+            metadata=self._ast_to_obj(data['metadata'])
         )
 
     def _ast_to_response(self, data):
@@ -183,15 +186,15 @@ def deserialize(string):
 
 
 if __name__ == '__main__':
-    from snippets.lab4.example0_users import gc_user, gc_credentials_wrong
+    from snippets.lab4.example0_users import gc_admin, gc_credentials_wrong
 
     request = Request(
         name='my_function',
         args=(
-            gc_credentials_wrong, # an instance of Credentials
-            gc_user, # an instance of User
-            ["a string", 42, 3.14, True, False], # a list, containing various primitive types
-            {'key': 'value'}, # a dictionary
+            gc_credentials_wrong,  # an instance of Credentials
+            gc_admin,  # an instance of User
+            ["a string", 42, 3.14, True, False],  # a list, containing various primitive types
+            {'key': 'value'},  # a dictionary
             Response(None, 'an error'), # a Response, which contains a None field
         )
     )
