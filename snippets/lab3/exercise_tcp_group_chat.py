@@ -1,19 +1,9 @@
 """
-snippets/lab3/exercise_tcp_group_chat.py
-
 Usage:
     poetry run python -u -m snippets.lab3.exercise_tcp_group_chat 9001
     poetry run python -u -m snippets.lab3.exercise_tcp_group_chat 9002 127.0.0.1:9001
     poetry run python -u -m snippets.lab3.exercise_tcp_group_chat 9003 127.0.0.1:9001 127.0.0.1:9002
-
-Behavior:
-- This peer acts both as server and client.
-- Outgoing messages are sent as JSON strings containing:
-    { "type":"chat", "sender":..., "sender_id":..., "text":..., "timestamp":..., "formatted":..., "formatted_you":... }
-  where timestamp is the sender's ISO8601 time, `formatted` is the normal formatted string,
-  and `formatted_you` is the same but using "You" as the sender label (for local display).
-- Receivers parse JSON and print `formatted_you` if sender_id matches this process, otherwise print `formatted`.
-- Graceful, idempotent shutdown on Ctrl+C or /quit.
+    shutdown on Ctrl+C or /quit.
 """
 
 from snippets.lab3 import *
@@ -172,7 +162,6 @@ def main():
     peer.my_username = username
     print("Type your message and press Enter to send it. Commands: /peers  /quit", flush=True)
 
-    # --- graceful idempotent shutdown using an Event ---
     _shutdown = threading.Event()
 
     def _sigint(signum, frame):
