@@ -4,6 +4,7 @@ import json
 from dataclasses import dataclass
 
 
+#Serializzazione --> {"$type": "Request", "name":"...", "args":[...]}
 @dataclass
 class Request:
     """
@@ -16,7 +17,7 @@ class Request:
     def __post_init__(self):
         self.args = tuple(self.args)
 
-
+#Deserializzazione --> {"$type": "Response", "result": {...}, "error": "..."}
 @dataclass
 class Response:
     """
