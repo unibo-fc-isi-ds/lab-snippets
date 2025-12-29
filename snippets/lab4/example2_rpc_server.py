@@ -1,4 +1,5 @@
 from snippets.lab3 import Server
+from snippets.lab4.users import Role
 from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 import traceback
@@ -39,6 +40,14 @@ class ServerStub(Server):
 
     def __handle_request(self, request):
         try:
+            if request.name not in ("authenticate", "add_user"):
+                token = request.metadata
+                if token is None or not self.__auth_service.validate_token(token):
+                    raise PermissionError("Invalid or missing token")
+
+                if request.name in ("get_user",) and token.user.role != Role.ADMIN:
+                    raise PermissionError("Admin privileges required")
+
             if hasattr(self.__auth_service, request.name):
                 method = getattr(self.__auth_service, request.name)
             else:
