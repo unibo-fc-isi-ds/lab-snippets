@@ -53,6 +53,41 @@ class InMemoryUserDatabase(UserDatabase, _Debuggable):
         self._log(f"Checking {credentials}: {'correct' if result else 'incorrect'}")
         return result
     
+class InMemoryUserDatabaseController(UserDatabase):
+
+    def __init__(self, baseUserDatabase: InMemoryUserDatabase,
+    token: Token|None,
+    authenticationService: AuthenticationService):
+        super().__init__()
+        self.__baseUserDatabase = baseUserDatabase
+        self.__token = token
+        self.__authenticationService = authenticationService
+
+    def __assert_token_valid(self):
+        if not self.__token:
+            raise RuntimeError("Authentication token required")
+        elif not self.__authenticationService.validate_token(self.__token):
+            raise RuntimeError("Unauthenticated")
+
+    def __assert_can_access_user(self, id: str):
+        self.__assert_token_valid()
+        if not (id in self.__token.user.ids) and not(self.__token.user.role is Role.ADMIN):
+            raise RuntimeError("Unauthorized")
+
+    def add_user(self, user: User):
+        return self.__baseUserDatabase.add_user(user)
+    
+    def get_user(self, id: str) -> User:
+        self.__assert_can_access_user(id)
+        return self.__baseUserDatabase.get_user(id)
+            
+    def check_password(self, credentials: Credentials) -> bool:
+        self.__assert_can_access_user(credentials.id)
+        return self.__baseUserDatabase.check_password(credentials)
+    
+
+
+    
 
 class InMemoryAuthenticationService(AuthenticationService, _Debuggable):
     def __init__(self, database: UserDatabase, secret: str = None, debug: bool = True):
