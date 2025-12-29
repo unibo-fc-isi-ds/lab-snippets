@@ -4,17 +4,15 @@ from snippets.lab4.example1_presentation import serialize, deserialize, Request,
 
 
 class ClientStub:
-    def __init__(self, server_address: tuple[str, int]):
+    def __init__(self, server_address: tuple[str, int], token: Token | None = None):
         self.__server_address = address(*server_address)
+        self.__token = token
 
     def rpc(self, name, *args):
         client = Client(self.__server_address)
         try:
             print('# Connected to %s:%d' % client.remote_address)
-            if False:  # TODO: load stored token if present
-                request = Request(name, args, metadata=token)
-            else:
-                request = Request(name, args)
+            request = Request(name, args, metadata=self.__token)
             print('# Marshalling', request, 'towards', "%s:%d" % client.remote_address)
             request = serialize(request)
             print('# Sending message:', request.replace('\n', '\n# '))
@@ -33,8 +31,8 @@ class ClientStub:
 
 
 class RemoteUserDatabase(ClientStub, UserDatabase):
-    def __init__(self, server_address):
-        super().__init__(server_address)
+    def __init__(self, server_address, token=None):
+        super().__init__(server_address, token)
 
     def add_user(self, user: User):
         return self.rpc('add_user', user)
@@ -47,13 +45,11 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
 
 
 class RemoteAuthenticationService(ClientStub, AuthenticationService):
-    def __init__(self, server_address):
-        super().__init__(server_address)
+    def __init__(self, server_address, token=None):
+        super().__init__(server_address, token)
 
     def authenticate(self, credentials: Credentials, duration: timedelta = None) -> Token:
-        token = self.rpc('authenticate', credentials, duration)
-        # TODO: store token
-        return token
+        return self.rpc('authenticate', credentials, duration)
 
     def validate_token(self, token: Token) -> bool:
         return self.rpc('validate_token', token)
