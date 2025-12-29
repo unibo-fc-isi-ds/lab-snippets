@@ -75,7 +75,7 @@ class InMemoryAuthenticationService(AuthenticationService, _Debuggable):
             expiration = datetime.now() + duration
             user = self.__database.get_user(credentials.id)
             signature = _compute_sha256_hash(f"{user}{expiration}{self.__secret}")
-            result = Token(user, expiration, signature)
+            result = Token(user.username, expiration, signature)
             self._log(f"Generate token for user {credentials.id}: {result}")
             self.authenticated_users_to_tokens[credentials.id] = result.signature
             self.authenticated_tokens_to_users[result.signature] = credentials.id
@@ -83,22 +83,29 @@ class InMemoryAuthenticationService(AuthenticationService, _Debuggable):
         raise ValueError("Invalid credentials")
     
     def __validate_token_signature(self, token: Token) -> bool:
-        return token.signature == _compute_sha256_hash(f"{token.user}{token.expiration}{self.__secret}")
+        return token.signature == _compute_sha256_hash(f"{token.username}{token.expiration}{self.__secret}")
 
     def validate_token(self, token: Token) -> bool:
         result = token.expiration > datetime.now() and self.__validate_token_signature(token)
         self._log(f"{token} is " + ('valid' if result else 'invalid'))
         return result
     
-    def is_authenticated(self, token: Token) -> bool:
-        print(f"is_authenticated: {token.signature in self.authenticated_users_to_tokens.values()} and {self.validate_token(token)}")
-        return token.signature in self.authenticated_users_to_tokens.values() and self.validate_token(token)
-    
+    def is_authenticated(self, tokenSignature:str = None, token: Token = None) -> bool:
+        if token is not None:
+            print(f"is_authenticated with token({token}): {token.signature in self.authenticated_users_to_tokens.values()}")
+            return token.signature in self.authenticated_users_to_tokens.values() #and self.validate_token(token)
+        else:
+            print(f"is_authenticated with signatureToken({tokenSignature}): {tokenSignature in self.authenticated_users_to_tokens.values()}")
+            return tokenSignature in self.authenticated_users_to_tokens.values() #and self.validate_token(Token.from_string(signatureToken))
     #Access is granted if the user is authenticated, the read target is itself, or the user is an admin
-    def grant_read_access(self, token: Token, userid_to_access: str) -> bool:
+    def grant_read_access(self, userid_to_access: str, signatureToken:str = None, token: Token = None) -> bool:
         print(f"grant_read_access({token}, {userid_to_access})")
-        assert self.is_authenticated(token)
-        user_id = self.authenticated_tokens_to_users[token.signature]
+        assert self.is_authenticated(token = token, tokenSignature = signatureToken)
+        user_id = ""
+        if token is not None:
+            user_id = self.authenticated_tokens_to_users[token.signature]
+        else:
+            user_id = self.authenticated_tokens_to_users[signatureToken]
         if user_id == userid_to_access:
             print("User is self")
             return True
@@ -120,9 +127,10 @@ class DatabaseWithAuthenticationService(_Debuggable):
     def add_user(self, user: User):
         self.__database.add_user(user)
 
-    def get_user(self, id: str, token: Token):
+    def get_user(self, id: str, token: Token = None, tokenSignature: str = None):
         print(f"get_user({id}, {token})")
-        if self.__authentication_service.grant_read_access(token, id):
+        print(f"get_user({id}, {tokenSignature})")
+        if self.__authentication_service.grant_read_access(id, tokenSignature, token):
             self._log(f"Get user with ID {id}: {self.__database.get_user(id)}")
             return self.__database.get_user(id)
         raise ValueError("Access denied")

@@ -46,7 +46,7 @@ class ServerStub(Server):
     def __handle_request(self, request):
         #request.name = get_user | add_user | check_password
         try:
-            method = getattr(self.__user_db_with_authentication, request.name) #getattr accetta due argomenti: un oggetto e una stringa. Se
+            method = getattr(self.__user_db_with_authentication, request.name)
             print(request.args)
             result = method(*request.args)
             error = None

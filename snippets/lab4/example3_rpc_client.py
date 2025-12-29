@@ -37,8 +37,8 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
     def add_user(self, user: User):
         return self.rpc('add_user', user)
 
-    def get_user(self, id: str, token: Token) -> User:
-        return self.rpc('get_user', id, token)
+    def get_user(self, id: str, tokenSignature: str = None, token: Token = None) -> User:
+        return self.rpc('get_user', id, token, tokenSignature)
 
     def check_password(self, credentials: Credentials) -> bool:
         return self.rpc('check_password', credentials)
@@ -57,8 +57,8 @@ class RemoteDatabaseServiceWithAuthentication(RemoteUserDatabase, RemoteAuthenti
     def add_user(self, user):
         return super().add_user(user)
     
-    def get_user(self, id, token):
-        return super().get_user(id=id, token=token)
+    def get_user(self, id, tokenSignature = None, token = None):
+        return super().get_user(id=id, tokenSignature=tokenSignature, token=token)
     
     def check_password(self, credentials):
         return super().check_password(credentials)
@@ -71,18 +71,18 @@ if __name__ == '__main__':
     import sys
 
 
-    user_db = RemoteUserDatabase(address(sys.argv[1]))
-    auth_service = RemoteAuthenticationService(address(sys.argv[1]))
     user_db_with_authentication = RemoteDatabaseServiceWithAuthentication(address(sys.argv[1]))
     login_token = ""
     try:
         login_token = user_db_with_authentication.authenticate(credentials=Credentials(id='alice', password='alice'))
     except ValueError as e:
         assert 'Invalid credentials' in str(e)
-    
+        
+    print("OK RESPONSE")
     # This should return a valid result
     user_db_with_authentication.get_user(id='alice', token=login_token)
 
+    print("ERROR RESPONSE")
     # This should raise an exception
     try:
         user_db_with_authentication.get_user(id='bob', token=login_token)

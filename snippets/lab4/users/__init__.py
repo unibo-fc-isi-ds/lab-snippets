@@ -2,7 +2,8 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import Protocol
-
+import json
+import base64
 
 class Role(Enum):
     ADMIN = 1
@@ -50,13 +51,13 @@ class Credentials(Datum):
 
 @dataclass
 class Token(Datum):
-    user: User
+    username: str #This is not an User object anymore because it's not serializable. Usernames are assumed to be unique in a real-world scenario
     expiration: datetime
     signature: str
 
     def __post_init__(self):
-        if not isinstance(self.user, User):
-            raise ValueError(f"Expected object of type {User.__name__}, got: {self.user}")
+        if not isinstance(self.username, str):
+            raise ValueError(f"Expected object of type {str.__name__}, got: {self.username}")
         if not isinstance(self.expiration, datetime):
             raise ValueError(f"Expected object of type {datetime.__name__}, got: {self.expiration}")
         if not self.signature:
@@ -64,7 +65,26 @@ class Token(Datum):
         
     def __hash__(self):
         return super().__hash__(self.user, self.expiration, self.signature)
-    
+        
+    def to_string(self) -> str:
+        payload = {
+            "username": self.username,
+            "exp": self.expiration.isoformat(),
+            "sig": self.signature,
+        }
+        json_bytes = json.dumps(payload).encode()
+        return base64.urlsafe_b64encode(json_bytes).decode()
+
+    @classmethod
+    def from_string(cls, token_str: str) -> "Token":
+        json_bytes = base64.urlsafe_b64decode(token_str.encode())
+        payload = json.loads(json_bytes)
+
+        return cls(
+            username=payload["username"],
+            expiration=datetime.fromisoformat(payload["exp"]),
+            signature=payload["sig"],
+        )    
 
 class UserDatabase(Protocol):
     def add_user(self, user: User):

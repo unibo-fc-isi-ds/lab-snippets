@@ -72,7 +72,7 @@ class Serializer:
     def _token_to_ast(self, token: Token):
         return {
             'signature': self._to_ast(token.signature),
-            'user': self._to_ast(token.user),
+            'username': self._to_ast(token.username),
             'expiration': self._to_ast(token.expiration),
         }
 
@@ -133,7 +133,7 @@ class Deserializer:
     def _ast_to_token(self, data):
         return Token(
             signature=self._ast_to_obj(data['signature']),
-            user=self._ast_to_obj(data['user']),
+            username=self._ast_to_obj(data['username']),
             expiration=self._ast_to_obj(data['expiration']),
         )
 
