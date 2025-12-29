@@ -1,14 +1,12 @@
 # https://unibo-fc-isi-ds.github.io/slides-module2/communication/#/exercise-tcp-group-chat
 
 
-import traceback
-
 from snippets.lab3 import *
 import sys
 from typing import Iterable, Callable, TypeAlias
 
 
-INFO_MODE = 0
+DEBUG_MODE = False
 
 Address: TypeAlias = tuple[str, int]
 
@@ -31,9 +29,9 @@ JOIN_MESSAGE = '<JOINS THE CHAT>'
 EXIT_MESSAGE = '<LEAVES THE CHAT>'
 
 
-def info_print(*values: object, sep: str | None = ' ', end: str | None = '\n', level: int = 1) -> None:
-    if INFO_MODE >= level:
-        print(*values, sep=sep, end=end)
+def debug_print(arg: object) -> None:
+    if DEBUG_MODE:
+        print(arg)
 
 
 class Peer:
@@ -88,7 +86,7 @@ class Peer:
             conn = Connection(sock)
             self.on_event('connect', conn=conn)
         except Exception as e:
-            info_print(f'Failed to connect to peer {peer}')
+            debug_print(f'Failed to connect to peer {peer}')
             self.on_event('error', error=e)
         else:
             self.__register_connection(conn)
@@ -154,46 +152,44 @@ def send_message(msg: str, sender: str) -> None:
     else:
         print('Empty message, not sent')
 
-def on_message_received(event: str,
-                        payload: str | None,
-                        conn: Connection | None,
-                        error: Exception | None) -> None:
+def on_message_event(event: str,
+                     payload: str | None,
+                     conn: Connection | None,
+                     error: Exception | None) -> None:
     match event:
         case 'message':
             print(payload)
         case 'connect':
-            info_print(f'Connected to peer {conn.remote_address}')
+            debug_print(f'Connected to peer {conn.remote_address}')
         case 'close':
-            info_print(f'Connection with peer {conn.remote_address} closed')
+            debug_print(f'Connection with peer {conn.remote_address} closed')
         case 'error':
-            info_print(error)
-            info_print(traceback.format_exc(), level=2)
+            debug_print(error)
 
 # noinspection PyUnusedLocal
-def on_new_connection(event: str,
-                      conn: Connection | None,
-                      addr: Address | None,
-                      error: Exception | None) -> None:
+def on_listen_event(event: str,
+                    conn: Connection | None,
+                    addr: Address | None,
+                    error: Exception | None) -> None:
     match event:
         case 'listen':
-            info_print(f'Listening on port {addr[0]}')
+            debug_print(f'Listening on port {addr[0]}')
         case 'connect':
-            info_print(f'Accepted connection from {addr}')
+            debug_print(f'Accepted connection from {addr}')
         case 'stop':
-            info_print(f'Stopped listening for new connections')
+            debug_print(f'Stopped listening for new connections')
         case 'error':
-            info_print(error)
-            info_print(traceback.format_exc(), level=2)
+            debug_print(error)
 
 
 username = input('Enter your username to start to chat:\n')
 
 local_peer = Peer(port=int(sys.argv[1]),
                   peers=[address(peer) for peer in sys.argv[2:]],
-                  callback=on_message_received,
-                  listen_callback=on_new_connection)
+                  callback=on_message_event,
+                  listen_callback=on_listen_event)
 
-info_print(f'Bound to: {local_peer.local_address}')
+debug_print(f'Bound to: {local_peer.local_address}')
 print(f'There are {local_peer.connections} connected users')
 send_message(JOIN_MESSAGE, username)
 print('Type your message and press Enter to send it. Messages from other users will be displayed below.')
