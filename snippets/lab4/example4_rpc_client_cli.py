@@ -36,13 +36,17 @@ if __name__ == '__main__':
         sys.exit(0)
 
     args.address = address(args.address)
-    user_db = RemoteUserDatabase(args.address)
-    auth_service = RemoteAuthenticationService(args.address)
+    token = None
 
-    try :
+    try:
         ids = (args.email or []) + [args.user]
         if len(ids) == 0:
             raise ValueError("Username or email address is required")
+        if args.input:
+            with open(args.input, 'rt') as f:
+                token = deserialize(f.read())
+        user_db = RemoteUserDatabase(args.address, token)
+        auth_service = RemoteAuthenticationService(args.address, token)
         match args.command:
             case 'add':
                 if not args.password:
@@ -62,8 +66,6 @@ if __name__ == '__main__':
                 with open(args.output, 'wt') as f:
                     f.write(serialize(token))
             case 'valid':
-                with open(args.input, 'rt') as f:
-                    token = deserialize(f.read())
                 print(auth_service.validate_token(token))
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
