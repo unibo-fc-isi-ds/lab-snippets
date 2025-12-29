@@ -1,7 +1,7 @@
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Protocol, Collection
+from typing import Protocol, Iterable
 
 
 class Role(Enum):
@@ -9,11 +9,13 @@ class Role(Enum):
     USER = 2
 
 
-def requires_auth(allowed_roles: Role | Collection[Role] | None = None):
+def requires_auth(allowed_roles: Role | Iterable[Role] | None = None):
     def decorator(func):
         func.requires_auth = True
         if allowed_roles is not None:
-            func.allowed_roles = set(allowed_roles)
+            func.allowed_roles = \
+                {allowed_roles} if isinstance(allowed_roles, Role) else set(allowed_roles)
+        return func
     return decorator
 
 
