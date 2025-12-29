@@ -76,8 +76,13 @@ class Serializer:
             'expiration': self._to_ast(token.expiration),
         }
 
+#sostiuire 
+#   def _datetime_to_ast(self, dt: datetime):
+#        raise NotImplementedError("Missing implementation for datetime serialization")
+#
+
     def _datetime_to_ast(self, dt: datetime):
-        raise NotImplementedError("Missing implementation for datetime serialization")
+        return {"iso": dt.isoformat()}
 
     def _role_to_ast(self, role: Role):
         return {'name': role.name}
@@ -136,9 +141,13 @@ class Deserializer:
             user=self._ast_to_obj(data['user']),
             expiration=self._ast_to_obj(data['expiration']),
         )
+#sostituire
+  #  def _ast_to_datetime(self, data):
+  #      raise NotImplementedError("Missing implementation for datetime deserialization")
 
     def _ast_to_datetime(self, data):
-        raise NotImplementedError("Missing implementation for datetime deserialization")
+        return datetime.fromisoformat(self._ast_to_obj(data["iso"]))
+
 
     def _ast_to_role(self, data):
         return Role[self._ast_to_obj(data['name'])]
