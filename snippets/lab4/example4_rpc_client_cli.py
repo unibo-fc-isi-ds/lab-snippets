@@ -1,8 +1,26 @@
 from .example3_rpc_client import *
 import argparse
 import sys
+from snippets.lab4.example1_presentation import serialize, deserialize, Token
+import os
 
+TEMP_TOKEN_PATH = 'token.json'
 
+def save_token_to_file(token: Token, path: str = TEMP_TOKEN_PATH):
+    token_json = serialize(token)
+    with open(path, "w") as f:
+        f.write(token_json)
+
+def load_token_from_file(path: str = TEMP_TOKEN_PATH) -> Token:
+    if os.path.exists(path):
+        with open(path, "r") as f:
+            token_json = f.read()
+        token = deserialize(token_json)
+        assert isinstance(token, Token)
+        return token
+    else:
+        print(f"Token file '{path}' does not exist") 
+        return '{}'
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(
@@ -29,6 +47,7 @@ if __name__ == '__main__':
 
     args.address = address(args.address)
     user_db = RemoteUserDatabase(args.address)
+    user_db.token = load_token_from_file()
     user_auth = RemoteAuthenticationService(args.address)
 
     try :
@@ -52,13 +71,16 @@ if __name__ == '__main__':
                 credentials = Credentials(ids[0], args.password)
                 if args.duration:
                     duration = timedelta(seconds=args.duration)
-                    print(user_auth.authenticate(credentials, duration))
-                else:   
-                    print(user_auth.authenticate(credentials))
+                    token = user_auth.authenticate(credentials, duration)
+                    print(token)
+                else:
+                    token = user_auth.authenticate(credentials)
+                    print(token)
+                # Save token to token.json
+                save_token_to_file(token)
             case 'validate_token':
                 if not args.token:
                     raise ValueError("Token is required for validation")
-                from snippets.lab4.example1_presentation import deserialize
                 token = deserialize(args.token)
                 print(user_auth.validate_token(token))
             case _:
