@@ -1,5 +1,6 @@
 from .users import User, Credentials, Token, Role
 from datetime import datetime
+from datetime import timedelta
 import json
 from dataclasses import dataclass
 
@@ -12,6 +13,7 @@ class Request:
 
     name: str
     args: tuple
+    metadata: Token = None
 
     def __post_init__(self):
         self.args = tuple(self.args)
@@ -77,7 +79,16 @@ class Serializer:
         }
 
     def _datetime_to_ast(self, dt: datetime):
-        raise NotImplementedError("Missing implementation for datetime serialization")
+        return {
+            'value': dt.isoformat()
+        }
+        
+    def _timedelta_to_ast(self, td: timedelta):
+        return {
+            "days": self._to_ast(td.days),
+            "seconds": self._to_ast(td.seconds),
+            "microseconds": self._to_ast(td.microseconds),
+        }
 
     def _role_to_ast(self, role: Role):
         return {'name': role.name}
@@ -85,6 +96,7 @@ class Serializer:
     def _request_to_ast(self, request: Request):
         return {
             'name': self._to_ast(request.name),
+            'metadata': self._to_ast(request.metadata),
             'args': [self._to_ast(arg) for arg in request.args],
         }
 
@@ -138,7 +150,15 @@ class Deserializer:
         )
 
     def _ast_to_datetime(self, data):
-        raise NotImplementedError("Missing implementation for datetime deserialization")
+        return datetime.fromisoformat(data['value'])
+
+    def _ast_to_timedelta(self, data):
+        return timedelta(
+            days=self._ast_to_obj(data["days"]),
+            seconds=self._ast_to_obj(data["seconds"]),
+            microseconds=self._ast_to_obj(data["microseconds"]),
+        )
+
 
     def _ast_to_role(self, data):
         return Role[self._ast_to_obj(data['name'])]
@@ -147,6 +167,7 @@ class Deserializer:
         return Request(
             name=self._ast_to_obj(data['name']),
             args=tuple(self._ast_to_obj(arg) for arg in data['args']),
+            metadata=self._ast_to_obj(data['metadata'])
         )
 
     def _ast_to_response(self, data):
@@ -154,7 +175,6 @@ class Deserializer:
             result=self._ast_to_obj(data['result']) if data['result'] is not None else None,
             error=self._ast_to_obj(data['error']),
         )
-
 
 DEFAULT_SERIALIZER = Serializer()
 DEFAULT_DESERIALIZER = Deserializer()
