@@ -55,7 +55,7 @@ class InMemoryUserDatabase(UserDatabase, _Debuggable):
     
 class InMemoryUserDatabaseController(UserDatabase):
 
-    def __init__(self, baseUserDatabase: InMemoryUserDatabase,
+    def __init__(self, baseUserDatabase: UserDatabase,
     token: Token|None,
     authenticationService: AuthenticationService):
         super().__init__()
