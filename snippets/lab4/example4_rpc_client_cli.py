@@ -4,7 +4,6 @@ import argparse
 import sys
 import os
 
-
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(
@@ -14,7 +13,7 @@ if __name__ == '__main__':
     )
     parser.add_argument('address', help='Server address in the form ip:port')
     parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check', 'authenticate', 'validateToken'])
-    parser.add_argument('--user', '-u', help='Username')
+    parser.add_argument('--user', '-u', help='Username')                                     # Always require username in CLI commands
     parser.add_argument('--email', '--address', '-a', nargs='+', help='Email address')
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
@@ -36,6 +35,22 @@ if __name__ == '__main__':
         ids = (args.email or []) + [args.user]
         if len(ids) == 0:
             raise ValueError("Username or email address is required")
+        
+        current_user_id = ids[0]
+        token_path = os.path.join(token_dir, f"{current_user_id}.token")
+
+        # If the token of the current user exists, it il loaded in the ClientStub
+        if os.path.exists(token_path):
+            try:
+                with open(token_path, 'r') as f:
+                    saved_token = deserialize(f.read())
+                    # Injection in stubs
+                    user_db.token = saved_token
+                    auth_service.token = saved_token
+                    print(f"# Active session loaded for user: {current_user_id}")
+            except Exception as e:
+                print(f"Warning: Could not load existing token for {current_user_id}: {e}")
+
         match args.command:
             case 'add':
                 if not args.password:
@@ -46,61 +61,43 @@ if __name__ == '__main__':
                 print(user_db.add_user(user))
 
             case 'get':
-                print(user_db.get_user(ids[0]))
+                print(user_db.get_user(current_user_id))
 
             case 'check':
                 if not args.password:
                     raise ValueError("Password is required")
-                credentials = Credentials(ids[0], args.password)
+                credentials = Credentials(current_user_id, args.password)
                 print(user_db.check_password(credentials))
 
             case 'authenticate':
                 if not args.password:
                     raise ValueError("Password is required")                
-                credentials = Credentials(ids[0], args.password)
+                credentials = Credentials(current_user_id, args.password)
                 
-                if args.duration:
-                    token = auth_service.authenticate(credentials, timedelta(days=args.duration))
-                else:
-                    token = auth_service.authenticate(credentials)
+                duration = timedelta(days=args.duration) if args.duration else None
+                token = auth_service.authenticate(credentials, duration)
 
-                # Saving the token (serialized in JSON) in token folder, with name "userId.token"
+                # Saves token for current user
                 if not os.path.exists(token_dir):
                     os.makedirs(token_dir)
-
-                serialized_token = serialize(token)
-                token_path = os.path.join(token_dir, f"{ids[0]}.token")
                 with open(token_path, 'w') as f:
-                    f.write(serialized_token)
+                    f.write(serialize(token))
 
-                print(auth_service.authenticate(credentials))
-                print(f"Login successful! Token saved to {token_path}")
+                print(f"Authentication successful! Token for '{current_user_id}' saved to {token_path}")
 
             case 'validateToken':
-                user_id = ids[0]
-                token_path = os.path.join(token_dir, f"{ids[0]}.token")
-
-                # Checks if the user token file exists in path
                 if not os.path.exists(token_path):
-                    raise FileNotFoundError(f"No token file found for user {user_id} at {token_path}")
+                    raise FileNotFoundError(f"No local token file found for user: {current_user_id}")
                 
-                try:
-                    with open(token_path, 'r') as f:
-                        token_json = f.read()
-                    
-                    # Reading the token
-                    token = deserialize(token_json)
-                    if not isinstance(token, Token):
-                        raise ValueError(f"The file {token_path} does not contain a valid Token object")
-                    
-                    is_valid = auth_service.validate_token(token)
-                    status = "VALID" if is_valid else "INVALID or EXPIRED"
-                    print(f"Token for user '{user_id}' is {status}")
-
-                except Exception as e:
-                    print(f"Error during token validation: {e}")
+                with open(token_path, 'r') as f:
+                    token = deserialize(f.read())
+                
+                is_valid = auth_service.validate_token(token)
+                status = "VALID" if is_valid else "INVALID or EXPIRED"
+                print(f"Token status for '{current_user_id}': {status}")
 
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
+            
     except RuntimeError as e:
         print(f'[{type(e).__name__}]', *e.args)
