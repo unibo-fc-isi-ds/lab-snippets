@@ -9,12 +9,13 @@ class Request:
     """
     A container for RPC requests: a name of the function to call and its arguments.
     """
-
     name: str
     args: tuple
+    metadata: object | None = None  
 
     def __post_init__(self):
         self.args = tuple(self.args)
+
 
 
 @dataclass
@@ -76,8 +77,13 @@ class Serializer:
             'expiration': self._to_ast(token.expiration),
         }
 
+#sostiuire 
+#   def _datetime_to_ast(self, dt: datetime):
+#        raise NotImplementedError("Missing implementation for datetime serialization")
+#
+
     def _datetime_to_ast(self, dt: datetime):
-        raise NotImplementedError("Missing implementation for datetime serialization")
+        return {"iso": dt.isoformat()}
 
     def _role_to_ast(self, role: Role):
         return {'name': role.name}
@@ -86,6 +92,7 @@ class Serializer:
         return {
             'name': self._to_ast(request.name),
             'args': [self._to_ast(arg) for arg in request.args],
+            'metadata': self._to_ast(request.metadata) if request.metadata is not None else None,
         }
 
     def _response_to_ast(self, response: Response):
@@ -136,9 +143,13 @@ class Deserializer:
             user=self._ast_to_obj(data['user']),
             expiration=self._ast_to_obj(data['expiration']),
         )
+#sostituire
+  #  def _ast_to_datetime(self, data):
+  #      raise NotImplementedError("Missing implementation for datetime deserialization")
 
     def _ast_to_datetime(self, data):
-        raise NotImplementedError("Missing implementation for datetime deserialization")
+        return datetime.fromisoformat(self._ast_to_obj(data["iso"]))
+
 
     def _ast_to_role(self, data):
         return Role[self._ast_to_obj(data['name'])]
@@ -147,6 +158,7 @@ class Deserializer:
         return Request(
             name=self._ast_to_obj(data['name']),
             args=tuple(self._ast_to_obj(arg) for arg in data['args']),
+            metadata=self._ast_to_obj(data['metadata']) if data.get('metadata') is not None else None,
         )
 
     def _ast_to_response(self, data):
