@@ -4,6 +4,8 @@ import sys
 
 if __name__ == '__main__':
 
+    TOKEN_FILE_NAME = "token.json"
+
     parser = argparse.ArgumentParser(
         prog=f'python -m snippets -l 4 -e 4',
         description='RPC client for user database',
@@ -30,6 +32,12 @@ if __name__ == '__main__':
     user_db = RemoteUserDatabase(args.address)
     auth_service = RemoteAuthenticationService(args.address)
 
+    if args.token:
+        with open(args.token) as f:
+            loaded_token = deserialize(f.read())
+        user_db.token = loaded_token
+        auth_service.token = loaded_token
+
     try:
         ids = (args.email or []) + [args.user]
         if len(ids) == 0:
@@ -50,17 +58,15 @@ if __name__ == '__main__':
             case 'authenticate':
                 credentials = Credentials(ids[0], args.password)
                 duration = None if not args.duration else timedelta(milliseconds=int(args.duration))
-                token = auth_service.authenticate(credentials, duration)
-                token_serialized = serialize(token)
-                with open("token.json", "w") as f:
+                user_db.token = auth_service.authenticate(credentials, duration)
+                token_serialized = serialize(user_db.token)
+                with open(TOKEN_FILE_NAME, "w") as f:
                     f.write(token_serialized)
                 print(token_serialized)
             case 'validate_token':
                 if not args.token:
                     raise ValueError("Token is required")
-                with open(args.token) as f:
-                    token = deserialize(f.read())
-                print(auth_service.validate_token(token))
+                print(auth_service.validate_token(user_db.token))
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:
