@@ -1,12 +1,22 @@
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Protocol
+from typing import Protocol, Iterable
 
 
 class Role(Enum):
     ADMIN = 1
     USER = 2
+
+
+def requires_auth(allowed_roles: Role | Iterable[Role] | None = None):
+    def decorator(func):
+        func.requires_auth = True
+        if allowed_roles is not None:
+            func.allowed_roles = \
+                {allowed_roles} if isinstance(allowed_roles, Role) else set(allowed_roles)
+        return func
+    return decorator
 
 
 class Datum:
@@ -61,12 +71,13 @@ class Token(Datum):
             raise ValueError(f"Expected object of type {datetime.__name__}, got: {self.expiration}")
         if not self.signature:
             raise ValueError("Signature is required")
-    
+
 
 class UserDatabase(Protocol):
     def add_user(self, user: User):
         ...
-    
+
+    @requires_auth(Role.ADMIN)
     def get_user(self, id: str) -> User:
         ...
     
