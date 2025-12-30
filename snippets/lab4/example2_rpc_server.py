@@ -1,8 +1,7 @@
 from snippets.lab3 import Server
-from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService
+from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService, InMemoryUserDatabaseController
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 import traceback
-
 
 class ServerStub(Server):
     def __init__(self, port):
@@ -37,10 +36,12 @@ class ServerStub(Server):
             case 'close':
                 print('[%s:%d] Close connection' % connection.remote_address)
     
-    def __handle_request(self, request):
+    def __handle_request(self, request:Request):
         try:
-            if hasattr(self.__user_db, request.name):
-                method = getattr(self.__user_db, request.name)
+            user_db = InMemoryUserDatabaseController(self.__user_db, request.token, self.__auth_service)
+
+            if hasattr(user_db, request.name):
+                method = getattr(user_db, request.name)
                 result = method(*request.args)
                 error = None
             elif hasattr(self.__auth_service, request.name):
