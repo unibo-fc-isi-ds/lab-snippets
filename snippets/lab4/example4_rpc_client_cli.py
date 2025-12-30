@@ -62,7 +62,8 @@ if __name__ == '__main__':
                 print(user_db.check_password(credentials))
             case 'auth':
                 credentials = Credentials(ids[0], args.password)
-                token = auth_service.authenticate(credentials)
+                duration = timedelta(seconds=args.duration) if args.duration is not None else None
+                token = auth_service.authenticate(credentials, duration)
                 with open(args.output, 'wt') as f:
                     f.write(serialize(token))
             case 'valid':
