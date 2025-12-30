@@ -42,6 +42,17 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
     def check_password(self, credentials: Credentials) -> bool:
         return self.rpc('check_password', credentials)
 
+# New remote client stub for the AuthenticationService protocol
+class RemoteAuthenticationService(ClientStub):
+    def __init__(self, server_address):
+        super().__init__(server_address)
+
+    def authenticate(self, credentials: Credentials, duration=None) -> Token:
+        # duration is optional, serializer handles None
+        return self.rpc('authenticate', credentials, duration)
+
+    def validate_token(self, token: Token) -> bool:
+        return self.rpc('validate_token', token)
 
 if __name__ == '__main__':
     from snippets.lab4.example0_users import gc_user, gc_credentials_ok, gc_credentials_wrong
@@ -75,3 +86,19 @@ if __name__ == '__main__':
 
     # Checking credentials should fail if the password is wrong
     assert user_db.check_password(gc_credentials_wrong) == False
+
+    # Authentication tests using the remote authentication service
+    auth = RemoteAuthenticationService(address(sys.argv[1]))
+    try:
+        # wrong credentials -> runtime error
+        try:
+            auth.authenticate(gc_credentials_wrong)
+            raise AssertionError('Expected authentication to fail')
+        except RuntimeError:
+            pass
+
+        gc_token = auth.authenticate(gc_credentials_ok[0])
+        assert gc_token.user == gc_user.copy(password=None)
+        assert auth.validate_token(gc_token) == True
+    finally:
+        pass

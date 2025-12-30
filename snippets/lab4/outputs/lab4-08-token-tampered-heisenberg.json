@@ -1,0 +1,21 @@
+{
+  "signature": "tampered-signature",
+  "user": {
+    "username": "heisenberg",
+    "emails": [
+      "heisenberg@studio.unibo.it"
+    ],
+    "full_name": "Heisenberg",
+    "role": {
+      "name": "USER",
+      "$type": "Role"
+    },
+    "password": null,
+    "$type": "User"
+  },
+  "expiration": {
+    "value": "2025-12-31T01:05:03.750510",
+    "$type": "datetime"
+  },
+  "$type": "Token"
+}
