@@ -136,7 +136,4 @@ if __name__ == '__main__':
     # A token with expiration in the past should be invalid
     user_db.token = auth_service.authenticate(gc_credentials_ok[0], timedelta(milliseconds=10))
     time.sleep(0.1)
-    try:
-        auth_service.validate_token(user_db.token)
-    except RuntimeError as e:
-        assert 'Invalid or missing token' in str(e)
+    assert auth_service.validate_token(user_db.token) is False

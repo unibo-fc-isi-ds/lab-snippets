@@ -40,7 +40,7 @@ class ServerStub(Server):
 
     def __handle_request(self, request):
         try:
-            if request.name not in ("authenticate", "add_user"):
+            if request.name not in ("authenticate", "validate_token", "add_user"):
                 token = request.metadata
                 if token is None or not self.__auth_service.validate_token(token):
                     raise PermissionError("Invalid or missing token")
