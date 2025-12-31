@@ -13,7 +13,7 @@ if __name__ == '__main__':
     )
     parser.add_argument('address', help='Server address in the form ip:port')
     parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check', 'authenticate', 'validateToken'])
-    parser.add_argument('--user', '-u', help='Username')                                     # Always require username in CLI commands
+    parser.add_argument('--user', '-u', help='Username')
     parser.add_argument('--email', '--address', '-a', nargs='+', help='Email address')
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
