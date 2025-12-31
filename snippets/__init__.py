@@ -6,7 +6,6 @@ import runpy
 from typing import Iterable
 import sys
 
-
 SNIPPETS_ROOT = Path(__file__).parent
 
 
@@ -14,7 +13,7 @@ def path_to_module(path: Path) -> str:
     return path.with_suffix('').as_posix().replace('/', '.')
 
 
-EXAMPLES: dict[str, Path] = {
+PY_FILES: dict[str, Path] = {
     path_to_module(file.relative_to(SNIPPETS_ROOT.parent)): file
     for dir in SNIPPETS_ROOT.glob('*') if dir.is_dir()
     for file in dir.glob('*.py')
@@ -28,12 +27,17 @@ def create_arg_parser() -> ArgumentParser:
         exit_on_error=False,
     )
     parser.add_argument(
-        '--lab', '-l', 
+        '--lab', '-l',
         help='Select the index of the lab from which to pick an example',
     )
     parser.add_argument(
         '--example', '-e',
         help='Select the index of the example to run',
+    )
+    parser.add_argument(
+        '--exercise',
+        action='store_true',
+        help='Run exercise'
     )
     return parser
 
@@ -51,7 +55,7 @@ class Example:
     def module(self):
         print('# Loading module', self.name, 'from', self.path)
         return importlib.import_module(self.name)
-    
+
     def run(self, *args: str):
         print('# Running module', self.name, 'from', self.path, 'with args:', *args)
         argv_backup = list(sys.argv)
@@ -60,8 +64,21 @@ class Example:
         sys.argv = argv_backup
 
 
+@dataclass(frozen=True)
+class Exercise(Example):
+    def __init__(self, name, path):
+        super().__init__(name, path)
+
+
 def find_examples(lab: int, example: int) -> Iterable[Example]:
-    for name, path in EXAMPLES.items():
+    for name, path in PY_FILES.items():
         if name.startswith('snippets.lab' + str(lab or "")):
             if f'.example{example or ""}' in name:
                 yield Example(name, path)
+
+
+def find_exercises(lab: int) -> Iterable[Exercise]:
+    for name, path in PY_FILES.items():
+        if name.startswith('snippets.lab' + str(lab or "")):
+            if f'.exercise' in name:
+                yield Exercise(name, path)
