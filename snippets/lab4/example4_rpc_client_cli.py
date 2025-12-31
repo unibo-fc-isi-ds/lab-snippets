@@ -1,7 +1,8 @@
 from .example3_rpc_client import *
 import argparse
 import sys
-
+from datetime import timedelta
+import os
 
 if __name__ == '__main__':
 
@@ -11,12 +12,14 @@ if __name__ == '__main__':
         exit_on_error=False,
     )
     parser.add_argument('address', help='Server address in the form ip:port')
-    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check'])
+    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check', 'authenticate', 'validate'])
     parser.add_argument('--user', '-u', help='Username')
     parser.add_argument('--email', '--address', '-a', nargs='+', help='Email address')
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
+    parser.add_argument('--tokenpath', '-t', help='The path from home directory where the token will be saved')
+    parser.add_argument('--tokenduration', '-d', help='The duration of the token expressed in hours (floating value is accepted)')
 
     if len(sys.argv) > 1:
         args = parser.parse_args()
@@ -26,6 +29,7 @@ if __name__ == '__main__':
 
     args.address = address(args.address)
     user_db = RemoteUserDatabase(args.address)
+    auth_service = RemoteAuthenticationService(args.address)
 
     try :
         ids = (args.email or []) + [args.user]
@@ -37,13 +41,34 @@ if __name__ == '__main__':
                     raise ValueError("Password is required")
                 if not args.name:
                     raise ValueError("Full name is required")
-                user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
+                if not args.role:
+                    user = User(args.user, args.email, args.name, password=args.password)
+                else:
+                    user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
                 print(user_db.add_user(user))
             case 'get':
                 print(user_db.get_user(ids[0]))
             case 'check':
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
+            case 'authenticate':
+                credentials = Credentials(ids[0], args.password)
+                if args.tokenduration:
+                    duration = timedelta(hours=float(args.tokenduration))
+                    token = auth_service.authenticate(credentials, duration)
+                else:
+                    token = auth_service.authenticate(credentials)
+                token_path = args.tokenpath or 'token.json'
+                token_full_path = os.path.join(os.path.expanduser('~'), token_path)
+                with open(token_full_path, 'w') as file:
+                    file.write(serialize(token))
+                    print(token) # print the token
+            case 'validate':
+                token_path = args.tokenpath or 'token.json'
+                token_full_path = os.path.join(os.path.expanduser('~'), token_path)
+                with open(token_full_path, 'r') as file:
+                    token = deserialize(file.read())
+                    print(auth_service.validate_token(token))
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:

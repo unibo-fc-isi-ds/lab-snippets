@@ -1,14 +1,16 @@
-from snippets.lab3 import Server
-from snippets.lab4.users.impl import InMemoryUserDatabase
-from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 import traceback
+
+from snippets.lab3 import Server
+from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
+from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService
 
 
 class ServerStub(Server):
     def __init__(self, port):
         super().__init__(port, self.__on_connection_event)
         self.__user_db = InMemoryUserDatabase()
-    
+        self.__auth_service = InMemoryAuthenticationService(self.__user_db)
+
     def __on_connection_event(self, event, connection, address, error):
         match event:
             case 'listen':
@@ -19,7 +21,7 @@ class ServerStub(Server):
                 traceback.print_exception(error)
             case 'stop':
                 print('Server stopped')
-    
+
     def __on_message_event(self, event, payload, connection, error):
         match event:
             case 'message':
@@ -35,10 +37,15 @@ class ServerStub(Server):
                 traceback.print_exception(error)
             case 'close':
                 print('[%s:%d] Close connection' % connection.remote_address)
-    
+
     def __handle_request(self, request):
         try:
-            method = getattr(self.__user_db, request.name)
+            if hasattr(self.__user_db, request.name):
+                method = getattr(self.__user_db, request.name)
+            elif hasattr(self.__auth_service, request.name):
+                method = getattr(self.__auth_service, request.name)
+            else:
+                raise AttributeError(f"Method '{request.name}' not found in any service")
             result = method(*request.args)
             error = None
         except Exception as e:
@@ -49,6 +56,7 @@ class ServerStub(Server):
 
 if __name__ == '__main__':
     import sys
+
     server = ServerStub(int(sys.argv[1]))
     while True:
         try:
