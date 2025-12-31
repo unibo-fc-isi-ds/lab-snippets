@@ -1,9 +1,6 @@
-from .example3_rpc_client import *
 import argparse
-import sys
-from datetime import timedelta
-import os
 
+from .example3_rpc_client import *
 
 if __name__ == '__main__':
 

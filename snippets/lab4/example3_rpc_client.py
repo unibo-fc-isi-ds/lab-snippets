@@ -1,9 +1,9 @@
-import time
-from snippets.lab3 import Client, address
-from snippets.lab4.users import *
-from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
-from typing import Optional
 import os
+import time
+
+from snippets.lab3 import Client, address
+from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
+from snippets.lab4.users import *
 
 
 def _build_token_file_path(user_id: str, file_path: str = None) -> str:
