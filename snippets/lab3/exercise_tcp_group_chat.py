@@ -2,7 +2,7 @@ from snippets.lab3 import *
 import sys
 
 
-remote_peers : set[Connection] = set()
+remote_peers : set[Client] = set()
 
 
 def send_message(msg, sender):
