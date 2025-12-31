@@ -4,6 +4,7 @@ import sys
 from datetime import timedelta
 import os
 
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(
@@ -18,7 +19,7 @@ if __name__ == '__main__':
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
-    parser.add_argument('--tokenpath', '-t', help='The path from home directory where the token will be saved')
+    parser.add_argument('--token-file', '-t', help='Token file name (relative to home dir)')
     parser.add_argument('--tokenduration', '-d', help='The duration of the token expressed in hours (floating value is accepted)')
 
     if len(sys.argv) > 1:
@@ -47,29 +48,25 @@ if __name__ == '__main__':
                     user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
                 print(user_db.add_user(user))
             case 'get':
-                print(user_db.get_user(ids[0]))
+                if not ids[0]:
+                    raise ValueError("Username or email is required")
+                token = RemoteAuthenticationService.read_token(ids[0], args.token_file)
+                print(user_db.get_user(ids[0], token))
             case 'check':
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
             case 'authenticate':
                 credentials = Credentials(ids[0], args.password)
-                if args.tokenduration:
-                    duration = timedelta(hours=float(args.tokenduration))
-                    token = auth_service.authenticate(credentials, duration)
-                else:
-                    token = auth_service.authenticate(credentials)
-                token_path = args.tokenpath or 'token.json'
-                token_full_path = os.path.join(os.path.expanduser('~'), token_path)
-                with open(token_full_path, 'w') as file:
-                    file.write(serialize(token))
-                    print(token) # print the token
+                duration = timedelta(hours=float(args.tokenduration)) if args.tokenduration else None
+                token = auth_service.authenticate(credentials, duration)
+                RemoteAuthenticationService.write_token(token, ids[0], args.token_file)
+                print(token)
             case 'validate':
-                token_path = args.tokenpath or 'token.json'
-                token_full_path = os.path.join(os.path.expanduser('~'), token_path)
-                with open(token_full_path, 'r') as file:
-                    token = deserialize(file.read())
-                    print(auth_service.validate_token(token))
+                if not (args.user or args.token_file):
+                    raise ValueError("Username or token file path required")
+                token = RemoteAuthenticationService.read_token(args.user, args.token_file)
+                print(auth_service.validate_token(token))
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
-    except RuntimeError as e:
+    except (RuntimeError, ValueError, FileNotFoundError) as e:
         print(f'[{type(e).__name__}]', *e.args)

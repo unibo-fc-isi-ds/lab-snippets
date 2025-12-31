@@ -1,15 +1,17 @@
-import traceback
-
 from snippets.lab3 import Server
+from snippets.lab4.users import Role
+from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService, AuthenticationService, \
+    UserDatabase
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
-from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService
+import traceback
 
 
 class ServerStub(Server):
-    def __init__(self, port):
+    def __init__(self, port: int):
         super().__init__(port, self.__on_connection_event)
-        self.__user_db = InMemoryUserDatabase()
-        self.__auth_service = InMemoryAuthenticationService(self.__user_db)
+        self.__user_db: UserDatabase = InMemoryUserDatabase()
+        self.__auth_service: AuthenticationService = InMemoryAuthenticationService(self.__user_db)
+        self.__protected_methods: set[str] = {'get_user'}
 
     def __on_connection_event(self, event, connection, address, error):
         match event:
@@ -40,18 +42,34 @@ class ServerStub(Server):
 
     def __handle_request(self, request):
         try:
+            if request.name in self.__protected_methods:
+                self.__verify_access(request.metadata)
+
             if hasattr(self.__user_db, request.name):
                 method = getattr(self.__user_db, request.name)
             elif hasattr(self.__auth_service, request.name):
                 method = getattr(self.__auth_service, request.name)
             else:
-                raise AttributeError(f"Method '{request.name}' not found in any service")
+                raise AttributeError(f"Unknown method: {request.name}")
+
             result = method(*request.args)
             error = None
         except Exception as e:
             result = None
             error = " ".join(e.args)
         return Response(result, error)
+
+    def __verify_access(self, token):
+        """Check token presence, validity, and admin role."""
+        if token is None:
+            raise PermissionError("Authentication required")
+
+        if not self.__auth_service.validate_token(token):
+            raise PermissionError("Invalid or expired token")
+
+        user = self.__user_db.get_user(token.user.username)
+        if user.role != Role.ADMIN:
+            raise PermissionError("Admin privileges required")
 
 
 if __name__ == '__main__':
