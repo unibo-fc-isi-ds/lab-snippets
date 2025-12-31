@@ -1,6 +1,9 @@
 from snippets.lab3 import Client, address
-from snippets.lab4.users import *
+from snippets.lab4.users import UserDatabase, User, Credentials, Role, AuthenticationService
+from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService
+
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
+from datetime import timedelta
 
 
 class ClientStub:
@@ -12,7 +15,8 @@ class ClientStub:
         try:
             print('# Connected to %s:%d' % client.remote_address)
             request = Request(name, args)
-            print('# Marshalling', request, 'towards', "%s:%d" % client.remote_address)
+            print('# Marshalling', request, 'towards',
+                  "%s:%d" % client.remote_address)
             request = serialize(request)
             print('# Sending message:', request.replace('\n', '\n# '))
             client.send(request)
@@ -20,13 +24,34 @@ class ClientStub:
             print('# Received message:', response.replace('\n', '\n# '))
             response = deserialize(response)
             assert isinstance(response, Response)
-            print('# Unmarshalled', response, 'from', "%s:%d" % client.remote_address)
+            print('# Unmarshalled', response, 'from',
+                  "%s:%d" % client.remote_address)
             if response.error:
                 raise RuntimeError(response.error)
             return response.result
         finally:
             client.close()
             print('# Disconnected from %s:%d' % client.remote_address)
+
+
+class RemoteProxy(ClientStub):
+
+    def __init__(self, server_address: tuple[str, int] | str):
+        super().__init__(server_address)
+
+    def _request(self, name, *args):
+        return self.rpc(name, *args)
+
+
+class RemoteAuthenticationService(RemoteProxy, AuthenticationService):
+
+    def authenticate(self, credentials: Credentials, duration=None):
+        if isinstance(duration, timedelta):
+            duration = int(duration.total_seconds())
+        return self._request("authenticate", credentials, duration)
+
+    def validate_token(self, token):
+        return self._request("validate_token", token)
 
 
 class RemoteUserDatabase(ClientStub, UserDatabase):
@@ -36,8 +61,10 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
     def add_user(self, user: User):
         return self.rpc('add_user', user)
 
-    def get_user(self, id: str) -> User:
-        return self.rpc('get_user', id)
+    def get_user(self, id: str, token=None) -> User:
+        if token is None:
+            raise ValueError("get_user requires a token for authorization")
+        return self.rpc('get_user', id, token)
 
     def check_password(self, credentials: Credentials) -> bool:
         return self.rpc('check_password', credentials)
@@ -46,7 +73,6 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
 if __name__ == '__main__':
     from snippets.lab4.example0_users import gc_user, gc_credentials_ok, gc_credentials_wrong
     import sys
-
 
     user_db = RemoteUserDatabase(address(sys.argv[1]))
 
