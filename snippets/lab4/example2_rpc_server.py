@@ -4,6 +4,8 @@ from snippets.lab4.example1_presentation import serialize, deserialize, Request,
 import traceback
 
 
+from snippets.lab4.users import Role
+
 class ServerStub(Server):
     def __init__(self, port):
         super().__init__(port, self.__on_connection_event)
@@ -39,6 +41,15 @@ class ServerStub(Server):
     
     def __handle_request(self, request):
         try:
+            if request.name == 'get_user':
+                if not request.metadata or 'token' not in request.metadata:
+                    raise PermissionError("Missing authentication token")
+                token = request.metadata['token']
+                if not self.__auth_service.validate_token(token):
+                    raise PermissionError("Invalid authentication token")
+                if token.user.role != Role.ADMIN:
+                    raise PermissionError("Unauthorized access")
+
             if hasattr(self.__user_db, request.name):
                 method = getattr(self.__user_db, request.name)
             elif hasattr(self.__auth_service, request.name):
@@ -55,10 +66,12 @@ class ServerStub(Server):
 
 if __name__ == '__main__':
     import sys
+    import time
     server = ServerStub(int(sys.argv[1]))
+    print('Close server with Ctrl+C')
     while True:
         try:
-            input('Close server with Ctrl+D (Unix) or Ctrl+Z (Win)\n')
-        except (EOFError, KeyboardInterrupt):
+            time.sleep(1)
+        except KeyboardInterrupt:
             break
     server.close()

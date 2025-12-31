@@ -30,6 +30,9 @@ if __name__ == '__main__':
     user_db = RemoteUserDatabase(args.address)
     auth_service = RemoteAuthenticationService(args.address)
 
+    if args.token:
+        user_db.token = deserialize(args.token)
+
     try :
         ids = (args.email or []) + ([args.user] if args.user else [])
         match args.command:
