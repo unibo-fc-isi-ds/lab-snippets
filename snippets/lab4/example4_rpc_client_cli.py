@@ -1,4 +1,5 @@
 import argparse
+import os
 import sys
 
 from .example3_rpc_client import *
@@ -69,7 +70,12 @@ if __name__ == "__main__":
                 )
                 print(user_db.add_user(user))
             case "get":
-                print(user_db.get_user(ids[0]))
+                if not os.path.isfile(args.token):
+                    raise RuntimeError("A valid token must be provided via [-t]")
+                with open(args.token, "r") as f:
+                    content = f.read()
+                token = deserialize(content)
+                print(user_db.get_user(ids[0], metadata=Metadata(token)))
             case "check":
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))

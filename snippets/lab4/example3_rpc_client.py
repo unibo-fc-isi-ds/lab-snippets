@@ -2,6 +2,7 @@ import time
 
 from snippets.lab3 import Client, address
 from snippets.lab4.example1_presentation import (
+    Metadata,
     Request,
     Response,
     deserialize,
@@ -14,11 +15,11 @@ class ClientStub:
     def __init__(self, server_address: tuple[str, int]):
         self.__server_address = address(*server_address)
 
-    def rpc(self, name, *args):
+    def rpc(self, name, *args, metadata: Metadata | None = None):
         client = Client(self.__server_address)
         try:
             print("# Connected to %s:%d" % client.remote_address)
-            request = Request(name, args)
+            request = Request(name, args, metadata)
             print("# Marshalling", request, "towards", "%s:%d" % client.remote_address)
             request = serialize(request)
             print("# Sending message:", request.replace("\n", "\n# "))
@@ -43,8 +44,8 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
     def add_user(self, user: User):
         return self.rpc("add_user", user)
 
-    def get_user(self, id: str) -> User:
-        return self.rpc("get_user", id)
+    def get_user(self, id: str, metadata: Metadata | None = None) -> User:
+        return self.rpc("get_user", id, metadata=metadata)
 
     def check_password(self, credentials: Credentials) -> bool:
         return self.rpc("check_password", credentials)
@@ -81,7 +82,7 @@ if __name__ == "__main__":
     try:
         user_db.get_user("gciatto")
     except RuntimeError as e:
-        assert "User with ID gciatto not found" in str(e)
+        assert "A token must be provided in order to get a user" in str(e)
 
     # Adding a novel user should work
     user_db.add_user(gc_user)
@@ -93,8 +94,8 @@ if __name__ == "__main__":
         assert str(e).startswith("User with ID")
         assert str(e).endswith("already exists")
 
-    # Getting a user that exists should work
-    assert user_db.get_user("gciatto") == gc_user.copy(password=None)
+    # Getting a user that exists wont work anymore as a token must be provided
+    # assert user_db.get_user("gciatto") == gc_user.copy(password=None)
 
     # Checking credentials should work if there exists a user with the same ID and password (no matter which ID is used)
     for gc_cred in gc_credentials_ok:
