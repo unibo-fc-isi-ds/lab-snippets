@@ -6,12 +6,16 @@ from snippets.lab4.example1_presentation import serialize, deserialize, Request,
 class ClientStub:
     def __init__(self, server_address: tuple[str, int]):
         self.__server_address = address(*server_address)
+        self.__token: Token | None = None
+
+    def set_token(self, token: Token):
+            self.__token = token
 
     def rpc(self, name, *args):
         client = Client(self.__server_address)
         try:
             print('# Connected to %s:%d' % client.remote_address)
-            request = Request(name, args)
+            request = Request(name, args, metadata=self.__token)
             print('# Marshalling', request, 'towards', "%s:%d" % client.remote_address)
             request = serialize(request)
             print('# Sending message:', request.replace('\n', '\n# '))
@@ -28,6 +32,16 @@ class ClientStub:
             client.close()
             print('# Disconnected from %s:%d' % client.remote_address)
 
+class RemoteAuthenticationService(ClientStub):
+    def __init__(self, server_address):
+            super().__init__(server_address)
+    def authenticate(self, credentials: Credentials, duration=None) -> Token:
+        token = super().rpc('authenticate', credentials, duration)
+        self.set_token(token)
+        return token
+
+    def validate_token(self, token: Token) -> bool:
+        return self.rpc('validate_token', (token,))
 
 class RemoteUserDatabase(ClientStub, UserDatabase):
     def __init__(self, server_address):
@@ -49,6 +63,7 @@ if __name__ == '__main__':
 
 
     user_db = RemoteUserDatabase(address(sys.argv[1]))
+    auth_client = RemoteAuthenticationService(address(sys.argv[1]))
 
     # Trying to get a user that does not exist should raise a KeyError
     try:
