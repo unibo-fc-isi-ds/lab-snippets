@@ -80,3 +80,9 @@ class AuthenticationService(Protocol):
 
     def validate_token(self, token: Token) -> bool:
         ...
+
+    def add_user(self, user: User):
+        ...
+
+    def get_user(self, id: str) -> User:
+        ...
