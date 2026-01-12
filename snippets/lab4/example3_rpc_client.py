@@ -1,6 +1,8 @@
+from typing import ClassVar
 from snippets.lab3 import Client, address
 from snippets.lab4.users import *
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
+import time
 
 
 class ClientStub:
@@ -16,6 +18,7 @@ class ClientStub:
             request = serialize(request)
             print('# Sending message:', request.replace('\n', '\n# '))
             client.send(request)
+            #time passing
             response = client.receive()
             print('# Received message:', response.replace('\n', '\n# '))
             response = deserialize(response)
@@ -29,27 +32,41 @@ class ClientStub:
             print('# Disconnected from %s:%d' % client.remote_address)
 
 
-class RemoteUserDatabase(ClientStub, UserDatabase):
+class RemoteUserDatabase(ClientStub, UserDatabase): #another implementation of the userdatabase: it extends both classes(multiple inheritance)
     def __init__(self, server_address):
         super().__init__(server_address)
 
     def add_user(self, user: User):
         return self.rpc('add_user', user)
 
-    def get_user(self, id: str) -> User:
-        return self.rpc('get_user', id)
+    def get_user(self, id: str, reader:str) -> User:
+        return self.rpc('get_user', id, reader)
 
     def check_password(self, credentials: Credentials) -> bool:
         return self.rpc('check_password', credentials)
 
+class RemoteAuthenticationService(ClientStub, AuthenticationService):
+    def __init__(self, server_address):
+        super().__init__(server_address)
+
+    def authenticate(self, credentials: Credentials, duration: timedelta = None) -> Token:
+        return self.rpc('authenticate', credentials, duration)
+
+    def validate_token(self, token: Token) -> bool:
+        return self.rpc('validate_token', token)
+ 
+    def get_token(self, id: str) -> Token:
+        return self.rpc('get_token', id)
+
 
 if __name__ == '__main__':
-    from snippets.lab4.example0_users import gc_user, gc_credentials_ok, gc_credentials_wrong
+    from snippets.lab4.example0_users import gc_user, gc_credentials_ok, gc_credentials_wrong, gc_user_hidden_password, gc_token_expired, gc_token, gc_token_wrong_signature
     import sys
 
 
-    user_db = RemoteUserDatabase(address(sys.argv[1]))
-
+    user_db = RemoteUserDatabase(address(sys.argv[1])) #underneath there is a client who will need to send requests to the server. In the rest of the code, we do not notice that its a ds, we use simple methods
+    auth_service = RemoteAuthenticationService(address(sys.argv[1]))
+                                        
     # Trying to get a user that does not exist should raise a KeyError
     try:
         user_db.get_user('gciatto')
@@ -59,7 +76,7 @@ if __name__ == '__main__':
     # Adding a novel user should work
     user_db.add_user(gc_user)
 
-    # Trying to add a user that already exist should raise a ValueError
+    # # Trying to add a user that already exist should raise a ValueError
     try:
         user_db.add_user(gc_user)
     except RuntimeError as e:
@@ -75,3 +92,27 @@ if __name__ == '__main__':
 
     # Checking credentials should fail if the password is wrong
     assert user_db.check_password(gc_credentials_wrong) == False
+
+    try:
+        auth_service.authenticate(gc_credentials_wrong)
+    except ValueError as e:
+        assert 'Invalid credentials' in str(e)
+
+    # Authenticating with correct credentials should work
+    gc_token = auth_service.authenticate(gc_credentials_ok[0])
+    # The token should contain the user, but not the password
+    assert gc_token.user == gc_user_hidden_password
+    # The token should expire in the future
+    assert gc_token.expiration > datetime.now()
+
+    # A genuine, unexpired token should be valid
+    assert auth_service.validate_token(gc_token) == True
+
+    # A token with wrong signature should be invalid
+    gc_token_wrong_signature = gc_token.copy(signature='wrong signature')
+    assert auth_service.validate_token(gc_token_wrong_signature) == False
+
+    # A token with expiration in the past should be invalid
+    gc_token_expired = auth_service.authenticate(gc_credentials_ok[0], timedelta(milliseconds=10))
+    time.sleep(0.1)
+    assert auth_service.validate_token(gc_token_expired) == False
