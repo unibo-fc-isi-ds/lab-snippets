@@ -1,5 +1,5 @@
 from .users import User, Credentials, Token, Role
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 from dataclasses import dataclass
 
@@ -12,6 +12,7 @@ class Request:
 
     name: str
     args: tuple
+    metadata: dict | None = None
 
     def __post_init__(self):
         self.args = tuple(self.args)
@@ -46,6 +47,29 @@ class Serializer:
             return [self._to_ast(item) for item in obj]
         if isinstance(obj, dict):
             return {key: self._to_ast(value) for key, value in obj.items()}
+
+
+        result = None
+
+        if isinstance(obj, User):
+            result = self._user_to_ast(obj)
+        elif isinstance(obj, Role):
+            result = self._role_to_ast(obj)
+        elif isinstance(obj, Credentials):
+            result = self._credentials_to_ast(obj)
+        elif isinstance(obj, Token):
+            result = self._token_to_ast(obj)
+        elif isinstance(obj, timedelta):
+            result = self._timedelta_to_ast(obj)
+        elif isinstance(obj, datetime):
+            return obj.isoformat()  # datetime without $type, it's a string
+        elif isinstance(obj, Request):
+            result = self._request_to_ast(obj)
+        elif isinstance(obj, Response):
+            result = self._response_to_ast(obj)
+        else:
+            raise ValueError(f'Cannot serialize object of type {type(obj)}')
+
         # selects the appropriate method to convert the object to AST via reflection
         method_name = f'_{type(obj).__name__.lower()}_to_ast'
         if hasattr(self, method_name):
@@ -61,6 +85,12 @@ class Serializer:
             'full_name': self._to_ast(user.full_name),
             'role': self._to_ast(user.role),
             'password': self._to_ast(user.password),
+        }
+
+    def _timedelta_to_ast(self, td: timedelta) -> dict:
+        """Converts timedelta to dict (AST)"""
+        return {
+            'seconds': td.total_seconds(),  # Rappresenta come secondi totali
         }
 
     def _credentials_to_ast(self, credentials: Credentials):
@@ -86,6 +116,7 @@ class Serializer:
         return {
             'name': self._to_ast(request.name),
             'args': [self._to_ast(arg) for arg in request.args],
+            'metadata': self._to_ast(request.metadata) if request.metadata else None,
         }
 
     def _response_to_ast(self, response: Response):
@@ -102,18 +133,41 @@ class Deserializer:
     def _string_to_ast(self, string):
         return json.loads(string)
 
-    def _ast_to_obj(self, data):
-        if isinstance(data, dict):
-            if '$type' not in data:
-                return {key: self._ast_to_obj(value) for key, value in data.items()}
-            # selects the appropriate method to convert the AST to object via reflection
-            method_name = f'_ast_to_{data["$type"].lower()}'
-            if hasattr(self, method_name):
-                return getattr(self, method_name)(data)
-            raise ValueError(f"Unsupported type {data['type']}")
+    def _ast_to_obj(self, data: object) -> object:
+        """Seleziona la conversione appropriata in base al $type"""
+
+        # Gestione tipi primitivi
+        if data is None or isinstance(data, (bool, int, float, str)):
+            return data
         if isinstance(data, list):
             return [self._ast_to_obj(item) for item in data]
-        return data
+
+        # Gestione dizionari con $type
+        if isinstance(data, dict):
+            if '$type' not in data:
+                # Dizionario semplice senza tipo
+                return {k: self._ast_to_obj(v) for k, v in data.items()}
+
+            type_name = data['$type']
+
+            if type_name == 'User':
+                return self._ast_to_user(data)
+            elif type_name == 'Role':
+                return self._ast_to_role(data)
+            elif type_name == 'Credentials':
+                return self._ast_to_credentials(data)
+            elif type_name == 'Token':
+                return self._ast_to_token(data)
+            elif type_name == 'timedelta':
+                return self._ast_to_timedelta(data)
+            elif type_name == 'Request':
+                return self._ast_to_request(data)
+            elif type_name == 'Response':
+                return self._ast_to_response(data)
+            else:
+                raise ValueError(f'Unknown type: {type_name}')
+
+        raise ValueError(f'Cannot deserialize: {data}')
 
     def _ast_to_user(self, data):
         return User(
@@ -134,8 +188,12 @@ class Deserializer:
         return Token(
             signature=self._ast_to_obj(data['signature']),
             user=self._ast_to_obj(data['user']),
-            expiration=self._ast_to_obj(data['expiration']),
+            expiration=datetime.fromisoformat(data['expiration']),
         )
+
+    def _ast_to_timedelta(self, data: dict) -> timedelta:
+        """Rebuilds timedelta from AST"""
+        return timedelta(seconds=data['seconds'])
 
     def _ast_to_datetime(self, data):
         raise NotImplementedError("Missing implementation for datetime deserialization")
@@ -147,6 +205,7 @@ class Deserializer:
         return Request(
             name=self._ast_to_obj(data['name']),
             args=tuple(self._ast_to_obj(arg) for arg in data['args']),
+            metadata=self._ast_to_obj(data.get('metadata')),
         )
 
     def _ast_to_response(self, data):
@@ -170,19 +229,55 @@ def deserialize(string):
 
 if __name__ == '__main__':
     from snippets.lab4.example0_users import gc_user, gc_credentials_wrong
+    from datetime import datetime, timedelta
 
+    # Test originale con Request
     request = Request(
         name='my_function',
         args=(
-            gc_credentials_wrong, # an instance of Credentials
-            gc_user, # an instance of User
-            ["a string", 42, 3.14, True, False], # a list, containing various primitive types
-            {'key': 'value'}, # a dictionary
-            Response(None, 'an error'), # a Response, which contains a None field
+            gc_credentials_wrong,
+            gc_user,
+            ["a string", 42, 3.14, True, False],
+            {'key': 'value'},
+            Response(None, 'an error'),
         )
     )
     serialized = serialize(request)
-    print("Serialized", "=", serialized)
+    print("Serialized Request", "=", serialized)
     deserialized = deserialize(serialized)
-    print("Deserialized", "=", deserialized)
+    print("Deserialized Request", "=", deserialized)
     assert request == deserialized
+
+    # Test Token (con datetime in expiration)
+    token = Token(
+        user=gc_user,
+        expiration=datetime.now() + timedelta(hours=1),
+        signature="abc123signature"
+    )
+    serialized_token = serialize(token)
+    print("\nSerialized Token", "=", serialized_token)
+    deserialized_token = deserialize(serialized_token)
+    print("Deserialized Token", "=", deserialized_token)
+    print("Token expiration type:", type(deserialized_token.expiration))
+    assert isinstance(deserialized_token.expiration, datetime)
+
+    # Test timedelta (parametro duration per authenticate)
+    duration = timedelta(hours=2, minutes=30)
+    serialized_td = serialize(duration)
+    print("\nSerialized timedelta", "=", serialized_td)
+    deserialized_td = deserialize(serialized_td)
+    print("Deserialized timedelta", "=", deserialized_td)
+    assert duration == deserialized_td
+
+    # Test Request simulate authenticate call
+    auth_request = Request(
+        name='authenticate',
+        args=(gc_credentials_wrong, timedelta(hours=1))
+    )
+    serialized_auth = serialize(auth_request)
+    print("\nSerialized auth Request", "=", serialized_auth)
+    deserialized_auth = deserialize(serialized_auth)
+    print("Deserialized auth Request", "=", deserialized_auth)
+    assert auth_request == deserialized_auth
+
+    print("\nAll tests passed.")
