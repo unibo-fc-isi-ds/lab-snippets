@@ -4,10 +4,18 @@ import sys
 
 mode = sys.argv[1].lower().strip()
 remote_peer: Client | None = None
+global remote_peers; remote_peers = [] #List of all connected peers
 
+#This was added because the client would crash when it disconnected, as it was still printing while the python daemon was closing
+def safe_print(msg):
+    if not sys.is_finalizing():
+        print(msg)
 
 def send_message(msg, sender):
-    if remote_peer is None:
+    if mode=='server':
+        for peer in remote_peers:
+            peer.send(message(msg.strip(), sender))
+    elif remote_peer is None:
         print("No peer connected, message is lost")
     elif msg:
         remote_peer.send(message(msg.strip(), sender))
@@ -18,12 +26,17 @@ def send_message(msg, sender):
 def on_message_received(event, payload, connection, error):
     match event:
         case 'message':
+            #print(payload)
+            if mode == 'server':
+                for peer in remote_peers:
+                    peer.send(payload)
             print(payload)
         case 'close':
-            print(f"Connection with peer {connection.remote_address} closed")
-            global remote_peer; remote_peer = None
+            safe_print(f"Connection with peer {connection.remote_address} closed")
+            if mode == 'server':
+                remote_peers.remove(connection)
         case 'error':
-            print(error)
+            print("Error! " + str(error))
 
 
 if mode == 'server':
@@ -36,7 +49,7 @@ if mode == 'server':
             case 'connect':
                 print(f"Open ingoing connection from: {address}")
                 connection.callback = on_message_received
-                global remote_peer; remote_peer = connection
+                global remote_peers; remote_peers.append(connection)
             case 'stop':
                 print(f"Stop listening for new connections")
             case 'error':
