@@ -1,5 +1,5 @@
 from snippets.lab3 import Server
-from snippets.lab4.users.impl import InMemoryUserDatabase
+from snippets.lab4.users.impl import InMemoryAuthenticationService, InMemoryUserDatabase
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 import traceback
 
@@ -7,7 +7,8 @@ import traceback
 class ServerStub(Server):
     def __init__(self, port):
         super().__init__(port, self.__on_connection_event)
-        self.__user_db = InMemoryUserDatabase()
+        database = InMemoryUserDatabase()
+        self.__auth_service = InMemoryAuthenticationService(database)
     
     def __on_connection_event(self, event, connection, address, error):
         match event:
@@ -25,6 +26,7 @@ class ServerStub(Server):
             case 'message':
                 print('[%s:%d] Open connection' % connection.remote_address)
                 request = deserialize(payload)
+                print("Deserialized payload:", request)
                 assert isinstance(request, Request)
                 print('[%s:%d] Unmarshall request:' % connection.remote_address, request)
                 response = self.__handle_request(request)
@@ -38,7 +40,7 @@ class ServerStub(Server):
     
     def __handle_request(self, request):
         try:
-            method = getattr(self.__user_db, request.name)
+            method = getattr(self.__auth_service, request.name)
             result = method(*request.args)
             error = None
         except Exception as e:
