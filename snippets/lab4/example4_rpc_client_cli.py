@@ -1,7 +1,8 @@
 from .example3_rpc_client import *
+from .users import Token, User
 import argparse
 import sys
-
+from .users.impl import load_tokens_from_file, save_token_to_file
 
 if __name__ == '__main__':
 
@@ -11,12 +12,14 @@ if __name__ == '__main__':
         exit_on_error=False,
     )
     parser.add_argument('address', help='Server address in the form ip:port')
-    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check'])
+    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check', 'authenticate', 'validate_token'])
     parser.add_argument('--user', '-u', help='Username')
     parser.add_argument('--email', '--address', '-a', nargs='+', help='Email address')
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
+    parser.add_argument('--timedelta', '-t', help='Duration (sec) of the token')
+    parser.add_argument('--signature', '-s', help='Signature')
 
     if len(sys.argv) > 1:
         args = parser.parse_args()
@@ -26,6 +29,7 @@ if __name__ == '__main__':
 
     args.address = address(args.address)
     user_db = RemoteUserDatabase(args.address)
+    auth_service = RemoteAuthenticationService(args.address)
 
     try :
         ids = (args.email or []) + [args.user]
@@ -40,10 +44,35 @@ if __name__ == '__main__':
                 user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
                 print(user_db.add_user(user))
             case 'get':
-                print(user_db.get_user(ids[0]))
+                signature = args.signature
+                all_tokens = load_tokens_from_file()
+                try:
+                    print(user_db.get_user(ids[0], all_tokens[signature]))
+                except KeyError as e:
+                    print('The inserted signature is not correct')
             case 'check':
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
+            case 'authenticate':
+                credentials = Credentials(ids[0], args.password)
+                token = auth_service.authenticate(credentials)
+                if args.timedelta != None:
+                    duration = timedelta(seconds=int(args.timedelta))
+                    token = auth_service.authenticate(credentials, duration)
+                save_token_to_file(token)
+                print(token)
+            case 'validate_token':
+                signature = args.signature
+                all_tokens = load_tokens_from_file()
+                try:
+                    validity = auth_service.validate_token(all_tokens[signature])
+                    if validity:
+                        print('The provided token is valid')
+                    else:
+                        print('The provided token is not valid')
+                except KeyError as e:
+                    print('The inserted signature is not correct')
+
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:
