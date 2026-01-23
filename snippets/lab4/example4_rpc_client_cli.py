@@ -1,22 +1,28 @@
 from .example3_rpc_client import *
 import argparse
 import sys
-
+from .example1_presentation import serialize, deserialize
 
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(
         prog=f'python -m snippets -l 4 -e 4',
-        description='RPC client for user database',
+        description='RPC client for user database and authentication',
         exit_on_error=False,
     )
     parser.add_argument('address', help='Server address in the form ip:port')
-    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check'])
+
+    # Added auth/validate commands
+    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check', 'auth', 'validate'])
+    
     parser.add_argument('--user', '-u', help='Username')
     parser.add_argument('--email', '--address', '-a', nargs='+', help='Email address')
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
+
+    # New argument for passing a serialized token JSON to validate
+    parser.add_argument('--token', '-t', help='Serialized token string (use the JSON printed by `auth`)')
 
     if len(sys.argv) > 1:
         args = parser.parse_args()
@@ -26,6 +32,9 @@ if __name__ == '__main__':
 
     args.address = address(args.address)
     user_db = RemoteUserDatabase(args.address)
+
+    # instantiate auth service client
+    auth_service = RemoteAuthenticationService(args.address)
 
     try :
         ids = (args.email or []) + [args.user]
@@ -44,6 +53,18 @@ if __name__ == '__main__':
             case 'check':
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
+            case 'auth':
+                # authenticate and print both object and serialized token string
+                credentials = Credentials(ids[0], args.password)
+                token = auth_service.authenticate(credentials)
+                print(token)
+                print('Serialized token:')
+                print(serialize(token))
+            case 'validate':
+                if not args.token:
+                    raise ValueError('The --token (-t) argument is required for validate')
+                token = deserialize(args.token)
+                print(auth_service.validate_token(token))
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:
