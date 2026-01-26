@@ -1,6 +1,25 @@
 from .example3_rpc_client import *
 import argparse
 import sys
+import os
+from snippets.lab4.example1_presentation import serialize, deserialize
+
+TOKEN_FILENAME = 'token.json'
+
+def save_token(token):
+    json_string = serialize(token)
+    with open(TOKEN_FILENAME, 'w') as f:
+        f.write(json_string)
+
+def load_token():
+    if os.path.exists(TOKEN_FILENAME):
+        with open(TOKEN_FILENAME, 'r') as f:
+            json_string = f.read()
+            try:
+                return deserialize(json_string)
+            except:
+                return None
+    return None
 
 
 if __name__ == '__main__':
@@ -11,7 +30,7 @@ if __name__ == '__main__':
         exit_on_error=False,
     )
     parser.add_argument('address', help='Server address in the form ip:port')
-    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check'])
+    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check', 'login', 'validate'])
     parser.add_argument('--user', '-u', help='Username')
     parser.add_argument('--email', '--address', '-a', nargs='+', help='Email address')
     parser.add_argument('--name', '-n', help='Full name')
@@ -26,7 +45,12 @@ if __name__ == '__main__':
 
     args.address = address(args.address)
     user_db = RemoteUserDatabase(args.address)
+    auth_service = RemoteAuthenticationService(args.address)
 
+    cached_token = load_token()
+    if cached_token:
+        user_db.set_token(cached_token)
+        print(f"Loaded session for user: {cached_token.user.username}")
     try :
         ids = (args.email or []) + [args.user]
         if len(ids) == 0:
@@ -37,14 +61,48 @@ if __name__ == '__main__':
                     raise ValueError("Password is required")
                 if not args.name:
                     raise ValueError("Full name is required")
-                user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
+                role_name = args.role.upper() if args.role else 'USER'
+                role_enum = Role[role_name]
+                user = User(args.user, args.email, args.name, role_enum, args.password)
                 print(user_db.add_user(user))
             case 'get':
                 print(user_db.get_user(ids[0]))
             case 'check':
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
+            case 'login':
+                if not args.user and not args.email:
+                    raise ValueError("Username or email address is required")
+                if not args.password:
+                    raise ValueError("Password is required")
+                login_id = args.user if args.user else args.email[0]
+                creds = Credentials(login_id, args.password)
+                token = auth_service.authenticate(creds)
+                save_token(token)
+                print("Token:", token)
+                print("Signature:", token.signature)
+            case 'validate':
+                target_token = None
+                if (args.user or args.email) and args.password:
+                    login_id = args.user if args.user else args.email[0]
+                    creds = Credentials(login_id, args.password)
+                    print(f"Generating fresh token for {login_id}...")
+                    target_token = auth_service.authenticate(creds)
+                elif cached_token:
+                    print(f"Using stored token from {TOKEN_FILENAME}...")
+                    target_token = cached_token
+                else:
+                    raise ValueError("No stored token found. Please login first or provide credentials.")
+                print("Validating token...")
+                is_valid = auth_service.validate_token(target_token)
+                
+                if is_valid:
+                    print("SUCCESS: Token is valid.")
+                else:
+                    print("FAILURE: Token is invalid or expired.")
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:
         print(f'[{type(e).__name__}]', *e.args)
+    except Exception as e:
+        print(f'Error: ', e)
