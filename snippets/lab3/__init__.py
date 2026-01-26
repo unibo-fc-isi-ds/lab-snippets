@@ -12,7 +12,6 @@ class Connection:
         self.__socket = socket
         self.local_address = self.__socket.getsockname()
         self.remote_address = self.__socket.getpeername()
-        self.__notify_closed = False
         self.__callback = callback
         self.__receiver_thread = threading.Thread(target=self.__handle_incoming_messages, daemon=True)
         if self.__callback:
@@ -48,9 +47,8 @@ class Connection:
     
     def close(self):
         self.__socket.close()
-        if not self.__notify_closed:
-            self.on_event('close')
-            self.__notify_closed = True
+        if self.__receiver_thread is not threading.current_thread() and self.__receiver_thread.is_alive():
+            self.__receiver_thread.join(timeout=5)
 
     def __handle_incoming_messages(self):
         try:
@@ -64,7 +62,7 @@ class Connection:
                 return # silently ignore error, because this is simply the socket being closed locally
             self.on_event('error', error=e)
         finally:
-            self.close()
+            self.on_event('close')
 
     def on_event(self, event: str, payload: str=None, connection: 'Connection'=None, error: Exception=None):
         if connection is None:
@@ -121,3 +119,5 @@ class Server:
 
     def close(self):
         self.__socket.close()
+        if  self.__listener_thread is not threading.current_thread() and self.__listener_thread.is_alive():
+            self.__listener_thread.join(timeout=5)
