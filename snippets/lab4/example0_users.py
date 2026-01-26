@@ -8,7 +8,7 @@ user_db = InMemoryUserDatabase(debug=_PRINT_LOGS)
 auth_service = InMemoryAuthenticationService(user_db, debug=_PRINT_LOGS)
 
 
-gc_user = User(
+gc_admin = User(
     username='gciatto',
     emails={'giovanni.ciatto@unibo.it', 'giovanni.ciatto@gmail.com'},
     full_name='Giovanni Ciatto',
@@ -16,9 +16,18 @@ gc_user = User(
     password='my secret password',
 )
 
-gc_user_hidden_password = gc_user.copy(password=None)
+gn_user = User(
+    username='gnardicchia',
+    emails={'giulia.nardicchia@unibo.it'},
+    full_name='Giulia Nardicchia',
+    role=Role.USER,
+    password='my secret password',
+)
 
-gc_credentials_ok = [Credentials(id, gc_user.password) for id in gc_user.ids] # type: ignore
+gc_user_hidden_password = gc_admin.copy(password=None)
+
+gc_credentials_ok = [Credentials(id, gc_admin.password) for id in gc_admin.ids] # type: ignore
+gn_credentials_ok = [Credentials(id, gn_user.password) for id in gn_user.ids]
 
 gc_credentials_wrong = Credentials(
     id='giovanni.ciatto@unibo.it',
@@ -32,17 +41,17 @@ except KeyError as e:
     assert 'User with ID gciatto not found' in str(e)
 
 # Adding a novel user should work
-user_db.add_user(gc_user)
+user_db.add_user(gc_admin)
 
 # Trying to add a user that already exist should raise a ValueError
 try:
-    user_db.add_user(gc_user)
+    user_db.add_user(gc_admin)
 except ValueError as e:
     assert str(e).startswith('User with ID')
     assert str(e).endswith('already exists')
 
 # Getting a user that exists should work
-assert user_db.get_user('gciatto') == gc_user.copy(password=None)
+assert user_db.get_user('gciatto') == gc_admin.copy(password=None)
 
 # Checking credentials should work if there exists a user with the same ID and password (no matter which ID is used)
 for gc_cred in gc_credentials_ok:
