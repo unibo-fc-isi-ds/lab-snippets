@@ -1,5 +1,6 @@
 from .example3_rpc_client import *
 import argparse
+import base64
 import sys
 
 
@@ -7,16 +8,17 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(
         prog=f'python -m snippets -l 4 -e 4',
-        description='RPC client for user database',
+        description='RPC client for user database and authentication service',
         exit_on_error=False,
     )
     parser.add_argument('address', help='Server address in the form ip:port')
-    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check'])
+    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check', 'auth', 'validate'])
     parser.add_argument('--user', '-u', help='Username')
     parser.add_argument('--email', '--address', '-a', nargs='+', help='Email address')
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
+    parser.add_argument('--token', '-t', help='Token')
 
     if len(sys.argv) > 1:
         args = parser.parse_args()
@@ -26,13 +28,18 @@ if __name__ == '__main__':
 
     args.address = address(args.address)
     user_db = RemoteUserDatabase(args.address)
+    auth_service = RemoteAuthenticationService(args.address)
 
     try :
-        ids = (args.email or []) + [args.user]
-        if len(ids) == 0:
+        ids = (args.email or []) + ([args.user] if args.user else [])
+        if args.command in ('add', 'get', 'check', 'auth') and len(ids) == 0:
             raise ValueError("Username or email address is required")
         match args.command:
             case 'add':
+                if not args.user:
+                    raise ValueError("Username is required")
+                if not args.email:
+                    raise ValueError("At least one email address is required")
                 if not args.password:
                     raise ValueError("Password is required")
                 if not args.name:
@@ -40,10 +47,40 @@ if __name__ == '__main__':
                 user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
                 print(user_db.add_user(user))
             case 'get':
-                print(user_db.get_user(ids[0]))
+                if not args.token:
+                    raise ValueError('--token is required for get (admin-only)')
+                try:
+                    token_json = base64.b64decode(args.token.encode('ascii'), validate=True).decode('utf-8')
+                except Exception as e:
+                    raise ValueError('Invalid Base64 token') from e
+                token = deserialize(token_json)
+                if not isinstance(token, Token):
+                    raise ValueError('Invalid token format')
+                print(user_db.get_user(ids[0], token))
             case 'check':
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
+            case 'auth':
+                if not args.password:
+                    raise ValueError("Password is required")
+                credentials = Credentials(ids[0], args.password)
+                token = auth_service.authenticate(credentials)
+                
+                # token print per essere copiato
+                token_json = serialize(token)
+                token_b64 = base64.b64encode(token_json.encode('utf-8')).decode('ascii')
+                print(token_b64)
+            case 'validate':
+                if not args.token:
+                    raise ValueError("--token is required for validate")
+                try:
+                    token_json = base64.b64decode(args.token.encode('ascii'), validate=True).decode('utf-8')
+                except Exception as e:
+                    raise ValueError('Invalid Base64 token') from e
+                token = deserialize(token_json)
+                if not isinstance(token, Token):
+                    raise ValueError("Invalid token format")
+                print(auth_service.validate_token(token))
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:
