@@ -1,6 +1,6 @@
 from ..users import *
 import hashlib
-
+from datetime import datetime, timedelta 
 
 def _compute_sha256_hash(input: str) -> str:
     sha256_hash = hashlib.sha256()
@@ -55,7 +55,7 @@ class InMemoryUserDatabase(UserDatabase, _Debuggable):
     
 
 class InMemoryAuthenticationService(AuthenticationService, _Debuggable):
-    def __init__(self, database: UserDatabase, secret: str = None, debug: bool = True):
+    def __init__(self, database: UserDatabase, secret: str | None = None, debug: bool = True):
         _Debuggable.__init__(self, debug)
         self.__database = database
         if not secret:
@@ -63,8 +63,9 @@ class InMemoryAuthenticationService(AuthenticationService, _Debuggable):
             secret = str(uuid.uuid4())
         self.__secret = secret
         self._log(f"Authentication service initialized with secret {secret}")
+
     
-    def authenticate(self, credentials: Credentials, duration: timedelta = None) -> Token:
+    def authenticate(self, credentials: Credentials, duration: timedelta | None = None) -> Token:
         if duration is None:
             duration = timedelta(days=1)
         if self.__database.check_password(credentials):
