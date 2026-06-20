@@ -1,4 +1,4 @@
-from ..users import *
+from snippets.lab4.users import *
 import hashlib
 
 
