@@ -76,8 +76,10 @@ class Serializer:
             'expiration': self._to_ast(token.expiration),
         }
 
+    # Implemented datetime serialization so Token.expiration can be marshalled
     def _datetime_to_ast(self, dt: datetime):
-        raise NotImplementedError("Missing implementation for datetime serialization")
+        # Represent datetime as ISO string inside a dict so that the AST always carries a dict
+        return {'value': dt.isoformat()}
 
     def _role_to_ast(self, role: Role):
         return {'name': role.name}
@@ -137,8 +139,10 @@ class Deserializer:
             expiration=self._ast_to_obj(data['expiration']),
         )
 
+    # Implemented datetime deserialization complementary to the serializer above
     def _ast_to_datetime(self, data):
-        raise NotImplementedError("Missing implementation for datetime deserialization")
+        # Expecting data to be a dict like {'value': '2025-12-29T12:34:56.789'}
+        return datetime.fromisoformat(data['value'])
 
     def _ast_to_role(self, data):
         return Role[self._ast_to_obj(data['name'])]

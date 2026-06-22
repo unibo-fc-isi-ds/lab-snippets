@@ -1,0 +1,64 @@
+# Connected to 127.0.0.1:14000
+# Marshalling Request(name='authenticate', args=(Credentials(id='heisenberg', password='SayMyName12345'), None)) towards 127.0.0.1:14000
+# Sending message: {
+#   "name": "authenticate",
+#   "args": [
+#     {
+#       "id": "heisenberg",
+#       "password": "SayMyName12345",
+#       "$type": "Credentials"
+#     },
+#     null
+#   ],
+#   "$type": "Request"
+# }
+# Received message: {
+#   "result": {
+#     "signature": "274c69885d2ff8a08479bf4df913b0a5f4cb8af3d3b1832e8a090900c279034d",
+#     "user": {
+#       "username": "heisenberg",
+#       "emails": [
+#         "heisenberg@studio.unibo.it"
+#       ],
+#       "full_name": "Heisenberg",
+#       "role": {
+#         "name": "USER",
+#         "$type": "Role"
+#       },
+#       "password": null,
+#       "$type": "User"
+#     },
+#     "expiration": {
+#       "value": "2025-12-31T01:05:03.750510",
+#       "$type": "datetime"
+#     },
+#     "$type": "Token"
+#   },
+#   "error": null,
+#   "$type": "Response"
+# }
+# Unmarshalled Response(result=Token(user=User(username='heisenberg', emails={'heisenberg@studio.unibo.it'}, full_name='Heisenberg', role=<Role.USER: 2>, password=None), expiration=datetime.datetime(2025, 12, 31, 1, 5, 3, 750510), signature='274c69885d2ff8a08479bf4df913b0a5f4cb8af3d3b1832e8a090900c279034d'), error=None) from 127.0.0.1:14000
+# Disconnected from 127.0.0.1:14000
+Token(user=User(username='heisenberg', emails={'heisenberg@studio.unibo.it'}, full_name='Heisenberg', role=<Role.USER: 2>, password=None), expiration=datetime.datetime(2025, 12, 31, 1, 5, 3, 750510), signature='274c69885d2ff8a08479bf4df913b0a5f4cb8af3d3b1832e8a090900c279034d')
+Serialized token:
+{
+  "signature": "274c69885d2ff8a08479bf4df913b0a5f4cb8af3d3b1832e8a090900c279034d",
+  "user": {
+    "username": "heisenberg",
+    "emails": [
+      "heisenberg@studio.unibo.it"
+    ],
+    "full_name": "Heisenberg",
+    "role": {
+      "name": "USER",
+      "$type": "Role"
+    },
+    "password": null,
+    "$type": "User"
+  },
+  "expiration": {
+    "value": "2025-12-31T01:05:03.750510",
+    "$type": "datetime"
+  },
+  "$type": "Token"
+}
