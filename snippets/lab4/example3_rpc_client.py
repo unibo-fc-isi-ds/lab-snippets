@@ -2,16 +2,26 @@ from snippets.lab3 import Client, address
 from snippets.lab4.users import *
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 
+class Session:
+    def __init__(self, server_address: tuple[str, int]):
+        self.server_address = server_address
+        self.token: Token | None = None
+
+    def get_token(self):
+        return self.token
+
+    def set_token(self, value: Token):
+        self.token = value
 
 class ClientStub:
-    def __init__(self, server_address: tuple[str, int]):
-        self.__server_address = address(*server_address)
+    def __init__(self, session: Session):
+        self.session = session
 
     def rpc(self, name, *args):
-        client = Client(self.__server_address)
+        client = Client(self.session.server_address)
         try:
             print('# Connected to %s:%d' % client.remote_address)
-            request = Request(name, args)
+            request = Request(name, args, self.session.token)
             print('# Marshalling', request, 'towards', "%s:%d" % client.remote_address)
             request = serialize(request)
             print('# Sending message:', request.replace('\n', '\n# '))
@@ -28,10 +38,9 @@ class ClientStub:
             client.close()
             print('# Disconnected from %s:%d' % client.remote_address)
 
-
 class RemoteUserDatabase(ClientStub, UserDatabase):
-    def __init__(self, server_address):
-        super().__init__(server_address)
+    def __init__(self, session: Session):
+        super().__init__(session)
 
     def add_user(self, user: User):
         return self.rpc('add_user', user)
@@ -42,19 +51,26 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
     def check_password(self, credentials: Credentials) -> bool:
         return self.rpc('check_password', credentials)
 
+class RemoteAuthenticationService(ClientStub, AuthenticationService):
+    def __init__(self, session: Session):
+        super().__init__(session)
+
+    def authenticate(self, credentials: Credentials, duration: timedelta = None) -> Token:
+        self.session.token = self.rpc('authenticate', credentials, duration)
+        return self.session.token
+
+    def validate_token(self, token: Token) -> bool:
+        return self.rpc('validate_token', token)
 
 if __name__ == '__main__':
     from snippets.lab4.example0_users import gc_user, gc_credentials_ok, gc_credentials_wrong
-    import sys
+    import sys, time
 
+    session = Session(address(sys.argv[1]))
+    user_db = RemoteUserDatabase(session)
+    auth_service = RemoteAuthenticationService(session)
 
-    user_db = RemoteUserDatabase(address(sys.argv[1]))
-
-    # Trying to get a user that does not exist should raise a KeyError
-    try:
-        user_db.get_user('gciatto')
-    except RuntimeError as e:
-        assert 'User with ID gciatto not found' in str(e)
+    print('\n--- Test Adding Users ---\n')
 
     # Adding a novel user should work
     user_db.add_user(gc_user)
@@ -66,8 +82,46 @@ if __name__ == '__main__':
         assert str(e).startswith('User with ID')
         assert str(e).endswith('already exists')
 
+    print('\n--- Test Authenticating Users Wrong Credentials ---\n')
+
+    # Authenticating with wrong credentials should raise a ValueError
+    try:
+        auth_service.authenticate(gc_credentials_wrong)
+    except RuntimeError as e:
+        assert 'Invalid credentials' in str(e)
+
+    print('\n--- Test Authenticating Users Correct Credentials ---\n')
+
+    # Authenticating with correct credentials should work
+    gc_token = auth_service.authenticate(gc_credentials_ok[0])
+    assert isinstance(gc_token, Token)
+    # The token should contain the user, but not the password
+    assert gc_token.user == gc_user.copy(password=None)
+    # The token should expire in the future
+    assert gc_token.expiration > datetime.now()
+    # A genuine, unexpired token should be valid
+    assert auth_service.validate_token(gc_token) == True
+
+    print('\n--- Test Validating Wrong Tokens ---\n')
+
+    # A token with wrong signature should be invalid
+    gc_token_wrong_signature = gc_token.copy(signature='wrong signature')
+    assert auth_service.validate_token(gc_token_wrong_signature) == False
+    # A token with expiration in the past should be invalid
+    time.sleep(1)
+    gc_token_expired = gc_token.copy(expiration=datetime.now() - timedelta(seconds=1))
+    assert auth_service.validate_token(gc_token_expired) == False
+
+    print('\n--- Test Getting Users ---\n')
+
     # Getting a user that exists should work
     assert user_db.get_user('gciatto') == gc_user.copy(password=None)
+
+    # Trying to get a user that does not exist should raise a KeyError
+    try:
+        user_db.get_user('Pippo')
+    except RuntimeError as e:
+        assert 'User with ID Pippo not found' in str(e)
 
     # Checking credentials should work if there exists a user with the same ID and password (no matter which ID is used)
     for gc_cred in gc_credentials_ok:
