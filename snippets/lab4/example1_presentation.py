@@ -2,6 +2,7 @@ from .users import User, Credentials, Token, Role
 from datetime import datetime
 import json
 from dataclasses import dataclass
+from typing import Any, Optional 
 
 
 @dataclass
@@ -12,6 +13,9 @@ class Request:
 
     name: str
     args: tuple
+    metadata: Optional[Any] = None
+    # Request class should be extended to include an optional metadata field
+    # this field is used when the client performs an operation which requires authentication…
 
     def __post_init__(self):
         self.args = tuple(self.args)
@@ -77,16 +81,26 @@ class Serializer:
         }
 
     def _datetime_to_ast(self, dt: datetime):
-        raise NotImplementedError("Missing implementation for datetime serialization")
+        # raise NotImplementedError("Missing implementation for datetime serialization")
+        # Now this method has to be implemented for the authentication process...
+        return {
+        "value": dt.isoformat(),
+        "$type": "datetime"
+        }
+
 
     def _role_to_ast(self, role: Role):
         return {'name': role.name}
 
     def _request_to_ast(self, request: Request):
-        return {
-            'name': self._to_ast(request.name),
-            'args': [self._to_ast(arg) for arg in request.args],
+        data = {
+        'name': self._to_ast(request.name),
+        'args': [self._to_ast(arg) for arg in request.args],
         }
+        if request.metadata is not None:
+            data['metadata'] = self._to_ast(request.metadata)
+        return data
+
 
     def _response_to_ast(self, response: Response):
         return {
@@ -138,7 +152,9 @@ class Deserializer:
         )
 
     def _ast_to_datetime(self, data):
-        raise NotImplementedError("Missing implementation for datetime deserialization")
+        # raise NotImplementedError("Missing implementation for datetime deserialization")
+        # Again this methhod has to be implemented 
+        return datetime.fromisoformat(data["value"])
 
     def _ast_to_role(self, data):
         return Role[self._ast_to_obj(data['name'])]
@@ -147,7 +163,9 @@ class Deserializer:
         return Request(
             name=self._ast_to_obj(data['name']),
             args=tuple(self._ast_to_obj(arg) for arg in data['args']),
+            metadata=self._ast_to_obj(data['metadata']) if 'metadata' in data else None
         )
+
 
     def _ast_to_response(self, data):
         return Response(
