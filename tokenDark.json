@@ -1,0 +1,27 @@
+{
+  "signature": "cd1baba06e2c61a6e917590debe5111136de546e4dda798165d17e5198fbae26",
+  "user": {
+    "username": "Dark",
+    "emails": [
+      "dark@ploton.com"
+    ],
+    "full_name": "Dark Ploton",
+    "role": {
+      "name": "USER",
+      "$type": "Role"
+    },
+    "password": null,
+    "$type": "User"
+  },
+  "expiration": {
+    "year": 2025,
+    "month": 12,
+    "day": 20,
+    "hour": 22,
+    "minute": 43,
+    "second": 55,
+    "microsecond": 912566,
+    "$type": "datetime"
+  },
+  "$type": "Token"
+}
