@@ -6,12 +6,14 @@ from snippets.lab4.example1_presentation import serialize, deserialize, Request,
 class ClientStub:
     def __init__(self, server_address: tuple[str, int]):
         self.__server_address = address(*server_address)
+        self.token = None
 
     def rpc(self, name, *args):
         client = Client(self.__server_address)
         try:
             print('# Connected to %s:%d' % client.remote_address)
-            request = Request(name, args)
+            metadata = {'token': self.token} if self.token else None
+            request = Request(name, args, metadata)
             print('# Marshalling', request, 'towards', "%s:%d" % client.remote_address)
             request = serialize(request)
             print('# Sending message:', request.replace('\n', '\n# '))
@@ -41,6 +43,17 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
 
     def check_password(self, credentials: Credentials) -> bool:
         return self.rpc('check_password', credentials)
+
+
+class RemoteAuthenticationService(ClientStub, AuthenticationService):
+    def __init__(self, server_address):
+        super().__init__(server_address)
+
+    def authenticate(self, credentials: Credentials, duration: timedelta = None) -> Token:
+        return self.rpc('authenticate', credentials, duration)
+
+    def validate_token(self, token: Token) -> bool:
+        return self.rpc('validate_token', token)
 
 
 if __name__ == '__main__':
@@ -75,3 +88,25 @@ if __name__ == '__main__':
 
     # Checking credentials should fail if the password is wrong
     assert user_db.check_password(gc_credentials_wrong) == False
+
+    auth_service = RemoteAuthenticationService(address(sys.argv[1]))
+
+    # Authenticating with wrong credentials should raise a ValueError
+    try:
+        auth_service.authenticate(gc_credentials_wrong)
+    except RuntimeError as e:
+        assert 'Invalid credentials' in str(e)
+
+    # Authenticating with correct credentials should work
+    gc_token = auth_service.authenticate(gc_credentials_ok[0])
+    # The token should contain the user, but not the password
+    assert gc_token.user == gc_user.copy(password=None)
+    # The token should expire in the future
+    assert gc_token.expiration > datetime.now()
+
+    # The token should be valid
+    assert auth_service.validate_token(gc_token) == True
+
+    # A token with wrong signature should be invalid
+    gc_token_wrong_signature = gc_token.copy(signature='wrong signature')
+    assert auth_service.validate_token(gc_token_wrong_signature) == False
