@@ -83,3 +83,4 @@ class InMemoryAuthenticationService(AuthenticationService, _Debuggable):
         result = token.expiration > datetime.now() and self.__validate_token_signature(token)
         self._log(f"{token} is " + ('valid' if result else 'invalid'))
         return result
+    

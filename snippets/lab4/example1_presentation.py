@@ -1,5 +1,5 @@
 from .users import User, Credentials, Token, Role
-from datetime import datetime
+from datetime import datetime, time, timedelta
 import json
 from dataclasses import dataclass
 
@@ -12,6 +12,7 @@ class Request:
 
     name: str
     args: tuple
+    token: None | Token = None
 
     def __post_init__(self):
         self.args = tuple(self.args)
@@ -75,9 +76,17 @@ class Serializer:
             'user': self._to_ast(token.user),
             'expiration': self._to_ast(token.expiration),
         }
+    
+    def _timedelta_to_ast(self, delta: timedelta):
+        return {
+            'timedelta': self._to_ast(str(delta))
+        }
+    
 
     def _datetime_to_ast(self, dt: datetime):
-        raise NotImplementedError("Missing implementation for datetime serialization")
+       return {
+           'expiration': self._to_ast(dt.isoformat())
+       }
 
     def _role_to_ast(self, role: Role):
         return {'name': role.name}
@@ -86,6 +95,7 @@ class Serializer:
         return {
             'name': self._to_ast(request.name),
             'args': [self._to_ast(arg) for arg in request.args],
+            'token': self._to_ast(request.token)
         }
 
     def _response_to_ast(self, response: Response):
@@ -138,7 +148,40 @@ class Deserializer:
         )
 
     def _ast_to_datetime(self, data):
-        raise NotImplementedError("Missing implementation for datetime deserialization")
+        return datetime.fromisoformat(data['expiration'])
+    
+    def _ast_to_timedelta(self, data):
+        delta = data['timedelta']
+        days = 0
+        if 'day' in delta:
+            parts = delta.split(',')
+            days = int(parts[0].split()[0])
+            time_part = parts[1].strip()
+        else:
+            time_part = delta
+        
+        # Split time part
+        time_components = time_part.split(':')
+        hours = int(time_components[0])
+        minutes = int(time_components[1])
+        
+        # Handle seconds and microseconds
+        if '.' in time_components[2]:
+            seconds, microseconds = time_components[2].split('.')
+            seconds = int(seconds)
+            microseconds = int(microseconds)
+        else:
+            seconds = int(time_components[2])
+            microseconds = 0
+        
+        return timedelta(
+            days=days,
+            hours=hours,
+            minutes=minutes,
+            seconds=seconds,
+            microseconds=microseconds
+        )
+
 
     def _ast_to_role(self, data):
         return Role[self._ast_to_obj(data['name'])]
@@ -147,6 +190,7 @@ class Deserializer:
         return Request(
             name=self._ast_to_obj(data['name']),
             args=tuple(self._ast_to_obj(arg) for arg in data['args']),
+            token=self._ast_to_obj(data['token'])
         )
 
     def _ast_to_response(self, data):

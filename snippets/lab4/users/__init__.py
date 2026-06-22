@@ -33,7 +33,7 @@ class User(Datum):
 
     @property
     def ids(self):
-        return {self.username} | self.emails
+        return {self.username} | self.emails #Returns a single set containing the username + all emails
 
 
 @dataclass
@@ -80,3 +80,5 @@ class AuthenticationService(Protocol):
 
     def validate_token(self, token: Token) -> bool:
         ...
+
+    
