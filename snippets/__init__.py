@@ -60,8 +60,10 @@ class Example:
         sys.argv = argv_backup
 
 
-def find_examples(lab: int, example: int) -> Iterable[Example]:
+def find_examples(lab: int, example: int | None) -> Iterable[Example]:
     for name, path in EXAMPLES.items():
         if name.startswith('snippets.lab' + str(lab or "")):
-            if f'.example{example or ""}' in name:
+            if example is not None and f'.example{example or ""}' in name:
+                yield Example(name, path)
+            elif f'.exercise{example or ""}' in name:
                 yield Example(name, path)
