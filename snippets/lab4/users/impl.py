@@ -47,7 +47,8 @@ class InMemoryUserDatabase(UserDatabase, _Debuggable):
     def check_password(self, credentials: Credentials) -> bool:
         try:
             user = self.__get_user(credentials.id)
-            result = user.password == _compute_sha256_hash(credentials.password)
+            print(user.password, credentials.password)
+            result = user.password == credentials.password
         except KeyError:
             result = False
         self._log(f"Checking {credentials}: {'correct' if result else 'incorrect'}")
@@ -63,7 +64,13 @@ class InMemoryAuthenticationService(AuthenticationService, _Debuggable):
             secret = str(uuid.uuid4())
         self.__secret = secret
         self._log(f"Authentication service initialized with secret {secret}")
-    
+
+    def add_user(self, user: User):
+        self.__database.add_user(user)
+
+    def get_user(self, id: str) -> User:
+        return self.__database.get_user(id)
+
     def authenticate(self, credentials: Credentials, duration: timedelta = None) -> Token:
         if duration is None:
             duration = timedelta(days=1)
