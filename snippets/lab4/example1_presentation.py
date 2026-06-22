@@ -1,9 +1,9 @@
 from .users import User, Credentials, Token, Role
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
-
+# {"$type": "Request", "name": "...", "args":[...]}
 @dataclass
 class Request:
     """
@@ -16,7 +16,7 @@ class Request:
     def __post_init__(self):
         self.args = tuple(self.args)
 
-
+#{"$type": "Response", "result": {...}, "error": "..."}
 @dataclass
 class Response:
     """
@@ -77,7 +77,24 @@ class Serializer:
         }
 
     def _datetime_to_ast(self, dt: datetime):
-        raise NotImplementedError("Missing implementation for datetime serialization")
+        if dt == None:
+            return{
+                'datetime': None
+            }
+        else: 
+            return{
+                'datetime': dt.isoformat()
+            }
+
+    def _timedelta_to_ast(self, td: timedelta):
+        if td == None:
+            return{
+                'duration': None
+            }
+        else:
+            return{
+                'duration': td.total_seconds()
+            }
 
     def _role_to_ast(self, role: Role):
         return {'name': role.name}
@@ -137,9 +154,19 @@ class Deserializer:
             expiration=self._ast_to_obj(data['expiration']),
         )
 
+    
     def _ast_to_datetime(self, data):
-        raise NotImplementedError("Missing implementation for datetime deserialization")
+        if data['datetime'] is None:
+            return None
+        else:
+            return datetime.fromisoformat(data['datetime'])
 
+    def _ast_to_timedelta(self, data):
+        if data['duration'] is None:
+            return None
+        else:
+            return timedelta(seconds = data['duration'])
+         
     def _ast_to_role(self, data):
         return Role[self._ast_to_obj(data['name'])]
 
