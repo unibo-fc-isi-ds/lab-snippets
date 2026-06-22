@@ -1,17 +1,28 @@
 from snippets.lab3 import Client, address
 from snippets.lab4.users import *
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
+from datetime import timedelta
 
 
 class ClientStub:
     def __init__(self, server_address: tuple[str, int]):
         self.__server_address = address(*server_address)
+        self._token = None
+
+    def set_token(self, token: Token):
+        self._token = token
 
     def rpc(self, name, *args):
         client = Client(self.__server_address)
         try:
+
+            metadata = None
+            if self._token:
+                metadata = {'token': self._token}
+
             print('# Connected to %s:%d' % client.remote_address)
-            request = Request(name, args)
+            request = Request(name, args, metadata)
+
             print('# Marshalling', request, 'towards', "%s:%d" % client.remote_address)
             request = serialize(request)
             print('# Sending message:', request.replace('\n', '\n# '))
@@ -41,6 +52,18 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
 
     def check_password(self, credentials: Credentials) -> bool:
         return self.rpc('check_password', credentials)
+
+class RemoteAuthenticationService(ClientStub, AuthenticationService):
+    def __init__(self, server_address):
+        super().__init__(server_address)
+
+    def authenticate(self, credentials: Credentials, duration: timedelta = timedelta(hours=1)) -> Token:
+        token =  self.rpc('authenticate', credentials, duration)
+        self._token = token
+        return token
+
+    def validate_token(self, token: Token) -> bool:
+        return self.rpc('validate_token', token)
 
 
 if __name__ == '__main__':
@@ -75,3 +98,23 @@ if __name__ == '__main__':
 
     # Checking credentials should fail if the password is wrong
     assert user_db.check_password(gc_credentials_wrong) == False
+
+    # Test AuthenticationService
+    auth_service = RemoteAuthenticationService(address(sys.argv[1]))
+
+    # Authenticate with correct credentials should return a Token
+    token = auth_service.authenticate(gc_credentials_ok[0])
+    print('Token received:', token)
+    assert isinstance(token, Token)
+
+    # Validate a valid token should return True
+    is_valid = auth_service.validate_token(token)
+    print('Token is valid:', is_valid)
+    assert is_valid == True
+
+    # Authenticate with wrong credentials should raise an error
+    try:
+        auth_service.authenticate(gc_credentials_wrong)
+        assert False, "Should have raised an error"
+    except RuntimeError as e:
+        print('Expected error:', e)
