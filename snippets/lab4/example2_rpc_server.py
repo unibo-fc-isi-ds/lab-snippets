@@ -1,5 +1,6 @@
 from snippets.lab3 import Server
-from snippets.lab4.users.impl import InMemoryUserDatabase
+from snippets.lab4.users import Role
+from snippets.lab4.users.impl import InMemoryAuthenticationService, InMemoryUserDatabase
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 import traceback
 
@@ -8,6 +9,7 @@ class ServerStub(Server):
     def __init__(self, port):
         super().__init__(port, self.__on_connection_event)
         self.__user_db = InMemoryUserDatabase()
+        self.__auth = InMemoryAuthenticationService(self.__user_db)
     
     def __on_connection_event(self, event, connection, address, error):
         match event:
@@ -36,14 +38,32 @@ class ServerStub(Server):
             case 'close':
                 print('[%s:%d] Close connection' % connection.remote_address)
     
+    def __require_admin(self, request):
+        if not request.meta or 'token' not in request.meta:
+            raise PermissionError("Missing authentication token")
+        token = request.meta['token']
+        if not self.__auth.validate_token(token):
+            raise PermissionError("Invalid authentication token")
+        if token.user.role != Role.ADMIN:
+            raise PermissionError("Admin role required")
+
     def __handle_request(self, request):
         try:
-            method = getattr(self.__user_db, request.name)
+            if request.name == 'get_user':
+                self.__require_admin(request)
+
+            if hasattr(self.__auth, request.name):
+                target = self.__auth
+            elif hasattr(self.__user_db, request.name):
+                target = self.__user_db
+            else:
+                raise Exception(f"Unknown method {request.name}")
+            method = getattr(target, request.name)
             result = method(*request.args)
             error = None
         except Exception as e:
             result = None
-            error = " ".join(e.args)
+            error = " ".join(map(str, e.args)) or str(e)
         return Response(result, error)
 
 
