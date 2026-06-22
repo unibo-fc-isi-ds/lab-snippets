@@ -11,12 +11,16 @@ if __name__ == '__main__':
         exit_on_error=False,
     )
     parser.add_argument('address', help='Server address in the form ip:port')
-    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check'])
+    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check', 'authenticate', 'val_token'])
     parser.add_argument('--user', '-u', help='Username')
     parser.add_argument('--email', '--address', '-a', nargs='+', help='Email address')
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
+    parser.add_argument('--signature', '-s', help='the signature of the token')
+    parser.add_argument('--expiration', '-E', help='The expiration date of the token (iso format)')
+    parser.add_argument('--login_user', '-U', help='username for authentication, (required with --login_password for authenticate user)')
+    parser.add_argument('--login_password', '-P', help='password for authentication, (required with --login_user for authenticate user)')
 
     if len(sys.argv) > 1:
         args = parser.parse_args()
@@ -26,11 +30,16 @@ if __name__ == '__main__':
 
     args.address = address(args.address)
     user_db = RemoteUserDatabase(args.address)
+    auth_service = RemoteAuthenticationService(args.address)
 
     try :
         ids = (args.email or []) + [args.user]
         if len(ids) == 0:
             raise ValueError("Username or email address is required")
+        if args.login_user and args.login_password:
+            credentials = Credentials(args.login_user, args.login_password)
+            token = auth_service.authenticate(credentials)
+            user_db.token = token
         match args.command:
             case 'add':
                 if not args.password:
@@ -44,6 +53,19 @@ if __name__ == '__main__':
             case 'check':
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
+            case 'authenticate':
+                if not args.password:
+                    raise ValueError("Password is required")
+                credentials = Credentials(ids[0], args.password)
+                print(auth_service.authenticate(credentials))
+            case 'val_token':
+                if not args.expiration:
+                    raise ValueError("Expiration date is required")
+                if not args.signature:
+                    raise ValueError("Signature is required")
+                user = user_db.get_user(ids[0])
+                expiration = datetime.fromisoformat(args.expiration)
+                print(auth_service.validate_token(Token(user, expiration, args.signature)))
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:
