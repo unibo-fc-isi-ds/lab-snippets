@@ -1,4 +1,5 @@
-from .users import User, Credentials, Token, Role
+from typing import Any
+from snippets.lab4.users import User, Credentials, Token, Role
 from datetime import datetime
 import json
 from dataclasses import dataclass
@@ -12,6 +13,7 @@ class Request:
 
     name: str
     args: tuple
+    token: Token | None
 
     def __post_init__(self):
         self.args = tuple(self.args)
@@ -76,8 +78,10 @@ class Serializer:
             'expiration': self._to_ast(token.expiration),
         }
 
-    def _datetime_to_ast(self, dt: datetime):
-        raise NotImplementedError("Missing implementation for datetime serialization")
+    def _datetime_to_ast(self, dt: datetime) -> dict[str, float]:
+        return {
+            "timestamp": dt.timestamp()
+        }
 
     def _role_to_ast(self, role: Role):
         return {'name': role.name}
@@ -86,6 +90,7 @@ class Serializer:
         return {
             'name': self._to_ast(request.name),
             'args': [self._to_ast(arg) for arg in request.args],
+            'token': self._to_ast(request.token), 
         }
 
     def _response_to_ast(self, response: Response):
@@ -102,7 +107,7 @@ class Deserializer:
     def _string_to_ast(self, string):
         return json.loads(string)
 
-    def _ast_to_obj(self, data):
+    def _ast_to_obj(self, data) -> Any:
         if isinstance(data, dict):
             if '$type' not in data:
                 return {key: self._ast_to_obj(value) for key, value in data.items()}
@@ -137,8 +142,8 @@ class Deserializer:
             expiration=self._ast_to_obj(data['expiration']),
         )
 
-    def _ast_to_datetime(self, data):
-        raise NotImplementedError("Missing implementation for datetime deserialization")
+    def _ast_to_datetime(self, data: dict[str, Any]):
+        return datetime.fromtimestamp(data["timestamp"])
 
     def _ast_to_role(self, data):
         return Role[self._ast_to_obj(data['name'])]
@@ -147,6 +152,7 @@ class Deserializer:
         return Request(
             name=self._ast_to_obj(data['name']),
             args=tuple(self._ast_to_obj(arg) for arg in data['args']),
+            token=self._ast_to_obj(data["token"])
         )
 
     def _ast_to_response(self, data):
@@ -179,7 +185,8 @@ if __name__ == '__main__':
             ["a string", 42, 3.14, True, False], # a list, containing various primitive types
             {'key': 'value'}, # a dictionary
             Response(None, 'an error'), # a Response, which contains a None field
-        )
+        ), 
+        token=Token(User("user", set("a@b.c"), "", Role.ADMIN, "password"), datetime(year=2050, month=1, day=1), "signature")
     )
     serialized = serialize(request)
     print("Serialized", "=", serialized)
