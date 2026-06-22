@@ -1,5 +1,9 @@
 from ..users import *
 import hashlib
+import json
+from pathlib import Path
+
+TOKEN_FILE = Path(".token_cache.json")
 
 
 def _compute_sha256_hash(input: str) -> str:
@@ -83,3 +87,41 @@ class InMemoryAuthenticationService(AuthenticationService, _Debuggable):
         result = token.expiration > datetime.now() and self.__validate_token_signature(token)
         self._log(f"{token} is " + ('valid' if result else 'invalid'))
         return result
+
+
+def save_token(token):
+    tokens = {}
+    if TOKEN_FILE.exists():
+        with open(TOKEN_FILE, "r") as f:
+            tokens = json.load(f)
+    tokens[token.user.username] = {
+        "signature": token.signature,
+        "user": {
+            "username": token.user.username,
+            "emails": list(token.user.emails),
+            "full_name": token.user.full_name,
+            "role": token.user.role.name
+        },
+        "expiration": token.expiration.isoformat()
+    }
+    with open(TOKEN_FILE, "w") as f:
+        json.dump(tokens, f, indent=4)
+
+
+def load_token(username: str):
+    if not TOKEN_FILE.exists():
+        return None
+    with open(TOKEN_FILE, "r") as f:
+        tokens = json.load(f)
+    if username not in tokens:
+        return None
+    data = tokens[username]
+    user = User(
+        username=data["user"]["username"],
+        emails=set(data["user"]["emails"]),
+        full_name=data["user"]["full_name"],
+        role=Role[data["user"]["role"]],
+        password=None
+    )
+    expiration = datetime.fromisoformat(data["expiration"])
+    return Token(user=user, signature=data["signature"], expiration=expiration)
