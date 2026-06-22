@@ -1,6 +1,11 @@
 from ..users import *
+from ..example1_presentation import serialize, deserialize
 import hashlib
+import os
+from datetime import datetime
 
+PATH_FILE = os.path.abspath(__file__)
+PATH_FOLDER = os.path.dirname(PATH_FILE)
 
 def _compute_sha256_hash(input: str) -> str:
     sha256_hash = hashlib.sha256()
@@ -83,3 +88,33 @@ class InMemoryAuthenticationService(AuthenticationService, _Debuggable):
         result = token.expiration > datetime.now() and self.__validate_token_signature(token)
         self._log(f"{token} is " + ('valid' if result else 'invalid'))
         return result
+    
+def load_tokens_from_file(): #loads the existing tokens from the file
+    try:
+        with open(os.path.join(PATH_FOLDER, 'tokens.json'), 'r') as f:
+            content = f.read()
+            if content:
+                return deserialize(content)
+            return {}
+    except FileNotFoundError:
+        return {}
+    except Exception as e:
+        print(f"Error loading existing tokens: {e}")
+        return {}
+
+def save_token_to_file(new_token): #adding a new token to the file
+    try:
+        existing_tokens = load_tokens_from_file()
+        token_id = new_token.signature
+        existing_tokens[token_id] = new_token
+        with open(os.path.join(PATH_FOLDER, 'tokens.json'), 'w') as f:
+            f.write(serialize(existing_tokens))     
+    except AttributeError:
+        print("The token does not have a signature attribute required for the key")
+    except Exception as e:
+        print(f"An error occurred while saving the token: {e}")
+
+def remove_tokens_in_file(): #removes all the tokens
+    tokens = {}
+    with open(os.path.join(PATH_FOLDER, 'tokens.json'), 'w') as f:
+        f.write(serialize(tokens))    
