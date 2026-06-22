@@ -121,3 +121,6 @@ class Server:
 
     def close(self):
         self.__socket.close()
+
+    def join(self):
+        self.__listener_thread.join()
