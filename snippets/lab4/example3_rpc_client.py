@@ -1,3 +1,4 @@
+from snippets.lab4.users import UserDatabase
 from snippets.lab3 import Client, address
 from snippets.lab4.users import *
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
@@ -42,6 +43,12 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
     def check_password(self, credentials: Credentials) -> bool:
         return self.rpc('check_password', credentials)
 
+class RemoteAuthenticationService(ClientStub, AuthenticationService):
+    def __init__(self, server_address):
+        super().__init__(server_address)
+
+    def authenticate(self, credentials: Credentials, duration: timedelta = None) -> Token:
+        return self.rpc('authenticate', credentials, duration)
 
 if __name__ == '__main__':
     from snippets.lab4.example0_users import gc_user, gc_credentials_ok, gc_credentials_wrong
@@ -49,7 +56,14 @@ if __name__ == '__main__':
 
 
     user_db = RemoteUserDatabase(address(sys.argv[1]))
-
+    auth_service = RemoteAuthenticationService(address(sys.argv[1]))
+    login_token = ""
+    try:
+        login_token = auth_service.authenticate(credentials=Credentials(id='alice', password='alice'))
+    except ValueError as e:
+        assert 'Invalid credentials' in str(e)
+    
+"""
     # Trying to get a user that does not exist should raise a KeyError
     try:
         user_db.get_user('gciatto')
@@ -75,3 +89,4 @@ if __name__ == '__main__':
 
     # Checking credentials should fail if the password is wrong
     assert user_db.check_password(gc_credentials_wrong) == False
+"""
