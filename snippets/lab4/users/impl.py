@@ -1,17 +1,18 @@
-from ..users import *
 import hashlib
+
+from ..users import *
 
 
 def _compute_sha256_hash(input: str) -> str:
     sha256_hash = hashlib.sha256()
-    sha256_hash.update(input.encode('utf-8'))
+    sha256_hash.update(input.encode("utf-8"))
     return sha256_hash.hexdigest()
 
 
 class _Debuggable:
     def __init__(self, debug: bool = True):
         self.__debug = debug
-    
+
     def _log(self, *args, **kwargs):
         if self.__debug:
             print(*args, **kwargs)
@@ -22,7 +23,11 @@ class InMemoryUserDatabase(UserDatabase, _Debuggable):
         _Debuggable.__init__(self, debug)
         self.__users: dict[str, User] = {}
         self._log("User database initialized with empty users")
-    
+        self.__auth_service: AuthenticationService | None = None
+
+    def set_auth_service(self, service: AuthenticationService):
+        self.__auth_service = service
+
     def add_user(self, user: User):
         for id in user.ids:
             if id in self.__users:
@@ -38,8 +43,18 @@ class InMemoryUserDatabase(UserDatabase, _Debuggable):
         if id not in self.__users:
             raise KeyError(f"User with ID {id} not found")
         return self.__users[id]
-    
-    def get_user(self, id: str) -> User:
+
+    def get_user(self, id: str, metadata: Metadata | None = None) -> User:
+        assert self.__auth_service is not None
+        if metadata is None:
+            raise ValueError("Metadata must contain the token")
+        token = metadata.token
+        if token is None:
+            raise ValueError("A token must be provided in order to get a user")
+        if not self.__auth_service.validate_token(token):
+            raise ValueError("Invalid token")
+        if not token.user.role == Role.ADMIN:
+            raise PermissionError("Only admin users have the permission to get users")
         result = self.__get_user(id).copy(password=None)
         self._log(f"Get user with ID {id}: {result}")
         return result
@@ -52,34 +67,56 @@ class InMemoryUserDatabase(UserDatabase, _Debuggable):
             result = False
         self._log(f"Checking {credentials}: {'correct' if result else 'incorrect'}")
         return result
-    
+
 
 class InMemoryAuthenticationService(AuthenticationService, _Debuggable):
     def __init__(self, database: UserDatabase, secret: str = None, debug: bool = True):
         _Debuggable.__init__(self, debug)
         self.__database = database
+        import uuid
+
         if not secret:
-            import uuid
             secret = str(uuid.uuid4())
         self.__secret = secret
         self._log(f"Authentication service initialized with secret {secret}")
-    
-    def authenticate(self, credentials: Credentials, duration: timedelta = None) -> Token:
+        self.__admin_user = User(
+            username="AuthServiceAdmin",
+            emails={"authserviceadmin@domain.com"},
+            role=Role.ADMIN,
+            password=str(uuid.uuid4()),
+        )
+        self.__database.add_user(self.__admin_user)
+        self.__token = self.__generate_token()
+
+    def authenticate(
+        self, credentials: Credentials, duration: timedelta = None
+    ) -> Token:
         if duration is None:
             duration = timedelta(days=1)
         if self.__database.check_password(credentials):
             expiration = datetime.now() + duration
-            user = self.__database.get_user(credentials.id)
+            user = self.__database.get_user(credentials.id, Metadata(self.__token))
             signature = _compute_sha256_hash(f"{user}{expiration}{self.__secret}")
             result = Token(user, expiration, signature)
             self._log(f"Generate token for user {credentials.id}: {result}")
             return result
         raise ValueError("Invalid credentials")
-    
+
     def __validate_token_signature(self, token: Token) -> bool:
-        return token.signature == _compute_sha256_hash(f"{token.user}{token.expiration}{self.__secret}")
+        return token.signature == _compute_sha256_hash(
+            f"{token.user}{token.expiration}{self.__secret}"
+        )
 
     def validate_token(self, token: Token) -> bool:
-        result = token.expiration > datetime.now() and self.__validate_token_signature(token)
-        self._log(f"{token} is " + ('valid' if result else 'invalid'))
+        result = token.expiration > datetime.now() and self.__validate_token_signature(
+            token
+        )
+        self._log(f"{token} is " + ("valid" if result else "invalid"))
         return result
+
+    def __generate_token(self) -> Token:
+        expiration = datetime.now() + timedelta(weeks=52)
+        signature = _compute_sha256_hash(
+            f"{self.__admin_user}{expiration}{self.__secret}"
+        )
+        return Token(self.__admin_user, expiration, signature)

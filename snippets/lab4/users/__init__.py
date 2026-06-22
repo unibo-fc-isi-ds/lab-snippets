@@ -29,7 +29,7 @@ class User(Datum):
         if not self.username:
             raise ValueError("Username is required")
         if not self.emails:
-            raise ValueError("Email address is required")   
+            raise ValueError("Email address is required")
 
     @property
     def ids(self):
@@ -56,27 +56,37 @@ class Token(Datum):
 
     def __post_init__(self):
         if not isinstance(self.user, User):
-            raise ValueError(f"Expected object of type {User.__name__}, got: {self.user}")
+            raise ValueError(
+                f"Expected object of type {User.__name__}, got: {self.user}"
+            )
         if not isinstance(self.expiration, datetime):
-            raise ValueError(f"Expected object of type {datetime.__name__}, got: {self.expiration}")
+            raise ValueError(
+                f"Expected object of type {datetime.__name__}, got: {self.expiration}"
+            )
         if not self.signature:
             raise ValueError("Signature is required")
-    
+
+
+@dataclass
+class Metadata:
+    """
+    A container for metadata associated with RPC requests.
+    """
+
+    token: Token
+
 
 class UserDatabase(Protocol):
-    def add_user(self, user: User):
-        ...
-    
-    def get_user(self, id: str) -> User:
-        ...
-    
-    def check_password(self, credentials: Credentials) -> bool:
-        ...
+    def add_user(self, user: User): ...
+
+    def get_user(self, id: str, metadata: Metadata | None = None) -> User: ...
+
+    def check_password(self, credentials: Credentials) -> bool: ...
 
 
 class AuthenticationService(Protocol):
-    def authenticate(self, credentials: Credentials, duration: timedelta = None) -> Token:
-        ...
+    def authenticate(
+        self, credentials: Credentials, duration: timedelta = None
+    ) -> Token: ...
 
-    def validate_token(self, token: Token) -> bool:
-        ...
+    def validate_token(self, token: Token) -> bool: ...
