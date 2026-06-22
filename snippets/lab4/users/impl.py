@@ -22,6 +22,7 @@ class InMemoryUserDatabase(UserDatabase, _Debuggable):
         _Debuggable.__init__(self, debug)
         self.__users: dict[str, User] = {}
         self._log("User database initialized with empty users")
+        
     
     def add_user(self, user: User):
         for id in user.ids:
@@ -55,6 +56,9 @@ class InMemoryUserDatabase(UserDatabase, _Debuggable):
     
 
 class InMemoryAuthenticationService(AuthenticationService, _Debuggable):
+    # These two lists are used to keep track of authenticated users and tokens. They are redundant but allow O(1) lookups in both ways, allowing fast access even with thousands of users.
+    authenticated_users_to_tokens = {}
+    authenticated_tokens_to_users = {}
     def __init__(self, database: UserDatabase, secret: str = None, debug: bool = True):
         _Debuggable.__init__(self, debug)
         self.__database = database
@@ -71,15 +75,66 @@ class InMemoryAuthenticationService(AuthenticationService, _Debuggable):
             expiration = datetime.now() + duration
             user = self.__database.get_user(credentials.id)
             signature = _compute_sha256_hash(f"{user}{expiration}{self.__secret}")
-            result = Token(user, expiration, signature)
+            result = Token(user.username, expiration, signature)
             self._log(f"Generate token for user {credentials.id}: {result}")
+            self.authenticated_users_to_tokens[credentials.id] = result.signature
+            self.authenticated_tokens_to_users[result.signature] = credentials.id
             return result
         raise ValueError("Invalid credentials")
     
     def __validate_token_signature(self, token: Token) -> bool:
-        return token.signature == _compute_sha256_hash(f"{token.user}{token.expiration}{self.__secret}")
+        return token.signature == _compute_sha256_hash(f"{token.username}{token.expiration}{self.__secret}")
 
     def validate_token(self, token: Token) -> bool:
         result = token.expiration > datetime.now() and self.__validate_token_signature(token)
         self._log(f"{token} is " + ('valid' if result else 'invalid'))
         return result
+    
+    def is_authenticated(self, tokenSignature:str = None, token: Token = None) -> bool:
+        if token is not None:
+            print(f"is_authenticated with token({token}): {token.signature in self.authenticated_users_to_tokens.values()}")
+            return token.signature in self.authenticated_users_to_tokens.values() #and self.validate_token(token)
+        else:
+            print(f"is_authenticated with signatureToken({tokenSignature}): {tokenSignature in self.authenticated_users_to_tokens.values()}")
+            return tokenSignature in self.authenticated_users_to_tokens.values() #and self.validate_token(Token.from_string(signatureToken))
+    #Access is granted if the user is authenticated, the read target is itself, or the user is an admin
+    def grant_read_access(self, userid_to_access: str, signatureToken:str = None, token: Token = None) -> bool:
+        print(f"grant_read_access({token}, {userid_to_access})")
+        assert self.is_authenticated(token = token, tokenSignature = signatureToken)
+        user_id = ""
+        if token is not None:
+            user_id = self.authenticated_tokens_to_users[token.signature]
+        else:
+            user_id = self.authenticated_tokens_to_users[signatureToken]
+        if user_id == userid_to_access:
+            print("User is self")
+            return True
+        if self.__database.get_user(user_id).role == Role.ADMIN:
+            print("User is admin")
+            return True
+        print("Access denied")
+        return False
+    
+class DatabaseWithAuthenticationService(_Debuggable):
+    def __init__(self, database: UserDatabase, authentication_service: AuthenticationService, debug: bool = True):
+        self.__database = database
+        self.__authentication_service = authentication_service
+        _Debuggable.__init__(self, debug)
+
+    def authenticate(self, credentials: Credentials, duration: timedelta = None) -> Token:
+        return self.__authentication_service.authenticate(credentials, duration)
+
+    def add_user(self, user: User):
+        self.__database.add_user(user)
+
+    def get_user(self, id: str, token: Token = None, tokenSignature: str = None):
+        print(f"get_user({id}, {token})")
+        print(f"get_user({id}, {tokenSignature})")
+        if self.__authentication_service.grant_read_access(id, tokenSignature, token):
+            self._log(f"Get user with ID {id}: {self.__database.get_user(id)}")
+            return self.__database.get_user(id)
+        raise ValueError("Access denied")
+
+    def check_password(self, credentials: Credentials):
+        return self.__database.check_password(credentials)
+        

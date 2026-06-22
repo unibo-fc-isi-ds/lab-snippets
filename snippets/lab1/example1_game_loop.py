@@ -25,7 +25,7 @@ dt = 0.0 # time elapsed since last loop iteration
 running = True # game should stop when set to False
 while running:
     # Event handling
-    for event in pygame.event.get([pygame.KEYDOWN, pygame.KEYUP]):
+    for event in pygame.event.get([pygame.KEYDOWN, pygame.KEYUP]): #List of events that we are interested into (in this case the press of a button)
         if event.key == pygame.K_ESCAPE:
             running = False # Quit the game
         elif event.key == pygame.K_w:  # Move up
