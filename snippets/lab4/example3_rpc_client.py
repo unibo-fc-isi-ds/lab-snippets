@@ -6,12 +6,12 @@ from snippets.lab4.example1_presentation import serialize, deserialize, Request,
 class ClientStub:
     def __init__(self, server_address: tuple[str, int]):
         self.__server_address = address(*server_address)
-
+        self._token = None
     def rpc(self, name, *args):
         client = Client(self.__server_address)
         try:
             print('# Connected to %s:%d' % client.remote_address)
-            request = Request(name, args)
+            request = Request(name, args, metadata= self._token)
             print('# Marshalling', request, 'towards', "%s:%d" % client.remote_address)
             request = serialize(request)
             print('# Sending message:', request.replace('\n', '\n# '))
@@ -32,7 +32,7 @@ class ClientStub:
 class RemoteUserDatabase(ClientStub, UserDatabase):
     def __init__(self, server_address):
         super().__init__(server_address)
-
+        self._token = None
     def add_user(self, user: User):
         return self.rpc('add_user', user)
 
@@ -42,14 +42,26 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
     def check_password(self, credentials: Credentials) -> bool:
         return self.rpc('check_password', credentials)
 
+class RemoteAuthenticationService(ClientStub, AuthenticationService):
+    def __init__(self, server_address):
+        super().__init__(server_address)
 
+    def authenticate(self, credentials: Credentials, duration: timedelta = None) -> Token:
+        token = self.rpc('authenticate', credentials, duration)
+        #self._token = token
+        #print(self._token)
+        return token
+    
+    def validate_token(self, token: Token) -> bool:
+        return self.rpc('validate_token', token)
+    
 if __name__ == '__main__':
     from snippets.lab4.example0_users import gc_user, gc_credentials_ok, gc_credentials_wrong
     import sys
 
 
     user_db = RemoteUserDatabase(address(sys.argv[1]))
-
+    auth_service = RemoteAuthenticationService(address(sys.argv[1]))
     # Trying to get a user that does not exist should raise a KeyError
     try:
         user_db.get_user('gciatto')
