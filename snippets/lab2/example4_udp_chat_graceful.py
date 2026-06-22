@@ -2,11 +2,9 @@ from snippets.lab2 import *
 import threading
 import sys
 
+EXIT_MESSAGE = "<LEAVES THE CHAT>" ## variabile costante per il messaggio di uscita
 
-EXIT_MESSAGE = "<LEAVES THE CHAT>"
-
-
-class AsyncPeer(Peer):
+class AsyncPeer(Peer): 
     def __init__(self, port, peers=None, callback=None):
         super().__init__(port, peers)
         self.__receiver_thread = threading.Thread(target=self.__handle_incoming_messages, daemon=True)
@@ -16,7 +14,7 @@ class AsyncPeer(Peer):
     def __handle_incoming_messages(self):
         while True:
             message, address = self.receive()
-            if message.endswith(EXIT_MESSAGE):
+            if message.endswith(EXIT_MESSAGE): ## Se il messaggio termina con EXIT_MESSAGE, rimuovi il peer dalla lista
                 self.peers.remove(address)
             self.on_message_received(message, address)
 
@@ -38,8 +36,8 @@ while True:
     try:
         content = input()
         peer.send_all(message(content, username))
-    except (EOFError, KeyboardInterrupt):
-        peer.send_all(message(EXIT_MESSAGE, username))
+    except (EOFError, KeyboardInterrupt): #Se l'utente invia EOF (Ctrl+D) o interrompe il programma (Ctrl+C)
+        peer.send_all(message(EXIT_MESSAGE, username)) # Invia il messaggio di uscita a tutti i peer
         break
 peer.close()
 exit(0) # explicit termination of the program with success
