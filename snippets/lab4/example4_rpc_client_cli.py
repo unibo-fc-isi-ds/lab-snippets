@@ -1,8 +1,26 @@
 from .example3_rpc_client import *
 import argparse
 import sys
+from snippets.lab4.example1_presentation import serialize, deserialize, Token
+import os
 
+TEMP_TOKEN_PATH = 'token.json'
 
+def save_token_to_file(token: Token, path: str = TEMP_TOKEN_PATH):
+    token_json = serialize(token)
+    with open(path, "w") as f:
+        f.write(token_json)
+
+def load_token_from_file(path: str = TEMP_TOKEN_PATH) -> Token:
+    if os.path.exists(path):
+        with open(path, "r") as f:
+            token_json = f.read()
+        token = deserialize(token_json)
+        assert isinstance(token, Token)
+        return token
+    else:
+        print(f"Token file '{path}' does not exist") 
+        return '{}'
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(
@@ -11,12 +29,15 @@ if __name__ == '__main__':
         exit_on_error=False,
     )
     parser.add_argument('address', help='Server address in the form ip:port')
-    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check'])
+    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check', 'authenticate', 'validate_token'])
     parser.add_argument('--user', '-u', help='Username')
     parser.add_argument('--email', '--address', '-a', nargs='+', help='Email address')
     parser.add_argument('--name', '-n', help='Full name')
     parser.add_argument('--role', '-r', help='Role (defaults to "user")', choices=['admin', 'user'])
     parser.add_argument('--password', '-p', help='Password')
+    parser.add_argument('--duration', '-d', help='Token duration in seconds', type=int)
+    parser.add_argument('--token', '-t', help='Serialized token for validation')
+
 
     if len(sys.argv) > 1:
         args = parser.parse_args()
@@ -26,6 +47,8 @@ if __name__ == '__main__':
 
     args.address = address(args.address)
     user_db = RemoteUserDatabase(args.address)
+    user_db.token = load_token_from_file()
+    user_auth = RemoteAuthenticationService(args.address)
 
     try :
         ids = (args.email or []) + [args.user]
@@ -44,6 +67,22 @@ if __name__ == '__main__':
             case 'check':
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
+            case 'authenticate':
+                credentials = Credentials(ids[0], args.password)
+                if args.duration:
+                    duration = timedelta(seconds=args.duration)
+                    token = user_auth.authenticate(credentials, duration)
+                    print(token)
+                else:
+                    token = user_auth.authenticate(credentials)
+                    print(token)
+                # Save token to token.json
+                save_token_to_file(token)
+            case 'validate_token':
+                if not args.token:
+                    raise ValueError("Token is required for validation")
+                token = deserialize(args.token)
+                print(user_auth.validate_token(token))
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:
