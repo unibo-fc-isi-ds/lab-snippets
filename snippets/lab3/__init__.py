@@ -121,3 +121,28 @@ class Server:
 
     def close(self):
         self.__socket.close()
+
+class Peer(Server):
+    def __init__(self, port_local_peer, callback_handle_connections=None, list_remote_peer_addr=None):
+        super().__init__(port_local_peer, callback_handle_connections)
+        if list_remote_peer_addr:
+            self.create_connection(list_remote_peer_addr)
+
+    def create_connection(self, list_remote_peer_addr):
+        for remote_peer_addr in list_remote_peer_addr:
+            try:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.bind(address(port=0))
+                sock.connect(address(*remote_peer_addr))
+                connection = Connection(sock)
+                self.on_event('connect', connection, remote_peer_addr)
+                
+            except ConnectionRefusedError:
+                print(f"The peer {remote_peer_addr} refused the connection.")
+                sock.close() 
+            except TimeoutError:
+                print(f"The peer {remote_peer_addr} is not reachable (Timeout).")
+                sock.close()
+            except Exception as e:
+                print(f"Error connecting to {remote_peer_addr}: {e}")
+                sock.close()
