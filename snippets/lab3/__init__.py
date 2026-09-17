@@ -1,6 +1,8 @@
 from snippets.lab2 import *
+from snippets.lab3.common import *
+import socket
 import threading
-
+from datetime import datetime
 
 # Uncomment this line to observe timeout errors more often.
 # Beware: short timeouts can make demonstrations more difficult to follow.
@@ -121,3 +123,8 @@ class Server:
 
     def close(self):
         self.__socket.close()
+
+def message(text: str, sender: str, timestamp: datetime=None):
+    if timestamp is None:
+        timestamp = datetime.now()
+    return f"[{timestamp.isoformat()}] - {sender}:{GREEN_CLR} {text}\n{RESET_CLR}"
