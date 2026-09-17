@@ -1,5 +1,6 @@
 from snippets.lab3 import Server
-from snippets.lab4.users.impl import InMemoryUserDatabase
+from snippets.lab4.users import Role
+from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 import traceback
 
@@ -8,7 +9,8 @@ class ServerStub(Server):
     def __init__(self, port):
         super().__init__(port, self.__on_connection_event)
         self.__user_db = InMemoryUserDatabase()
-    
+        self.__auth_service = InMemoryAuthenticationService(self.__user_db)
+
     def __on_connection_event(self, event, connection, address, error):
         match event:
             case 'listen':
@@ -35,10 +37,37 @@ class ServerStub(Server):
                 traceback.print_exception(error)
             case 'close':
                 print('[%s:%d] Close connection' % connection.remote_address)
+
+    def __check_authorization(self, request: Request, required_role: Role = None):
+        """
+        Check if the request has a token and the user is authorized. If not throw an Error
+        """
+        # check the token presence
+        if not request.metadata or 'token' not in request.metadata:
+            raise PermissionError("Authentication required")
+
+        token = request.metadata['token']
+
+        # Check token validity
+        if not self.__auth_service.validate_token(token):
+            raise PermissionError("Invalid or expired token")
+
+        # Check if the role is that one required.
+        if required_role and token.user.role != required_role:
+            raise PermissionError(f"Role {required_role.name} required")
     
     def __handle_request(self, request):
         try:
-            method = getattr(self.__user_db, request.name)
+            # Admin operations
+            if request.name == 'get_user':
+                self.__check_authorization(request, required_role=Role.ADMIN)
+
+            if hasattr(self.__user_db, request.name):
+                method = getattr(self.__user_db, request.name)
+            elif hasattr(self.__auth_service, request.name):
+                method = getattr(self.__auth_service, request.name)
+            else:
+                raise AttributeError(f'Unknown method: {request.name}')
             result = method(*request.args)
             error = None
         except Exception as e:
