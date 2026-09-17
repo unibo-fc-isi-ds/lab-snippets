@@ -1,5 +1,6 @@
 from snippets.lab3 import Server
-from snippets.lab4.users.impl import InMemoryUserDatabase
+from snippets.lab4.users import Credentials, Role, User
+from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService, DatabaseWithAuthenticationService
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 import traceback
 
@@ -8,6 +9,12 @@ class ServerStub(Server):
     def __init__(self, port):
         super().__init__(port, self.__on_connection_event)
         self.__user_db = InMemoryUserDatabase()
+        self.__user_db.add_user(User(username='alice', emails=['alice@test.com'], full_name='Alice', role=Role.USER, password='alice'))
+        self.__user_db.add_user(User(username='bob', emails=['bob@test.com'], full_name='Bob', role=Role.USER, password='bob'))
+        self.__user_db.add_user(User(username='admin', emails=['admin@test.com'], full_name='Admin', role=Role.ADMIN, password='admin'))
+
+        self.__auth_service = InMemoryAuthenticationService(self.__user_db)
+        self.__user_db_with_authentication = DatabaseWithAuthenticationService(self.__user_db, self.__auth_service)
     
     def __on_connection_event(self, event, connection, address, error):
         match event:
@@ -37,8 +44,10 @@ class ServerStub(Server):
                 print('[%s:%d] Close connection' % connection.remote_address)
     
     def __handle_request(self, request):
+        #request.name = get_user | add_user | check_password
         try:
-            method = getattr(self.__user_db, request.name)
+            method = getattr(self.__user_db_with_authentication, request.name)
+            print(request.args)
             result = method(*request.args)
             error = None
         except Exception as e:
