@@ -1,12 +1,10 @@
 from ..users import *
 import hashlib
 
-
 def _compute_sha256_hash(input: str) -> str:
     sha256_hash = hashlib.sha256()
     sha256_hash.update(input.encode('utf-8'))
     return sha256_hash.hexdigest()
-
 
 class _Debuggable:
     def __init__(self, debug: bool = True):
@@ -15,7 +13,6 @@ class _Debuggable:
     def _log(self, *args, **kwargs):
         if self.__debug:
             print(*args, **kwargs)
-
 
 class InMemoryUserDatabase(UserDatabase, _Debuggable):
     def __init__(self, debug: bool = True):
@@ -52,7 +49,6 @@ class InMemoryUserDatabase(UserDatabase, _Debuggable):
             result = False
         self._log(f"Checking {credentials}: {'correct' if result else 'incorrect'}")
         return result
-    
 
 class InMemoryAuthenticationService(AuthenticationService, _Debuggable):
     def __init__(self, database: UserDatabase, secret: str = None, debug: bool = True):
