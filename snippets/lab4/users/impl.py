@@ -22,6 +22,7 @@ class InMemoryUserDatabase(UserDatabase, _Debuggable):
         _Debuggable.__init__(self, debug)
         self.__users: dict[str, User] = {}
         self._log("User database initialized with empty users")
+        
     
     def add_user(self, user: User):
         for id in user.ids:
@@ -55,6 +56,7 @@ class InMemoryUserDatabase(UserDatabase, _Debuggable):
     
 
 class InMemoryAuthenticationService(AuthenticationService, _Debuggable):
+    authenticated_users = {}
     def __init__(self, database: UserDatabase, secret: str = None, debug: bool = True):
         _Debuggable.__init__(self, debug)
         self.__database = database
@@ -73,6 +75,7 @@ class InMemoryAuthenticationService(AuthenticationService, _Debuggable):
             signature = _compute_sha256_hash(f"{user}{expiration}{self.__secret}")
             result = Token(user, expiration, signature)
             self._log(f"Generate token for user {credentials.id}: {result}")
+            self.authenticated_users[credentials.id] = result
             return result
         raise ValueError("Invalid credentials")
     
