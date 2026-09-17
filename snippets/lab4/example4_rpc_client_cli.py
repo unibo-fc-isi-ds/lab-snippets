@@ -1,6 +1,8 @@
 from .example3_rpc_client import *
 import argparse
 import sys
+import json
+from snippets.lab4.users import Credentials, Token
 
 
 if __name__ == '__main__':
@@ -11,7 +13,7 @@ if __name__ == '__main__':
         exit_on_error=False,
     )
     parser.add_argument('address', help='Server address in the form ip:port')
-    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check'])
+    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check', 'auth', 'validate'])
     parser.add_argument('--user', '-u', help='Username')
     parser.add_argument('--email', '--address', '-a', nargs='+', help='Email address')
     parser.add_argument('--name', '-n', help='Full name')
@@ -44,6 +46,15 @@ if __name__ == '__main__':
             case 'check':
                 credentials = Credentials(ids[0], args.password)
                 print(user_db.check_password(credentials))
+            case 'auth':
+                credentials = Credentials(ids[0], args.password)
+                token = user_db.authenticate(credentials)
+                print(token)
+            case 'validate':
+                credentials = Credentials(ids[0], args.password)
+                token = user_db.authenticate(credentials)
+                is_valid = user_db.validate_token(token)
+                print(is_valid)
             case _:
                 raise ValueError(f"Invalid command '{args.command}'")
     except RuntimeError as e:
