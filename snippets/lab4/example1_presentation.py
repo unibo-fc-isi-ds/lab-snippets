@@ -3,7 +3,6 @@ from datetime import datetime
 import json
 from dataclasses import dataclass
 
-
 @dataclass
 class Request:
     """
@@ -16,6 +15,13 @@ class Request:
     def __post_init__(self):
         self.args = tuple(self.args)
 
+@dataclass
+class AutenticatedRequest:
+    """
+    A container for RPC requests made by a certain Author: a name of the function to call and its arguments.
+    """
+    token: Token
+    request: Request
 
 @dataclass
 class Response:
@@ -77,7 +83,7 @@ class Serializer:
         }
 
     def _datetime_to_ast(self, dt: datetime):
-        raise NotImplementedError("Missing implementation for datetime serialization")
+        return {'value': dt.isoformat()}
 
     def _role_to_ast(self, role: Role):
         return {'name': role.name}
@@ -92,6 +98,12 @@ class Serializer:
         return {
             'result': self._to_ast(response.result) if response.result is not None else None,
             'error': self._to_ast(response.error),
+        }
+    
+    def _autenticatedrequest_to_ast(self, au: AutenticatedRequest):
+        return {
+            'token': self._to_ast(au.token),
+            'request': self._to_ast(au.request)
         }
 
 
@@ -138,7 +150,7 @@ class Deserializer:
         )
 
     def _ast_to_datetime(self, data):
-        raise NotImplementedError("Missing implementation for datetime deserialization")
+        return datetime.fromisoformat(data['value'])
 
     def _ast_to_role(self, data):
         return Role[self._ast_to_obj(data['name'])]
@@ -147,6 +159,12 @@ class Deserializer:
         return Request(
             name=self._ast_to_obj(data['name']),
             args=tuple(self._ast_to_obj(arg) for arg in data['args']),
+        )
+    
+    def _ast_to_autenticatedrequest(self, data):
+        return AutenticatedRequest(
+            token=self._ast_to_token(data['token']),
+            request=self._ast_to_request(data['request'])
         )
 
     def _ast_to_response(self, data):
