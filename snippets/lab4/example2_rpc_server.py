@@ -1,5 +1,6 @@
 from snippets.lab3 import Server
-from snippets.lab4.users.impl import InMemoryUserDatabase
+from snippets.lab4.users import Role
+from snippets.lab4.users.impl import InMemoryAuthenticationService, InMemoryUserDatabase
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 import traceback
 
@@ -8,6 +9,7 @@ class ServerStub(Server):
     def __init__(self, port):
         super().__init__(port, self.__on_connection_event)
         self.__user_db = InMemoryUserDatabase()
+        self.__auth_service = InMemoryAuthenticationService(self.__user_db)
     
     def __on_connection_event(self, event, connection, address, error):
         match event:
@@ -38,9 +40,20 @@ class ServerStub(Server):
     
     def __handle_request(self, request):
         try:
-            method = getattr(self.__user_db, request.name)
-            result = method(*request.args)
-            error = None
+            valid = False
+            if (request.name == 'get_user'):
+                role = request.token.user.role.name
+                valid = self.__auth_service.validate_token(request.token)
+            if (request.name == 'get_user' and role == Role.ADMIN.name and valid) or request.name != 'get_user':
+                method = getattr(self.__user_db, request.name, None)
+                if method == None:
+                    method = getattr(self.__auth_service, request.name)
+                print("Method:", method)
+                result = method(*request.args)
+                error = None
+            else:
+                result = None
+                error = "Token is not valid or unauthorized user!"
         except Exception as e:
             result = None
             error = " ".join(e.args)
