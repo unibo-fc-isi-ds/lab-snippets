@@ -22,8 +22,12 @@ class InMemoryUserDatabase(UserDatabase, _Debuggable):
         _Debuggable.__init__(self, debug)
         self.__users: dict[str, User] = {}
         self._log("User database initialized with empty users")
+        self.__auth_service: AuthenticationService | None = None
     
-    def add_user(self, user: User):
+    def set_auth_service(self, service: AuthenticationService):
+        self.__auth_service = service
+    
+    def add_user(self, user: User, token: Token | None = None):
         for id in user.ids:
             if id in self.__users:
                 raise ValueError(f"User with ID {id} already exists")
@@ -39,12 +43,20 @@ class InMemoryUserDatabase(UserDatabase, _Debuggable):
             raise KeyError(f"User with ID {id} not found")
         return self.__users[id]
     
-    def get_user(self, id: str) -> User:
+    def get_user(self, id: str, token: Token | None = None) -> User:
+        # If authentication service is configured do some checks
+        if self.__auth_service != None:
+            if token == None:
+                raise KeyError(f"You need to be authenticated to get user info")
+            if not self.__auth_service.validate_token(token):
+                raise KeyError(f"Token is not valid")
+            if token.user.role != Role.ADMIN:
+                raise KeyError(f"You don't have admin rights for this action")
         result = self.__get_user(id).copy(password=None)
         self._log(f"Get user with ID {id}: {result}")
         return result
 
-    def check_password(self, credentials: Credentials) -> bool:
+    def check_password(self, credentials: Credentials, token: Token | None = None) -> bool:
         try:
             user = self.__get_user(credentials.id)
             result = user.password == _compute_sha256_hash(credentials.password)
@@ -55,21 +67,36 @@ class InMemoryUserDatabase(UserDatabase, _Debuggable):
     
 
 class InMemoryAuthenticationService(AuthenticationService, _Debuggable):
-    def __init__(self, database: UserDatabase, secret: str = None, debug: bool = True):
+
+    def __init__(self, database: UserDatabase, secret: str | None = None, debug: bool = True):
         _Debuggable.__init__(self, debug)
         self.__database = database
         if not secret:
             import uuid
             secret = str(uuid.uuid4())
         self.__secret = secret
+        self.__set_internal_admin_token()
         self._log(f"Authentication service initialized with secret {secret}")
     
-    def authenticate(self, credentials: Credentials, duration: timedelta = None) -> Token:
+    def __set_internal_admin_token(self):
+        internal_admin = User(
+            'InternalAdmin',
+            {'internaladmin@admin.com'},
+            'Internal Admin',
+            Role.ADMIN,
+            'internalsecret'
+        )
+        self.__database.add_user(internal_admin)
+        expiration = datetime.now() + timedelta(weeks=260)
+        signature = _compute_sha256_hash(f"{internal_admin}{expiration}{self.__secret}")
+        self.__internal_admin_token = Token(internal_admin, expiration, signature)
+    
+    def authenticate(self, credentials: Credentials, duration: timedelta | None = None) -> Token:
         if duration is None:
             duration = timedelta(days=1)
         if self.__database.check_password(credentials):
             expiration = datetime.now() + duration
-            user = self.__database.get_user(credentials.id)
+            user = self.__database.get_user(credentials.id, self.__internal_admin_token)
             signature = _compute_sha256_hash(f"{user}{expiration}{self.__secret}")
             result = Token(user, expiration, signature)
             self._log(f"Generate token for user {credentials.id}: {result}")
