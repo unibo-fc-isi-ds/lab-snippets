@@ -75,3 +75,19 @@ if __name__ == '__main__':
 
     # Checking credentials should fail if the password is wrong
     assert user_db.check_password(gc_credentials_wrong) == False
+
+
+class RemoteAuthenticationService(ClientStub, AuthenticationService):
+    def __init__(self, server_address):
+        super().__init__(server_address)
+
+    def authenticate(self, credentials: Credentials, duration=None):
+        return self.rpc('authenticate', credentials, duration)
+
+    def validate_token(self, token: Token):
+        return self.rpc('validate_token', token)
+
+
+
+
+    
