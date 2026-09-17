@@ -1,11 +1,9 @@
 from snippets.lab2 import *
 import threading
 
-
 # Uncomment this line to observe timeout errors more often.
 # Beware: short timeouts can make demonstrations more difficult to follow.
 # socket.setdefaulttimeout(5) # set default timeout for blocking operations to 5 seconds
-
 
 class Connection:
     def __init__(self, socket: socket.socket, callback=None):
@@ -14,6 +12,7 @@ class Connection:
         self.remote_address = self.__socket.getpeername()
         self.__notify_closed = False
         self.__callback = callback
+        self._close_lock = threading.Lock()
         self.__receiver_thread = threading.Thread(target=self.__handle_incoming_messages, daemon=True)
         if self.__callback:
             self.__receiver_thread.start()
@@ -47,10 +46,12 @@ class Connection:
         return self.__socket.recv(length).decode()
     
     def close(self):
-        self.__socket.close()
-        if not self.__notify_closed:
-            self.on_event('close')
-            self.__notify_closed = True
+        # Locking the method because multiple threads could call it
+        with self._close_lock:
+            self.__socket.close()
+            if not self.__notify_closed:
+                self.on_event('close')
+                self.__notify_closed = True
 
     def __handle_incoming_messages(self):
         try:
@@ -60,6 +61,8 @@ class Connection:
                     break
                 self.on_event('message', message)
         except Exception as e:
+            if isinstance(e, (ConnectionResetError, ConnectionAbortedError)):
+                return # silently ignore error, because this is simply the socket being closed remotely
             if self.closed and isinstance(e, OSError):
                 return # silently ignore error, because this is simply the socket being closed locally
             self.on_event('error', error=e)
@@ -90,6 +93,10 @@ class Server:
             self.__listener_thread.start()
 
     @property
+    def closed(self):
+        return self.__socket._closed
+
+    @property
     def callback(self):
         return self.__callback or (lambda *_: None)
     
@@ -112,6 +119,8 @@ class Server:
         except ConnectionAbortedError as e:
             pass # silently ignore error, because this is simply the socket being closed locally
         except Exception as e:
+            if self.closed and isinstance(e, OSError):
+                return # silently ignore error, because this is simply the server socket being closed locally
             self.on_event('error', error=e)
         finally:
             self.on_event('stop')
