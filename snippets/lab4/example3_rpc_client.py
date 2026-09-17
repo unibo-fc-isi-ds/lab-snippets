@@ -43,6 +43,17 @@ class RemoteUserDatabase(ClientStub, UserDatabase):
         return self.rpc('check_password', credentials)
 
 
+class RemoteAuthenticationService(ClientStub, AuthenticationService):
+    def __init__(self, server_address):
+        super().__init__(server_address)
+    
+    def validate_token(self, token : Token) -> bool:
+        return self.rpc("validate_token", token)
+    
+    def authenticate(self, credentials : Credentials, duration : timedelta = None) -> Token:
+        return self.rpc("authenticate", credentials, duration)
+
+
 if __name__ == '__main__':
     from snippets.lab4.example0_users import gc_user, gc_credentials_ok, gc_credentials_wrong
     import sys
