@@ -7,11 +7,12 @@ class ClientStub:
     def __init__(self, server_address: tuple[str, int]):
         self.__server_address = address(*server_address)
 
-    def rpc(self, name, *args):
+    def rpc(self, name, *args, token=None):
         client = Client(self.__server_address)
         try:
             print('# Connected to %s:%d' % client.remote_address)
-            request = Request(name, args)
+            metadata = {'token': token} if token else {}
+            request = Request(name, args, metadata)
             print('# Marshalling', request, 'towards', "%s:%d" % client.remote_address)
             request = serialize(request)
             print('# Sending message:', request.replace('\n', '\n# '))
@@ -32,15 +33,19 @@ class ClientStub:
 class RemoteUserDatabase(ClientStub, UserDatabase):
     def __init__(self, server_address):
         super().__init__(server_address)
+        self.access_token = None
 
     def add_user(self, user: User):
-        return self.rpc('add_user', user)
+        return self.rpc('add_user', user, token=self.access_token)
 
     def get_user(self, id: str) -> User:
-        return self.rpc('get_user', id)
+        return self.rpc('get_user', id, token=self.access_token)
 
     def check_password(self, credentials: Credentials) -> bool:
-        return self.rpc('check_password', credentials)
+        return self.rpc('check_password', credentials, token=self.access_token)
+    
+    def set_access_token(self, token: Token):
+        self.access_token = token
 
 
 if __name__ == '__main__':
@@ -75,3 +80,13 @@ if __name__ == '__main__':
 
     # Checking credentials should fail if the password is wrong
     assert user_db.check_password(gc_credentials_wrong) == False
+
+class RemoteAuthenticationService(ClientStub, AuthenticationService):
+    def __init__(self, server_address):
+        super().__init__(server_address)
+
+    def authenticate(self, credentials: Credentials) -> Token:
+        return self.rpc('authenticate', credentials)
+    
+    def validate_token(self, token):
+        return self.rpc('validate_token', token)
