@@ -1,5 +1,6 @@
 from snippets.lab3 import Server
-from snippets.lab4.users.impl import InMemoryUserDatabase
+from snippets.lab4.users import Role
+from snippets.lab4.users.impl import InMemoryUserDatabase, InMemoryAuthenticationService
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 import traceback
 
@@ -8,6 +9,7 @@ class ServerStub(Server):
     def __init__(self, port):
         super().__init__(port, self.__on_connection_event)
         self.__user_db = InMemoryUserDatabase()
+        self.__auth_service = InMemoryAuthenticationService(self.__user_db)
     
     def __on_connection_event(self, event, connection, address, error):
         match event:
@@ -38,7 +40,18 @@ class ServerStub(Server):
     
     def __handle_request(self, request):
         try:
-            method = getattr(self.__user_db, request.name)
+            if hasattr(self.__auth_service, request.name):
+                method = getattr(self.__auth_service, request.name)
+            else:
+                method = getattr(self.__user_db, request.name)
+
+            if request.name == 'get_user':
+                token = request.metadata.get('token') if request.metadata else None
+                if token is None or not self.__auth_service.validate_token(token):
+                    raise ValueError("Invalid or missing token")
+                if token.user.role != Role.ADMIN:
+                    raise PermissionError("User does not have permission to perform this action")
+
             result = method(*request.args)
             error = None
         except Exception as e:
