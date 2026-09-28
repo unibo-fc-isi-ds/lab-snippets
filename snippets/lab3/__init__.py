@@ -1,23 +1,34 @@
 from snippets.lab2 import *
 import threading
 
-
 # Uncomment this line to observe timeout errors more often.
 # Beware: short timeouts can make demonstrations more difficult to follow.
 # socket.setdefaulttimeout(5) # set default timeout for blocking operations to 5 seconds
 
 
 class Connection:
-    def __init__(self, socket: socket.socket, callback=None):
-        self.__socket = socket
-        self.local_address = self.__socket.getsockname()
-        self.remote_address = self.__socket.getpeername()
+    def __init__(self, sock: socket.socket | None = None, remote_address=None, callback=None):
+    
+        if sock != None: # the case of an accepted connection, no need to create a socket since it has already been created
+            self.__socket = sock
+        
+        else: #the case of an outgoing connection, need to create a socket
+            self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.__socket.bind(address(port=0))  # bind to ephemeral port
+            self.__socket.connect(address(*remote_address))
+        
         self.__notify_closed = False
+        self.__remote_address = self.__socket.getpeername()
         self.__callback = callback
         self.__receiver_thread = threading.Thread(target=self.__handle_incoming_messages, daemon=True)
         if self.__callback:
             self.__receiver_thread.start()
 
+    @property
+    def remote_address(self):
+        return self.__remote_address
+    
+    
     @property
     def callback(self):
         return self.__callback or (lambda *_: None)
@@ -49,7 +60,7 @@ class Connection:
     def close(self):
         self.__socket.close()
         if not self.__notify_closed:
-            self.on_event('close')
+            self.on_event('close', connection=self)
             self.__notify_closed = True
 
     def __handle_incoming_messages(self):
@@ -72,34 +83,16 @@ class Connection:
         self.callback(event, payload, connection, error)
 
 
-class Client(Connection):
-    def __init__(self, server_address, callback=None):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.bind(address(port=0))
-        sock.connect(address(*server_address))
-        super().__init__(sock, callback)
-
-
-class Server:
-    def __init__(self, port, callback=None):
+class Peer:
+    def __init__(self, port, connectionsCallback=None):
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.__socket.bind(address(port=port))
+
         self.__listener_thread = threading.Thread(target=self.__handle_incoming_connections, daemon=True)
-        self.__callback = callback
-        if self.__callback:
+        self.__connectionsCallback = connectionsCallback
+        if self.__connectionsCallback:
             self.__listener_thread.start()
 
-    @property
-    def callback(self):
-        return self.__callback or (lambda *_: None)
-    
-    @callback.setter
-    def callback(self, value):
-        if self.__callback:
-            raise ValueError("Callback can only be set once")
-        self.__callback = value
-        if value:
-            self.__listener_thread.start()
     
     def __handle_incoming_connections(self):
         self.__socket.listen()
@@ -116,8 +109,26 @@ class Server:
         finally:
             self.on_event('stop')
 
+    @property
+    def socket(self):
+        return self.__socket
+    
+    @property
+    def connectionsCallback(self):
+        return self.__connectionsCallback or (lambda *_: None)
+    
+    @connectionsCallback.setter
+    def connectionsCallback(self, value):
+        if self.__connectionsCallback:
+            raise ValueError("Callback can only be set once")
+        self.__connectionsCallback = value
+        if value:
+            self.__listener_thread.start()
+
+
     def on_event(self, event: str, connection: Connection=None, address: tuple=None, error: Exception=None):
-        self.__callback(event, connection, address, error)
+        self.__connectionsCallback(event, connection, address, error)
 
     def close(self):
         self.__socket.close()
+
