@@ -12,6 +12,7 @@ class Request:
 
     name: str
     args: tuple
+    token: Token | None
 
     def __post_init__(self):
         self.args = tuple(self.args)
@@ -77,7 +78,7 @@ class Serializer:
         }
 
     def _datetime_to_ast(self, dt: datetime):
-        raise NotImplementedError("Missing implementation for datetime serialization")
+        return {'isoformat': dt.isoformat()}
 
     def _role_to_ast(self, role: Role):
         return {'name': role.name}
@@ -86,6 +87,7 @@ class Serializer:
         return {
             'name': self._to_ast(request.name),
             'args': [self._to_ast(arg) for arg in request.args],
+            'token': self._to_ast(request.token),
         }
 
     def _response_to_ast(self, response: Response):
@@ -138,7 +140,8 @@ class Deserializer:
         )
 
     def _ast_to_datetime(self, data):
-        raise NotImplementedError("Missing implementation for datetime deserialization")
+        return datetime.fromisoformat(data['isoformat'])
+        
 
     def _ast_to_role(self, data):
         return Role[self._ast_to_obj(data['name'])]
@@ -147,6 +150,7 @@ class Deserializer:
         return Request(
             name=self._ast_to_obj(data['name']),
             args=tuple(self._ast_to_obj(arg) for arg in data['args']),
+            token=self._ast_to_obj(data['token']),
         )
 
     def _ast_to_response(self, data):
@@ -179,7 +183,8 @@ if __name__ == '__main__':
             ["a string", 42, 3.14, True, False], # a list, containing various primitive types
             {'key': 'value'}, # a dictionary
             Response(None, 'an error'), # a Response, which contains a None field
-        )
+        ),
+        token=Token(gc_user, datetime.now(), "sig") # an instance of Token
     )
     serialized = serialize(request)
     print("Serialized", "=", serialized)

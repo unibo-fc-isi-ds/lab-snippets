@@ -11,7 +11,7 @@ if __name__ == '__main__':
         exit_on_error=False,
     )
     parser.add_argument('address', help='Server address in the form ip:port')
-    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check'])
+    parser.add_argument('command', help='Method to call', choices=['add', 'get', 'check', 'authenticate', 'validate'])
     parser.add_argument('--user', '-u', help='Username')
     parser.add_argument('--email', '--address', '-a', nargs='+', help='Email address')
     parser.add_argument('--name', '-n', help='Full name')
@@ -26,25 +26,34 @@ if __name__ == '__main__':
 
     args.address = address(args.address)
     user_db = RemoteUserDatabase(args.address)
+    auth_service = RemoteAuthenticationService(user_db)
 
-    try :
-        ids = (args.email or []) + [args.user]
-        if len(ids) == 0:
-            raise ValueError("Username or email address is required")
-        match args.command:
-            case 'add':
-                if not args.password:
-                    raise ValueError("Password is required")
-                if not args.name:
-                    raise ValueError("Full name is required")
-                user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
-                print(user_db.add_user(user))
-            case 'get':
-                print(user_db.get_user(ids[0]))
-            case 'check':
-                credentials = Credentials(ids[0], args.password)
-                print(user_db.check_password(credentials))
-            case _:
-                raise ValueError(f"Invalid command '{args.command}'")
-    except RuntimeError as e:
-        print(f'[{type(e).__name__}]', *e.args)
+    while True:
+        try :
+            ids = (args.email or []) + [args.user]
+            if len(ids) == 0:
+                raise ValueError("Username or email address is required")
+            match args.command:
+                case 'add':
+                    if not args.password:
+                        raise ValueError("Password is required")
+                    if not args.name:
+                        raise ValueError("Full name is required")
+                    user = User(args.user, args.email, args.name, Role[args.role.upper()], args.password)
+                    print(user_db.add_user(user))
+                case 'authenticate':
+                    token = auth_service.authenticate(Credentials(ids[0], args.password))
+                    print(token)
+                case 'validate':
+                    print(auth_service.validate_token(user_db.token))
+                case 'get':
+                    print(user_db.get_user(ids[0]))
+                case 'check':
+                    credentials = Credentials(ids[0], args.password)
+                    print(user_db.check_password(credentials))
+                case _:
+                    raise ValueError(f"Invalid command '{args.command}'")
+        except RuntimeError as e:
+            print(f'[{type(e).__name__}]', *e.args)
+           
+        args.command = input("Enter command (add, get, check, authenticate, validate): ")
