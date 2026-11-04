@@ -2,16 +2,25 @@ from snippets.lab3 import Client, address
 from snippets.lab4.users import *
 from snippets.lab4.example1_presentation import serialize, deserialize, Request, Response
 
-
+# Implementazione del client RPC
+# Si occupa di marshallare e unmarshallare le richieste/risposte e di gestire la connessione con il server RPC
 class ClientStub:
     def __init__(self, server_address: tuple[str, int]):
-        self.__server_address = address(*server_address)
+        self.__server_address = address(*server_address) #transforma in tupla (ip, port)
+        self.__token = None  # Aggiunto : memorizza il token della sessione
 
-    def rpc(self, name, *args):
+    #Aggiunto : setter del token
+    def set_token(self, token: Token):
+        self.__token = token
+        print(f'# Token memorized for future requests')
+
+    # Metodo generico per effettuare una chiamata di procedura remota
+    def rpc(self, service, name, *args):
         client = Client(self.__server_address)
         try:
             print('# Connected to %s:%d' % client.remote_address)
-            request = Request(name, args)
+            # Crea la Request includendo il token memorizzato (se presente)
+            request = Request(service, name, args, authentication_token=self.__token)
             print('# Marshalling', request, 'towards', "%s:%d" % client.remote_address)
             request = serialize(request)
             print('# Sending message:', request.replace('\n', '\n# '))
@@ -28,45 +37,64 @@ class ClientStub:
             client.close()
             print('# Disconnected from %s:%d' % client.remote_address)
 
-
 class RemoteUserDatabase(ClientStub, UserDatabase):
+    service = 'UserDatabase'
+
+    def __init__(self, server_address):
+        super().__init__(server_address) #fa riferimento al costruttore di ClientStub
+        self.__token = None # Aggiunto --> Memorizza il token corrente
+    
+    #mi appello al metodo rpc della superclasse ClientStub
+    def add_user(self, user: User):
+        return self.rpc(self.service , 'add_user', user)
+
+    def get_user(self, id: str) -> User:
+        return self.rpc(self.service, 'get_user', id)
+
+    def check_password(self, credentials: Credentials) -> bool:
+        return self.rpc(self.service, 'check_password', credentials)
+
+#Qui implementiamo le funzioni authenticate e validate_token in modo remoto
+class RemoteAuthenticationService(ClientStub, AuthenticationService):
+    service = 'AuthenticationService'
+    
     def __init__(self, server_address):
         super().__init__(server_address)
 
-    def add_user(self, user: User):
-        return self.rpc('add_user', user)
-
-    def get_user(self, id: str) -> User:
-        return self.rpc('get_user', id)
-
-    def check_password(self, credentials: Credentials) -> bool:
-        return self.rpc('check_password', credentials)
-
+    def authenticate(self, credentials: Credentials) -> Token:
+        token = self.rpc(self.service,'authenticate', credentials)
+         # Memorizza il token per le richieste future
+        self.set_token(token)
+        return token
+    
+    def validate_token(self, token: Token) -> bool:
+        return self.rpc(self.service,'validate_token', token)
 
 if __name__ == '__main__':
     from snippets.lab4.example0_users import gc_user, gc_credentials_ok, gc_credentials_wrong
     import sys
 
-
+    # Qua entra in gioco la distribuzione
     user_db = RemoteUserDatabase(address(sys.argv[1]))
-
-    # Trying to get a user that does not exist should raise a KeyError
+    auth_service = RemoteAuthenticationService(address(sys.argv[1])) #utile per testare il servizio di autenticazione
+    
+    #Cercando di ottenere un utente che non esiste dovrebbe sollevare un RuntimeError
     try:
-        user_db.get_user('gciatto')
+        user_db.get_user('gciatto') #non esiste ancora
     except RuntimeError as e:
         assert 'User with ID gciatto not found' in str(e)
 
-    # Adding a novel user should work
+    #Adesso aggiungiamo l'utente gciatto
     user_db.add_user(gc_user)
 
-    # Trying to add a user that already exist should raise a ValueError
+    #Provarsi ad aggiungere di nuovo lo stesso utente dovrebbe sollevare un RuntimeError
     try:
-        user_db.add_user(gc_user)
+        user_db.add_user(gc_user) 
     except RuntimeError as e:
         assert str(e).startswith('User with ID')
         assert str(e).endswith('already exists')
 
-    # Getting a user that exists should work
+    #Ottenere l'utente appena aggiunto dovrebbe funzionare
     assert user_db.get_user('gciatto') == gc_user.copy(password=None)
 
     # Checking credentials should work if there exists a user with the same ID and password (no matter which ID is used)
